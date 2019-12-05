@@ -1,0 +1,3 @@
+.*.swp
+.venv
+Pipfile.lock
