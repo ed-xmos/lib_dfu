@@ -12,8 +12,10 @@ int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], uns
 int main(void)
 {
   enum dfu_status status;
+  enum dfu_state state;
+  unsigned timeout;
 
-  status = dfu_getstatus();
+  {status, state, timeout} = dfu_getstatus();
   assert(status == DFU_OK);
 
   printstr("PASS\n");

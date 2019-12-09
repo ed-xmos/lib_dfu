@@ -12,17 +12,22 @@ int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], uns
 int main(void)
 {
   enum dfu_state state;
+  enum dfu_status status;
+  unsigned timeout;
 
-  state = dfu_getstate();
+  {status, state, timeout} = dfu_getstatus();
   assert(state == APP_IDLE);
+  assert(status == DFU_OK);
 
   dfu_detach();
-  state = dfu_getstate();
+  {status, state, timeout} = dfu_getstatus();
   assert(state == APP_DETACH);
+  assert(status == DFU_OK);
 
   dfu_timeout_detach();
-  state = dfu_getstate();
+  {status, state, timeout} = dfu_getstatus();
   assert(state == APP_IDLE);
+  assert(status == DFU_OK);
 
   printstr("PASS\n");
   return 0;

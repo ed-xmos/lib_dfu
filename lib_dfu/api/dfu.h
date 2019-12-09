@@ -2,15 +2,18 @@
 #ifndef __dfu_h__
 #define __dfu_h__
 
+#include <stddef.h>
 #include <xccompat.h>
 #include <quadflash.h>
+
+#define DFU_BLOCK_SIZE_MAX_BYTES 32
 
 enum dfu_state {
   APP_IDLE,
   APP_DETACH,
   DFU_IDLE,
   DFU_DNLOAD_SYNC,
-  DFU_DNLOAD_BUSY,
+  DFU_DNBUSY,
   DFU_DNLOAD_IDLE,
   DFU_MANIFEST_SYNC,
   DFU_MANIFEST,
@@ -28,18 +31,20 @@ enum dfu_status {
 
 enum dfu_state dfu_getstate(void);
 
-enum dfu_status dfu_getstatus(void);
+#ifdef __XC__
+{enum dfu_status, enum dfu_state, unsigned} dfu_getstatus(void);
+#endif
 
 void dfu_clrstatus(void);
 
 void dfu_detach(void);
 
-#ifdef __XC__
-void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1]);
-#else
-void dfu_bus_reset(fl_QSPIPorts *ports, const fl_QuadDeviceSpec spec[1]);
-#endif
+void dfu_bus_reset(REFERENCE_PARAM(fl_QSPIPorts, ports),
+                   const fl_QuadDeviceSpec spec[1]);
 
 void dfu_timeout_detach(void);
+
+void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
+                const char block_data[DFU_BLOCK_SIZE_MAX_BYTES]);
 
 #endif
