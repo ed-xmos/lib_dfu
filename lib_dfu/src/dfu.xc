@@ -1,7 +1,9 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include "dfu.h"
 
-int dfu_do_read_command(enum dfu_command command, char data[DFU_DATA_MAX])
+static enum dfu_state state = APP_IDLE;
+
+enum dfu_state dfu_getstate(void)
 {
-  return 0;
+  return state;
 }

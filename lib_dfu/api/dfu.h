@@ -2,14 +2,20 @@
 #ifndef __dfu_h__
 #define __dfu_h__
 
-#define DFU_DATA_MAX 32
-
-enum dfu_command {
-  DFU_GETSTATE
+enum dfu_state {
+  APP_IDLE,
+  APP_DETACH,
+  DFU_IDLE,
+  DFU_DNLOAD_SYNC,
+  DFU_DNLOAD_BUSY,
+  DFU_DNLOAD_IDLE,
+  DFU_MANIFEST_SYNC,
+  DFU_MANIFEST,
+  DFU_MANIFEST_WAIT_RESET,
+  DFU_UPLOAD_IDLE,
+  DFU_ERROR
 };
 
-int dfu_do_read_command(enum dfu_command command, char data[DFU_DATA_MAX]);
-
-int dfu_do_write_command(enum dfu_command command, const char data[DFU_DATA_MAX]);
+enum dfu_state dfu_getstate(void);
 
 #endif

@@ -6,13 +6,12 @@ def options(opt):
 
 def configure(conf):
     conf.load('xwaf.xcommon')    
+    conf.env.PROJECT_ROOT = '../../../..'
 
 def build(bld):
     makefile_opts = {
-        'SOURCE_DIRS': ['device'],
         'TARGET': ['XCORE-200-EXPLORER'],
-        'INCLUDE_DIRS': ['device'],
-        'XCC_FLAGS': ['-O2', '-g', '-Wall', '-fcmdline-buffer-bytes=256'],
+        'XCC_FLAGS': ['-O2', '-g', '-Wall'],
         'USED_MODULES': ['lib_dfu', 'lib_xassert', 'lib_logging'],
         'XCOMMON_MAKEFILE': ['Makefile.common']
     }

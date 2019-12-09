@@ -1,10 +1,10 @@
 # Copyright (c) 2019, XMOS Ltd, All rights reserved
-import os, subprocess, tempfile
+import subprocess, os
 
-def test_get_state():
-    tmpfile_out = tempfile.mktemp('.bin')
+def test_getstate():
+    home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', '--args', 'bin/test_get_state.xe', tmpfile_out] # TODO use axe
+        cmd = ['xsim', os.path.join(home, 'bin/getstate.xe')] # TODO use axe
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed
@@ -14,7 +14,3 @@ def test_get_state():
                % (str(e.cmd), e.output, e.returncode)
         raise Exception(msg)
     print(output)
-    try:
-        os.unlink(tmpfile_out)
-    except FileNotFoundError:
-        pass
