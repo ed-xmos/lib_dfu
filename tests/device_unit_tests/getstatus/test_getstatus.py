@@ -1,10 +1,10 @@
 # Copyright (c) 2019, XMOS Ltd, All rights reserved
 import subprocess, os
 
-def test_getstate():
+def test_getstatus():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', os.path.join(home, 'bin/getstate.xe')]
+        cmd = ['xsim', os.path.join(home, 'bin/getstatus.xe')]
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed

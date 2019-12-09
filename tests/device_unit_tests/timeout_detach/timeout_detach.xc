@@ -16,6 +16,14 @@ int main(void)
   state = dfu_getstate();
   assert(state == APP_IDLE);
 
+  dfu_detach();
+  state = dfu_getstate();
+  assert(state == APP_DETACH);
+
+  dfu_timeout_detach();
+  state = dfu_getstate();
+  assert(state == APP_IDLE);
+
   printstr("PASS\n");
   return 0;
 }
