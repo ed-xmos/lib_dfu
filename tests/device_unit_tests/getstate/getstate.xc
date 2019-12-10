@@ -1,12 +1,23 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <print.h>
+#include <quadflash.h>
+
+#define XASSERT_ENABLE_DEBUG 1
+#define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
+
 #include "dfu.h"
 
-int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
 {
-  assert(0);
-  return -1;
+  assert(0); // call not expected
+  return 1;
+}
+
+int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
+{
+  assert(0); // call not expected
+  return 1;
 }
 
 int main(void)

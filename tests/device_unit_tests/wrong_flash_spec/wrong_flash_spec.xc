@@ -4,22 +4,38 @@
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
+
+#define XASSERT_ENABLE_DEBUG 1
+#define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
+
 #include "dfu.h"
 
 fl_QSPIPorts g_ports = {
   PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
 };
 
-fl_QuadDeviceSpec g_spec[] = { /* IS25LQ016B */
+int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+{
+  return 1; // 1 means not found device matching given SPI specification
+}
+
+fl_QuadDeviceSpec g_spec[] = { // IS25LQ016B
   { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
     PROT_TYPE_NONE, {{0,0},{0x00,0x00}}, 0x02, 0xEB, 1,
     SECTOR_LAYOUT_REGULAR, {4096,{0,{0}}}, 0x05, 0x01, 0x01
   }
 };
 
-int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
 {
+  assert(0); // call not expected
+  return 1;
+}
+
+int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
+{
+  assert(0); // call not expected
   return 1;
 }
 

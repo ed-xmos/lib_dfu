@@ -10,7 +10,7 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
-#include "block_to_page.h"
+#include "dfu_buffer_converter.h"
 
 void random_sequence(char seq[], int length)
 {
@@ -23,14 +23,14 @@ void random_sequence(char seq[], int length)
 
 int test(int block_size, int page_size, int repeats)
 {
-  char generated[BLOCK_TO_PAGE_BUFFER_SIZE_BYTES];
-  char block[BLOCK_TO_PAGE_BUFFER_SIZE_BYTES];
-  char page[BLOCK_TO_PAGE_BUFFER_SIZE_BYTES];
+  char generated[BUFFER_CONVERTER_QUEUE_SIZE_BYTES];
+  char block[BUFFER_CONVERTER_QUEUE_SIZE_BYTES];
+  char page[BUFFER_CONVERTER_QUEUE_SIZE_BYTES];
   int result = 0;
   int ret;
 
-  struct block_to_page buffer;
-  block_to_page_reset(buffer);
+  struct buffer_converter converter;
+  buffer_converter_reset(converter);
 
   debug_printf("+ %d-%d (%dx)\n", block_size, page_size, repeats);
 
@@ -41,10 +41,10 @@ int test(int block_size, int page_size, int repeats)
       for (int i = 0; i < block_size; i++) {
         block[i] = generated[i];
       }
-      ret = block_to_page_push(buffer, block, block_size);
+      ret = buffer_converter_push(converter, block, block_size);
       assert(ret == 0);
       for (int j = 0; j < multiplier; j++) {
-        ret = block_to_page_pull(buffer, page, page_size);
+        ret = buffer_converter_pull(converter, page, page_size);
         assert(ret == 0);
         for (int i = 0; i < page_size; i++) {
           if (page[i] != generated[page_size * j + i]) {
@@ -54,7 +54,7 @@ int test(int block_size, int page_size, int repeats)
           }
         }
       }
-      ret = block_to_page_pull(buffer, page, page_size);
+      ret = buffer_converter_pull(converter, page, page_size);
       assert(ret == 1);
     }
   }
@@ -66,10 +66,10 @@ int test(int block_size, int page_size, int repeats)
         for (int i = 0; i < block_size; i++) {
           block[i] = generated[block_size * j + i];
         }
-        ret = block_to_page_push(buffer, block, block_size);
+        ret = buffer_converter_push(converter, block, block_size);
         assert(ret == 0);
       }
-      ret = block_to_page_pull(buffer, page, page_size);
+      ret = buffer_converter_pull(converter, page, page_size);
       assert(ret == 0);
       for (int i = 0; i < page_size; i++) {
         if (page[i] != generated[i]) {
@@ -78,7 +78,7 @@ int test(int block_size, int page_size, int repeats)
             k, repeats, i, page[i], generated[i]);
         }
       }
-      ret = block_to_page_pull(buffer, page, page_size);
+      ret = buffer_converter_pull(converter, page, page_size);
       assert(ret == 1);
     }
   }

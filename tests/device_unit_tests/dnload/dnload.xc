@@ -4,14 +4,18 @@
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
+
+#define XASSERT_ENABLE_DEBUG 1
+#define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
+
 #include "dfu.h"
 
 fl_QSPIPorts g_ports = {
   PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
 };
 
-fl_QuadDeviceSpec g_spec[] = { /* IS25LQ016B */
+fl_QuadDeviceSpec g_spec[] = { // IS25LQ016B
   { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
     PROT_TYPE_NONE, {{0,0},{0x00,0x00}}, 0x02, 0xEB, 1,
     SECTOR_LAYOUT_REGULAR, {4096,{0,{0}}}, 0x05, 0x01, 0x01
@@ -36,7 +40,17 @@ char g_image[4][DFU_BLOCK_SIZE_MAX_BYTES] = {
 
 int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
 {
-  return 0;
+  return 0; // 0 indicates a matching flash device found and connected to
+}
+
+int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
+{
+  return 0; // 0 represents a valid factory image
+}
+
+int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
+{
+  return 1; // 1 simulates an empty upgrade slot
 }
 
 int main(void)
@@ -59,21 +73,30 @@ int main(void)
   assert(status == DFU_OK);
 
   for (int i = 0; i < 4; i++) {
+    printintln(i);
+
     dfu_dnload(i, DFU_BLOCK_SIZE_MAX_BYTES, g_image[i]);
     state = dfu_getstate();
     assert(state == DFU_DNLOAD_SYNC);
 
-    do {
-      {status, state, timeout} = dfu_getstatus();
-      assert(status == DFU_OK);
-      assert(state == DFU_DNBUSY || state == DFU_DNLOAD_IDLE);
-      delay_milliseconds(timeout);
-    } while (state == DFU_DNBUSY);
+    {status, state, timeout} = dfu_getstatus();
+    assert(status == DFU_OK);
+    assert(state == DFU_DNBUSY);
+
+    delay_microseconds(1);
+
+    {status, state, timeout} = dfu_getstatus();
+    assert(status == DFU_OK);
+    assert(state == DFU_DNLOAD_IDLE);
+    delay_microseconds(1);
   }
 
   dfu_dnload(0, 0, g_image[0]);
-  {status, state, timeout} = dfu_getstatus();
+  state = dfu_getstate();
   assert(state == DFU_MANIFEST_SYNC);
+
+  {status, state, timeout} = dfu_getstatus();
+  assert(state == DFU_IDLE);
   assert(status == DFU_OK);
 
   printstr("PASS\n");
