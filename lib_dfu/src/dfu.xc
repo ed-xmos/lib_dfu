@@ -1,6 +1,9 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <xs1.h>
 
+#define _Bool int
+#include <stdbool.h>
+
 #define DEBUG_UNIT DFU
 #define DEBUG_PRINT_ENABLE_DFU 0
 #include "debug_print.h"
@@ -13,9 +16,22 @@
 
 static enum dfu_state state = APP_IDLE;
 static enum dfu_status status = DFU_OK;
-static unsigned page_size_bytes = 0;
-static fl_BootImageInfo preceding; // TODO initial state
+
 static struct buffer_converter converter;
+
+static unsigned page_size_bytes = 0;
+static unsigned upgrade_slot_address = 0;
+
+static struct {
+  int next_page_address;
+  char page[DFU_PAGE_SIZE_MAX_BYTES];
+  bool page_ready;
+  enum {
+    DNLOAD_SYNC,
+    DNLOAD_ERASING_SECTOR,
+    DNLOAD_WRITING_PAGE
+  } sub_state;
+} dnload = {0, {}, false, DNLOAD_SYNC};
 
 enum dfu_request {
   DFU_DETACH,
@@ -91,28 +107,83 @@ static void error_condition(enum dfu_status code)
   state = DFU_ERROR;
 }
 
-static int push_block_try_pull_page(const char block[], int block_size_bytes,
-                                    char page[], int page_size_bytes)
+static int getstatus_from_dnload(bool &busy)
 {
-  // page size is not known, might not be connected to flash
-  if (page_size_bytes == 0)
-    return -1;
+  busy = false;
 
-  if (page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
-    return -2;
+  switch (dnload.sub_state) {
+    case DNLOAD_SYNC:
+      if (dnload.page_ready) {
+        if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
+          dnload.sub_state = DNLOAD_ERASING_SECTOR;
+          if (flash_erase_sector_async(dnload.next_page_address) != 0)
+            return 1;
+        }
+        else {
+          dnload.sub_state = DNLOAD_WRITING_PAGE;
+          if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
+            return 2;
+        }
+        busy = true;
+      }
+      break;
 
+    case DNLOAD_ERASING_SECTOR:
+      if (!flash_is_busy()) {
+        dnload.sub_state = DNLOAD_WRITING_PAGE;
+        if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
+          return 3;
+      }
+      busy = true;
+      break;
+
+    case DNLOAD_WRITING_PAGE:
+      if (!flash_is_busy()) {
+        dnload.sub_state = DNLOAD_SYNC;
+        dnload.next_page_address += page_size_bytes;
+        dnload.page_ready = false;
+      }
+      else {
+        busy = true;
+      }
+      break;
+  }
+
+  return 0;
+}
+
+static int dnload_block(const char write_block[], int block_size_bytes)
+{
   // not implemented large block sizes of multiple pages
   // only small block sizes that multiply up to one page
   if (block_size_bytes > page_size_bytes)
-    return -3;
+    return 1;
 
-  if (buffer_converter_push(converter, block, block_size_bytes) != 0)
-    return -4; // not enough space - missed some pulls?
+  // it should be an error for the sub-state machine to go out of sync
+  // eg host omitting a GETSTATUS request
+  if (dnload.sub_state != DNLOAD_SYNC)
+    return 2;
 
-  if (buffer_converter_pull(converter, page, page_size_bytes) != 0)
-    return 0; // not enough blocks pushed to make a page
-  else
-    return page_size_bytes; // got one whole page
+  // transition from dfuIDLE represents the first block
+  // we don't look at block numbers here
+  if (state == DFU_IDLE) {
+    buffer_converter_reset(converter);
+    dnload.next_page_address = upgrade_slot_address;
+    dnload.page_ready = false;
+  }
+
+  // non-zero return value from the push function indicates not enough space
+  // in the queue of blocks awaiting conversion to pages
+  // for some reason there are have been not enough pulls or too many pushes
+  if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
+    return 3;
+
+  // once we have enough blocks to make one page, commit this page for
+  // the next stage: optional sector erase followed by page write
+  if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
+    dnload.page_ready = true;
+
+  return 0;
 }
 
 static void request_with_arguments(enum dfu_request request,
@@ -120,8 +191,6 @@ static void request_with_arguments(enum dfu_request request,
                                    char (&?read_block)[DFU_BLOCK_SIZE_MAX_BYTES],
                                    int block_size_bytes)
 {
-  char page[DFU_PAGE_SIZE_MAX_BYTES];
-
   switch (state) {
     case APP_IDLE:
       if (request == DFU_DETACH) {
@@ -139,25 +208,10 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_IDLE:
       if (request == DFU_DNLOAD) {
-        if (flash_prepare_image_write(preceding) != 0) {
+        if (dnload_block(write_block, block_size_bytes) != 0)
           error_condition(ERR_UNKNOWN);
-          break;
-        }
-        int pulled = push_block_try_pull_page(write_block, block_size_bytes,
-                                              page, page_size_bytes);
-        if (pulled == -1) {
-          error_condition(ERR_UNKNOWN);
-          break;
-        }
-
-        if (pulled > 0) {
-          if (flash_begin_page_write(page, page_size_bytes) != 0) {
-            error_condition(ERR_UNKNOWN);
-            break;
-          }
-        }
-
-        normal_transition(DFU_DNLOAD_SYNC);
+        else
+          normal_transition(DFU_DNLOAD_SYNC);
       }
       else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
         // no other requests expected, defined as error
@@ -167,12 +221,18 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_DNLOAD_SYNC:
       if (request == DFU_GETSTATUS) {
-        if (flash_has_page_write_completed()) {
-          normal_transition(DFU_DNLOAD_IDLE);
+        bool busy = false;
+        if (getstatus_from_dnload(busy) != 0) {
+          error_condition(ERR_UNKNOWN);
         }
         else {
-          normal_transition(DFU_DNBUSY);
-          normal_transition(DFU_DNLOAD_SYNC);
+          if (busy) {
+            normal_transition(DFU_DNBUSY);
+            normal_transition(DFU_DNLOAD_SYNC);
+          }
+          else {
+            normal_transition(DFU_DNLOAD_IDLE);
+          }
         }
       }
       break;
@@ -180,7 +240,6 @@ static void request_with_arguments(enum dfu_request request,
     case DFU_MANIFEST_SYNC:
       if (request == DFU_GETSTATUS) {
         // completed straight away
-        buffer_converter_reset(converter);
         normal_transition(DFU_IDLE);
         // not disconnecting from flash to allow additional operations
       }
@@ -191,34 +250,21 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_DNLOAD_IDLE:
       if (block_size_bytes == 0) {
-        if (flash_finalise_image_write() != 0) {
+        if (flash_set_write_disable() != 0)
           error_condition(ERR_UNKNOWN);
-          break;
-        }
-        normal_transition(DFU_MANIFEST_SYNC);
+        else
+          normal_transition(DFU_MANIFEST_SYNC);
       }
       else {
-        int pulled = push_block_try_pull_page(write_block, block_size_bytes,
-                                              page, page_size_bytes);
-        if (pulled == -1) {
+        if (dnload_block(write_block, block_size_bytes) != 0)
           error_condition(ERR_UNKNOWN);
-          break;
-        }
-
-        if (pulled > 0) {
-          if (flash_begin_page_write(page, page_size_bytes) != 0) {
-            error_condition(ERR_UNKNOWN);
-            break;
-          }
-        }
-
-        normal_transition(DFU_DNLOAD_SYNC);
+        else
+          normal_transition(DFU_DNLOAD_SYNC);
       }
       break;
 
     case DFU_ERROR:
       if (request == DFU_CLRSTATUS) {
-        buffer_converter_reset(converter);
         normal_transition(DFU_IDLE);
       }
       break;
@@ -230,37 +276,32 @@ static void request(enum dfu_request request)
   request_with_arguments(request, null, null, 0);
 }
 
-static void bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
+static int enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 {
-  if (state == APP_DETACH) {
-    int ret = flash_connect(ports, spec);
-    if (ret == 0) {
-      page_size_bytes = spec[0].pageSize;
-      buffer_converter_reset(converter);
-      normal_transition(DFU_IDLE);
-    }
-    else {
-      debug_printf("error: quadflash connectToDevice returned %d\n", ret);
-      error_condition(ERR_UNKNOWN);
-    }
-  }
-  else if (state == APP_IDLE) {
-    normal_transition(APP_IDLE);
-  }
-  else {
-    error_condition(ERR_USBR);
-  }
-}
+  int ret;
 
-static void timeout_detach(void)
-{
-  if (state == APP_DETACH) {
-    normal_transition(APP_IDLE);
+  ret = flash_connect(ports, spec);
+  if (ret != 0) {
+    debug_printf("error: quadflash connectToDevice returned %d\n", ret);
+    return 1;
   }
-  else {
-    debug_printf("unexpected detach timeout call\n");
-    // remain in current state, no error code indication
-  }
+
+  page_size_bytes = spec[0].pageSize;
+  if (page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
+    return 2;
+
+  // only support regular sector layout
+  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
+    return 3;
+
+  // only support erase of exact sector size
+  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
+    return 4;
+
+  if (flash_locate_upgrade_slot(upgrade_slot_address) != 0)
+    return 5;
+
+  return 0;
 }
 
 enum dfu_state dfu_getstate(void)
@@ -297,12 +338,29 @@ void dfu_detach(void)
 
 void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 {
-  bus_reset(ports, spec);
+  if (state == APP_DETACH) {
+    if (enter_dfu(ports, spec) == 0)
+      normal_transition(DFU_IDLE);
+    else
+      error_condition(ERR_UNKNOWN);
+  }
+  else if (state == APP_IDLE) {
+    normal_transition(APP_IDLE);
+  }
+  else {
+    error_condition(ERR_USBR);
+  }
 }
 
 void dfu_timeout_detach(void)
 {
-  timeout_detach();
+  if (state == APP_DETACH) {
+    normal_transition(APP_IDLE);
+  }
+  else {
+    debug_printf("unexpected detach timeout call\n");
+    // remain in current state, no error code indication
+  }
 }
 
 void dfu_dnload(unsigned short block_num, size_t block_size_bytes,

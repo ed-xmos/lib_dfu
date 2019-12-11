@@ -23,26 +23,19 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 int main(void)
 {
   int ret;
-  fl_BootImageInfo image;
+  bool valid = false;
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
   // flash pre-loaded as:
-  //    xflash --factory a.xe (factory only)
+  //    xflash --factory a.xe (print 0)
   // or:
-  //    xflash --factory a.xe --upgrade 1 a.xe (upgrade)
+  //    xflash --factory a.xe --upgrade 1 a.xe (print 1)
 
-  ret = flash_prepare_image_write(image);
+  ret = flash_is_upgrade_slot_valid(valid);
   assert(ret == 0);
-
-  if (image.factory)
-    printstr("factory only\n");
-  else
-    printstr("upgrade\n");
-
-  ret = flash_finalise_image_write();
-  assert(ret == 0);
+  printintln(valid);
 
   flash_disconnect();
   assert(ret == 0);

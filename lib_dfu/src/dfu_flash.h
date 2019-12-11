@@ -14,10 +14,18 @@ int flash_connect(REFERENCE_PARAM(fl_QSPIPorts, ports),
 
 int flash_disconnect();
 
-int flash_prepare_image_write(REFERENCE_PARAM(fl_BootImageInfo, preceding));
-int flash_finalise_image_write(void);
+int flash_locate_upgrade_slot(REFERENCE_PARAM(unsigned, address));
 
-int flash_begin_page_write(const char page[], size_t page_size_bytes);
-bool flash_has_page_write_completed(void);
+int flash_is_upgrade_slot_valid(REFERENCE_PARAM(bool, valid));
+
+int flash_set_write_disable(void);
+
+bool flash_is_first_whole_page_in_sector(unsigned address);
+
+int flash_erase_sector_async(unsigned address);
+
+int flash_write_page_async(unsigned address, const char page[]);
+
+bool flash_is_busy(void);
 
 #endif

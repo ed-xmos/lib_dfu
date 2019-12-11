@@ -27,6 +27,18 @@ fl_QuadDeviceSpec g_spec[] = { // IS25LQ016B
   }
 };
 
+int fl_getNumSectors(void)
+{
+  assert(0); // call not expected
+  return 0;
+}
+
+int fl_getSectorAddress(int sectorNum)
+{
+  assert(0); // call not expected
+  return 0;
+}
+
 int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
 {
   assert(0); // call not expected
@@ -37,6 +49,23 @@ int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
 {
   assert(0); // call not expected
   return 1;
+}
+
+int fl_setWritability(int enable)
+{
+  assert(0); // call not expected
+  return 1;
+}
+
+int fl_getBusyStatus(void)
+{
+  assert(0); // call not expected
+  return 1;
+}
+
+void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
+{
+  assert(0); // call not expected
 }
 
 int main(void)

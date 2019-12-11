@@ -4,7 +4,7 @@ import subprocess, os
 def test_buffer_converter():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', os.path.join(home, 'bin/buffer_converter.xe')]
+        cmd = ['axe', os.path.join(home, 'bin/buffer_converter.xe')]
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed

@@ -50,13 +50,44 @@ int fl_disconnect(void)
   return 0;
 }
 
+int fl_getNumSectors(void)
+{
+  unsafe {
+    return p_spec->numPages * p_spec->pageSize / p_spec->sectorSizes.regularSectorSize;
+  }
+}
+
+int fl_getSectorAddress(int sectorNum)
+{
+  unsafe {
+    return p_spec->sectorSizes.regularSectorSize * sectorNum;
+  }
+}
+
 int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
+{
+  // report a factory image exists but omit details (test does not need them)
+  return 0;
+}
+
+int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
+{
+  // report no upgrade image exists
+  return 1;
+}
+
+void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
+{
+  assert(0); // call not expected
+}
+
+int fl_setWritability(int enable)
 {
   assert(0); // call not expected
   return 1;
 }
 
-int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
+int fl_getBusyStatus(void)
 {
   assert(0); // call not expected
   return 1;
