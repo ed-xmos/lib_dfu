@@ -1,6 +1,7 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <stddef.h>
 #include <quadflash.h>
+#include <safestring.h>
 
 #define _Bool int
 #include <stdbool.h>
@@ -10,6 +11,7 @@
 #include "dfu_flash.h"
 
 static unsigned char sector_erase_command = 0;
+static unsigned char program_page_command = 0;
 
 int flash_connect(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 {
@@ -21,6 +23,7 @@ int flash_connect(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 
   fl_saveSpecPointer(spec);
   sector_erase_command = spec[0].sectorEraseCommand;
+  program_page_command = spec[0].programPageCommand;
 
   return 0;
 }
@@ -64,7 +67,13 @@ int flash_is_upgrade_slot_valid(bool &valid)
 
 bool flash_is_first_whole_page_in_sector(unsigned address)
 {
-  return true;
+  int page_size = fl_getPageSize();
+
+  if (address < page_size)
+    return true;
+
+  return fl_getSectorContaining(address - page_size) !=
+         fl_getSectorContaining(address);
 }
 
 int flash_erase_sector_async(unsigned address)
@@ -77,10 +86,41 @@ int flash_erase_sector_async(unsigned address)
   return 0;
 }
 
+bool flash_is_sector_erased(unsigned address)
+{
+  unsigned page_address = address;
+  int page_size = fl_getPageSize();
+  while (fl_getSectorContaining(page_address) == fl_getSectorAtOrAfter(address)) {
+    char page[QUADFLASHLIB_MAX_PAGE_SIZE];
+    fl_readPage(page_address, page);
+    for (int i = 0; i < page_size; i++) {
+      if (page[i] != 0xFF)
+        return false;
+    }
+    page_address += page_size;
+  }
+  return true;
+}
+
 int flash_write_page_async(unsigned address, const char page[])
 {
-  // TODO
+  int page_size = fl_getPageSize();
+
+  if (fl_setWritability(1) != 0)
+    return 1;
+
+  fl_int_write(program_page_command, address, page, page_size);
+
   return 0;
+}
+
+int flash_verify_page(unsigned address, const char page[])
+{
+  int page_size = fl_getPageSize();
+  char verify[QUADFLASHLIB_MAX_PAGE_SIZE];
+
+  fl_readPage(address, verify);
+  return safememcmp(verify, page, page_size);
 }
 
 bool flash_is_busy(void)

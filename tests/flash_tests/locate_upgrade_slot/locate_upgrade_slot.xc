@@ -37,7 +37,7 @@ int main(void)
   assert(ret == 0);
   assert(address % spec[0].sectorSizes.regularSectorSize == 0);
 
-  flash_disconnect();
+  ret = flash_disconnect();
   assert(ret == 0);
 
   printintln(address);

@@ -7,6 +7,9 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
+#define _Bool int
+#include <stdbool.h>
+
 #include "dfu_flash.h"
 
 fl_QSPIPorts ports = {
@@ -23,19 +26,21 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 int main(void)
 {
   int ret;
-  bool valid = false;
+
+  const int sectors[] = {0, 1, 2, 3, 100, 511};
+  const int offsets[] = {0, 1, 128, 256, 4095};
+  const bool answers[] = {true, true, true, false, false};
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  // flash pre-loaded as:
-  //    xflash --factory a.xe (print 0)
-  // or:
-  //    xflash --factory a.xe --upgrade 1 a.xe (print 1)
-
-  ret = flash_is_upgrade_slot_valid(valid);
-  assert(ret == 0);
-  printintln(valid);
+  for (int i = 0; i < sizeof(offsets) / sizeof(int); i++) {
+    for (int j = 0; j < sizeof(sectors) / sizeof(int); j++) {
+      unsigned sector_address = spec[0].sectorSizes.regularSectorSize * sectors[j];
+      bool is_first = flash_is_first_whole_page_in_sector(sector_address + offsets[i]);
+      assert(is_first == answers[i]);
+    }
+  }
 
   ret = flash_disconnect();
   assert(ret == 0);

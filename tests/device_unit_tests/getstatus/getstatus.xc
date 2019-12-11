@@ -8,35 +8,6 @@
 
 #include "dfu.h"
 
-int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
-{
-  assert(0); // call not expected
-  return 1;
-}
-
-int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
-{
-  assert(0); // call not expected
-  return 1;
-}
-
-int fl_setWritability(int enable)
-{
-  assert(0); // call not expected
-  return 1;
-}
-
-int fl_getBusyStatus(void)
-{
-  assert(0); // call not expected
-  return 1;
-}
-
-void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
-{
-  assert(0); // call not expected
-}
-
 int main(void)
 {
   enum dfu_status status;

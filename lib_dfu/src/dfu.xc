@@ -107,7 +107,7 @@ static void error_condition(enum dfu_status code)
   state = DFU_ERROR;
 }
 
-static int getstatus_from_dnload(bool &busy)
+static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = false;
 
@@ -117,12 +117,12 @@ static int getstatus_from_dnload(bool &busy)
         if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
           dnload.sub_state = DNLOAD_ERASING_SECTOR;
           if (flash_erase_sector_async(dnload.next_page_address) != 0)
-            return 1;
+            return ERR_ERASE;
         }
         else {
           dnload.sub_state = DNLOAD_WRITING_PAGE;
           if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
-            return 2;
+            return ERR_WRITE;
         }
         busy = true;
       }
@@ -130,15 +130,21 @@ static int getstatus_from_dnload(bool &busy)
 
     case DNLOAD_ERASING_SECTOR:
       if (!flash_is_busy()) {
+        if (!flash_is_sector_erased(dnload.next_page_address))
+          return ERR_CHECK_ERASED;
+
         dnload.sub_state = DNLOAD_WRITING_PAGE;
         if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
-          return 3;
+          return ERR_WRITE;
       }
       busy = true;
       break;
 
     case DNLOAD_WRITING_PAGE:
       if (!flash_is_busy()) {
+	if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
+	  return ERR_VERIFY;
+
         dnload.sub_state = DNLOAD_SYNC;
         dnload.next_page_address += page_size_bytes;
         dnload.page_ready = false;
@@ -149,7 +155,7 @@ static int getstatus_from_dnload(bool &busy)
       break;
   }
 
-  return 0;
+  return DFU_OK;
 }
 
 static int dnload_block(const char write_block[], int block_size_bytes)
@@ -191,6 +197,8 @@ static void request_with_arguments(enum dfu_request request,
                                    char (&?read_block)[DFU_BLOCK_SIZE_MAX_BYTES],
                                    int block_size_bytes)
 {
+  enum dfu_status status;
+
   switch (state) {
     case APP_IDLE:
       if (request == DFU_DETACH) {
@@ -222,8 +230,9 @@ static void request_with_arguments(enum dfu_request request,
     case DFU_DNLOAD_SYNC:
       if (request == DFU_GETSTATUS) {
         bool busy = false;
-        if (getstatus_from_dnload(busy) != 0) {
-          error_condition(ERR_UNKNOWN);
+        status = getstatus_from_dnload(busy);
+        if (status != DFU_OK) {
+          error_condition(status);
         }
         else {
           if (busy) {
@@ -251,7 +260,7 @@ static void request_with_arguments(enum dfu_request request,
     case DFU_DNLOAD_IDLE:
       if (block_size_bytes == 0) {
         if (flash_set_write_disable() != 0)
-          error_condition(ERR_UNKNOWN);
+          error_condition(ERR_WRITE);
         else
           normal_transition(DFU_MANIFEST_SYNC);
       }
@@ -276,32 +285,32 @@ static void request(enum dfu_request request)
   request_with_arguments(request, null, null, 0);
 }
 
-static int enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
+static enum dfu_status enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 {
   int ret;
 
   ret = flash_connect(ports, spec);
   if (ret != 0) {
     debug_printf("error: quadflash connectToDevice returned %d\n", ret);
-    return 1;
+    return ERR_UNKNOWN;
   }
 
   page_size_bytes = spec[0].pageSize;
   if (page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
-    return 2;
+    return ERR_UNKNOWN;
 
   // only support regular sector layout
   if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
-    return 3;
+    return ERR_UNKNOWN;
 
   // only support erase of exact sector size
   if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
-    return 4;
+    return ERR_UNKNOWN;
 
   if (flash_locate_upgrade_slot(upgrade_slot_address) != 0)
-    return 5;
+    return ERR_WRITE;
 
-  return 0;
+  return DFU_OK;
 }
 
 enum dfu_state dfu_getstate(void)
@@ -339,10 +348,11 @@ void dfu_detach(void)
 void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
 {
   if (state == APP_DETACH) {
-    if (enter_dfu(ports, spec) == 0)
-      normal_transition(DFU_IDLE);
+    enum dfu_status status = enter_dfu(ports, spec);
+    if (status != DFU_OK)
+      error_condition(status);
     else
-      error_condition(ERR_UNKNOWN);
+      normal_transition(DFU_IDLE);
   }
   else if (state == APP_IDLE) {
     normal_transition(APP_IDLE);

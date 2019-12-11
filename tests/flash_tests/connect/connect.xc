@@ -27,7 +27,7 @@ int main(void)
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  flash_disconnect();
+  ret = flash_disconnect();
   assert(ret == 0);
 
   printstr("PASS\n");

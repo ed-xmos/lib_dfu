@@ -26,6 +26,7 @@ int main(void)
   unsigned address = -1;
   int timeout = 1000;
   bool valid = false;
+  bool erased;
   int start, end;
   timer tmr;
 
@@ -34,12 +35,15 @@ int main(void)
 
   // flash pre-loaded as: xflash --factory a.xe --upgrade 1 a.xe
 
+  ret = flash_locate_upgrade_slot(address);
+  assert(ret == 0);
+
   ret = flash_is_upgrade_slot_valid(valid);
   assert(ret == 0);
   assert(valid);
 
-  ret = flash_locate_upgrade_slot(address);
-  assert(ret == 0);
+  erased = flash_is_sector_erased(address);
+  assert(!erased);
 
   ret = flash_erase_sector_async(address);
   assert(ret == 0);
@@ -58,7 +62,10 @@ int main(void)
   assert(ret == 0);
   assert(!valid);
 
-  flash_disconnect();
+  erased = flash_is_sector_erased(address);
+  assert(erased);
+
+  ret = flash_disconnect();
   assert(ret == 0);
 
   printstr("PASS\n");
