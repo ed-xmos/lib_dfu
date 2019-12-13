@@ -3,6 +3,9 @@
 #include <platform.h>
 #include <print.h>
 
+#define _Bool int
+#include <stdbool.h>
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
@@ -24,7 +27,7 @@ int main(void)
 {
   int ret;
   unsigned address = -1;
-  int timeout = 1000;
+  int timeout;
   bool erased;
   int start, end;
   timer tmr;
@@ -32,13 +35,20 @@ int main(void)
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  // flash pre-loaded as: xflash --factory a.xe
-
   ret = flash_locate_upgrade_slot(address);
   assert(ret == 0);
 
   erased = flash_is_sector_erased(address);
-  assert(erased);
+  if (!erased) {
+    ret = flash_erase_sector_async(address);
+    assert(ret == 0);
+    timeout = 1000;
+    while (flash_is_busy() && timeout > 0) {
+      delay_milliseconds(1);
+      timeout--;
+    }
+    assert(timeout > 0);
+  }
 
   char page[256] = {
     0xD9, 0x16, 0xAA, 0x31, 0x0B, 0xA4, 0x29, 0xDC, 0x2D, 0x9F, 0xF3, 0xC9, 0x05, 0x17, 0x0F, 0x3A,
@@ -63,6 +73,7 @@ int main(void)
   assert(ret == 0);
   tmr :> start;
 
+  timeout = 1000;
   while (flash_is_busy() && timeout > 0) {
     delay_milliseconds(1);
     timeout--;

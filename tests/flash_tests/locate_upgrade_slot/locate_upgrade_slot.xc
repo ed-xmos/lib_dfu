@@ -28,11 +28,6 @@ int main(void)
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  // flash pre-loaded as:
-  //    xflash --factory a.xe
-  // or:
-  //    xflash --factory a.xe --upgrade 1 a.xe
-
   ret = flash_locate_upgrade_slot(address);
   assert(ret == 0);
   assert(address % spec[0].sectorSizes.regularSectorSize == 0);

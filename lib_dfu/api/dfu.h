@@ -25,13 +25,19 @@ enum dfu_state {
 
 enum dfu_status {
   DFU_OK,
+  ERR_TARGET,
+  ERR_FILE,
   ERR_WRITE,
   ERR_ERASE,
   ERR_CHECK_ERASED,
   ERR_PROG,
   ERR_VERIFY,
   ERR_ADDRESS,
+  ERR_NOTDONE,
+  ERR_FIRMWARE,
+  ERR_VENDOR,
   ERR_USBR,
+  ERR_POR,
   ERR_UNKNOWN,
   ERR_STALLED_PKT
 };

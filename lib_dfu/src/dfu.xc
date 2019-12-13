@@ -26,7 +26,7 @@ static struct {
   int next_page_address;
   char page[DFU_PAGE_SIZE_MAX_BYTES];
   bool page_ready;
-  enum {
+  enum dnload_sub_state {
     DNLOAD_SYNC,
     DNLOAD_ERASING_SECTOR,
     DNLOAD_WRITING_PAGE
@@ -44,6 +44,22 @@ enum dfu_request {
 };
 
 #if DEBUG_PRINT_ENABLE_DFU
+static const char * unsafe request_str(enum dfu_request r)
+{
+  unsafe {
+    switch (r) {
+      case DFU_DETACH:                return "DETACH";
+      case DFU_DNLOAD:                return "DNLOAD";
+      case DFU_UPLOAD:                return "UPLOAD";
+      case DFU_GETSTATUS:             return "GETSTATUS";
+      case DFU_CLRSTATUS:             return "CLRSTATUS";
+      case DFU_GETSTATE:              return "GETSTATE";
+      case DFU_ABORT:                 return "ABORT";
+      default:                        return "?";
+    }
+  }
+}
+
 static const char * unsafe state_str(enum dfu_state s)
 {
   unsafe {
@@ -64,6 +80,17 @@ static const char * unsafe state_str(enum dfu_state s)
   }
 }
 
+static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
+{
+  unsafe {
+    switch (s) {
+      case DNLOAD_SYNC:               return "SYNC";
+      case DNLOAD_ERASING_SECTOR:     return "ERASING_SECTOR";
+      case DNLOAD_WRITING_PAGE:       return "WRITING_PAGE";
+      default:                        return "?";
+    }
+  }
+}
 static const char * unsafe status_str(enum dfu_status s)
 {
   unsafe {
@@ -84,6 +111,7 @@ static const char * unsafe status_str(enum dfu_status s)
       case ERR_POR:                   return "errPOR";
       case ERR_UNKNOWN:               return "errUNKNOWN";
       case ERR_STALLED_PKT:           return "errSTALLEDPKT";
+      default:                        return "?";
     }
   }
 }
@@ -92,7 +120,8 @@ static const char * unsafe status_str(enum dfu_status s)
 static void normal_transition(enum dfu_state new)
 {
   unsafe {
-    debug_printf("DFU: %s -> %s (OK)\n", state_str(state), state_str(new));
+    debug_printf("DFU: %s (%d) -> %s (%d)\n",
+                 state_str(state), state, state_str(new), new);
   }
   status = DFU_OK;
   state = new;
@@ -107,6 +136,16 @@ static void error_condition(enum dfu_status code)
   state = DFU_ERROR;
 }
 
+static void sub_transition_dnload(enum dnload_sub_state new)
+{
+  unsafe {
+    debug_printf("DFU DNLOAD: %s -> %s\n",
+                 dnload_sub_state_str(dnload.sub_state),
+                 dnload_sub_state_str(new));
+  }
+  dnload.sub_state = new;
+}
+
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = false;
@@ -115,12 +154,12 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
     case DNLOAD_SYNC:
       if (dnload.page_ready) {
         if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
-          dnload.sub_state = DNLOAD_ERASING_SECTOR;
+          sub_transition_dnload(DNLOAD_ERASING_SECTOR);
           if (flash_erase_sector_async(dnload.next_page_address) != 0)
             return ERR_ERASE;
         }
         else {
-          dnload.sub_state = DNLOAD_WRITING_PAGE;
+          sub_transition_dnload(DNLOAD_WRITING_PAGE);
           if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
             return ERR_WRITE;
         }
@@ -130,10 +169,10 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
     case DNLOAD_ERASING_SECTOR:
       if (!flash_is_busy()) {
-        if (!flash_is_sector_erased(dnload.next_page_address))
+        if (flash_is_sector_erased(dnload.next_page_address))
           return ERR_CHECK_ERASED;
 
-        dnload.sub_state = DNLOAD_WRITING_PAGE;
+        sub_transition_dnload(DNLOAD_WRITING_PAGE);
         if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
           return ERR_WRITE;
       }
@@ -142,10 +181,10 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
     case DNLOAD_WRITING_PAGE:
       if (!flash_is_busy()) {
-	if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
-	  return ERR_VERIFY;
+        if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
+          return ERR_VERIFY;
 
-        dnload.sub_state = DNLOAD_SYNC;
+        sub_transition_dnload(DNLOAD_SYNC);
         dnload.next_page_address += page_size_bytes;
         dnload.page_ready = false;
       }
@@ -198,6 +237,7 @@ static void request_with_arguments(enum dfu_request request,
                                    int block_size_bytes)
 {
   enum dfu_status status;
+  debug_printf("DFU: %s\n", request_str(request));
 
   switch (state) {
     case APP_IDLE:
@@ -252,7 +292,7 @@ static void request_with_arguments(enum dfu_request request,
         normal_transition(DFU_IDLE);
         // not disconnecting from flash to allow additional operations
       }
-      else {
+      else if (request != DFU_GETSTATE) {
         error_condition(ERR_STALLED_PKT);
       }
       break;

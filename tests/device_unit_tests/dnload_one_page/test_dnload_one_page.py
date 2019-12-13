@@ -1,10 +1,10 @@
 # Copyright (c) 2019, XMOS Ltd, All rights reserved
 import subprocess, os
 
-def test_dnload():
+def test_dnload_one_page():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['axe', os.path.join(home, 'bin/dnload.xe')]
+        cmd = ['xsim', os.path.join(home, 'bin/dnload_one_page.xe')]
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed

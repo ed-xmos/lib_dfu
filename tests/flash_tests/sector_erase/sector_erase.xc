@@ -3,6 +3,9 @@
 #include <platform.h>
 #include <print.h>
 
+#define _Bool int
+#include <stdbool.h>
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
@@ -32,8 +35,6 @@ int main(void)
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
-
-  // flash pre-loaded as: xflash --factory a.xe --upgrade 1 a.xe
 
   ret = flash_locate_upgrade_slot(address);
   assert(ret == 0);

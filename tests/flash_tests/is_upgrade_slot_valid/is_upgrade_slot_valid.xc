@@ -3,6 +3,9 @@
 #include <platform.h>
 #include <print.h>
 
+#define _Bool int
+#include <stdbool.h>
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
@@ -20,25 +23,32 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   }
 };
 
-int main(void)
+int main(unsigned argc, char * unsafe argv[argc])
 {
   int ret;
   bool valid = false;
+  bool expected;
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  // flash pre-loaded as:
-  //    xflash --factory a.xe (print 0)
-  // or:
-  //    xflash --factory a.xe --upgrade 1 a.xe (print 1)
-
   ret = flash_is_upgrade_slot_valid(valid);
   assert(ret == 0);
-  printintln(valid);
 
   ret = flash_disconnect();
   assert(ret == 0);
+
+  unsafe {
+    expected = (argv[1][0] == 'V');
+  }
+
+  if (expected != valid) {
+    printstr("expected ");
+    printintln(expected);
+    printstr("actual ");
+    printintln(valid);
+    return 1;
+  }
 
   printstr("PASS\n");
   return 0;

@@ -1,0 +1,5 @@
+#!/bin/sh
+xflash --no-compression --noinq --quad-spi-clock=12.5MHz --factory ../hello_world.xe
+xrun --io --args bin/locate_upgrade_slot.xe N
+xflash --no-compression --noinq --quad-spi-clock=12.5MHz --factory ../hello_world.xe --upgrade 1 ../hello_world.xe
+xrun --io --args bin/locate_upgrade_slot.xe V
