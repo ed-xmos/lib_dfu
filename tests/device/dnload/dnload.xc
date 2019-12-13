@@ -1,6 +1,7 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <xs1.h>
 #include <platform.h>
+#include <stdio.h>
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
@@ -30,20 +31,21 @@ unsafe {
   fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&g_spec;
 }
 
-#define IMAGE_BLOCK_COUNT 128
+#define PAGE_COUNT_MAX (8 * 16)
+#define BLOCK_COUNT_MAX (PAGE_COUNT_MAX * 8)
 
-char g_image[IMAGE_BLOCK_COUNT][DFU_BLOCK_SIZE_MAX_BYTES];
+char g_image[BLOCK_COUNT_MAX][DFU_BLOCK_SIZE_MAX_BYTES];
 
-char g_flash_upgrade_slot[IMAGE_BLOCK_COUNT * DFU_BLOCK_SIZE_MAX_BYTES];
+char g_flash_upgrade_slot[BLOCK_COUNT_MAX * DFU_BLOCK_SIZE_MAX_BYTES];
 
-bool g_flash_erased = false;
+bool g_page_erased[PAGE_COUNT_MAX] = {false};
 bool g_flash_write_enabled = false;
 int g_flash_working = 0;
 
 const unsigned g_factory_start = 4096;
 const unsigned g_factory_size = 8192;
 const unsigned g_upgrade_start = 4096 + 8192;
-const unsigned g_upgrade_size = IMAGE_BLOCK_COUNT * DFU_BLOCK_SIZE_MAX_BYTES;
+unsigned g_upgrade_size = 0;
 
 int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
 {
@@ -74,9 +76,14 @@ void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
 
   assert(g_flash_write_enabled);
   assert(g_flash_working == 0);
-  if (sectorAddress == g_upgrade_start) {
-    assert(!g_flash_erased);
-    g_flash_erased = true;
+  if (sectorAddress >= g_upgrade_start &&
+      sectorAddress < g_upgrade_start + g_upgrade_size) {
+    for (int i = 0; i < 16; i++) {
+      int upgrade_image_page_index = (sectorAddress - g_upgrade_start) / 256 + i;
+      assert(!g_page_erased[upgrade_image_page_index]);
+      g_page_erased[upgrade_image_page_index] = true;
+      memset(&g_flash_upgrade_slot[sectorAddress - g_upgrade_start + i * 256], 0xFF, 256);
+    }
     g_flash_working = 5;
   }
 }
@@ -127,10 +134,11 @@ void fl_int_write(unsigned char cmd,
 
   assert(g_flash_write_enabled);
   assert(g_flash_working == 0);
-  assert(g_flash_erased);
   assert(num_bytes == 256);
   assert(pageAddress >= g_upgrade_start &&
-         pageAddress + num_bytes <= g_upgrade_start + sizeof(g_image));
+         pageAddress + num_bytes <= g_upgrade_start + g_upgrade_size);
+
+  assert(g_page_erased[(pageAddress - g_upgrade_start) / 256]);
 
   memcpy(&g_flash_upgrade_slot[pageAddress - g_upgrade_start], data, num_bytes);
 
@@ -139,8 +147,8 @@ void fl_int_write(unsigned char cmd,
 
 int fl_readPage(unsigned int address, unsigned char data[])
 {
-  assert(address >= g_upgrade_start &&
-         address + 256 <= g_upgrade_start + sizeof(g_image));
+  assert(address >= g_upgrade_start && // allow an extra sector for erased check
+         address + 256 <= g_upgrade_start + g_upgrade_size + 4096);
 
   memcpy(data, &g_flash_upgrade_slot[address - g_upgrade_start], 256);
   return 0;
@@ -155,13 +163,20 @@ void random_sequence(char seq[], int length)
   }
 }
 
-int main(void)
+int main(unsigned argc, char * unsafe argv[argc])
 {
   enum dfu_state state;
   enum dfu_status status;
   unsigned timeout;
+  int block_count = 0;
 
-  for (int i = 0; i < sizeof(g_image) / DFU_BLOCK_SIZE_MAX_BYTES; i++) {
+  unsafe {
+    sscanf(argv[1], "%d", &block_count);
+  }
+  printintln(block_count);
+  g_upgrade_size = block_count * DFU_BLOCK_SIZE_MAX_BYTES;
+
+  for (int i = 0; i < block_count; i++) {
     random_sequence(g_image[i], DFU_BLOCK_SIZE_MAX_BYTES);
   }
 
@@ -176,7 +191,7 @@ int main(void)
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 
-  for (int i = 0; i < sizeof(g_image) / DFU_BLOCK_SIZE_MAX_BYTES; i++) {
+  for (int i = 0; i < block_count; i++) {
     printintln(i);
 
     dfu_dnload(i, DFU_BLOCK_SIZE_MAX_BYTES, g_image[i]);

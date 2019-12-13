@@ -1,4 +1,8 @@
+Tests of device-side extended flash functionality
+
 These run on hardware and so are manually executed rather than using Pytest
+
+Normally there will be a shell script with each test that shows how to run it
 
 Convention is that pass is when last line of test output is 'PASS'
 

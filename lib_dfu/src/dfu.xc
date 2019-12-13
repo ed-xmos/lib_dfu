@@ -169,7 +169,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
     case DNLOAD_ERASING_SECTOR:
       if (!flash_is_busy()) {
-        if (flash_is_sector_erased(dnload.next_page_address))
+        if (!flash_is_sector_erased(dnload.next_page_address))
           return ERR_CHECK_ERASED;
 
         sub_transition_dnload(DNLOAD_WRITING_PAGE);
