@@ -162,23 +162,49 @@ void random_sequence(char seq[], int length)
   }
 }
 
-int main(unsigned argc, char * unsafe argv[argc])
+void single_dnload_block(int block_num, size_t block_size, const char block[])
 {
   enum dfu_state state;
   enum dfu_status status;
   unsigned timeout;
-  int block_count = 0;
-  int block_size = 0;
 
-  unsafe {
-    sscanf(argv[1], "%d", &block_size);
-    sscanf(argv[2], "%d", &block_count);
-  }
-  printf("+ %d %d\n", block_size, block_count);
+  dfu_dnload(block_num, block_size, block);
+  state = dfu_getstate();
+  assert(state == DFU_DNLOAD_SYNC);
 
-  g_upgrade_size = block_count * block_size;
+  do {
+    {status, state, timeout} = dfu_getstatus();
+    assert(status == DFU_OK);
+    delay_microseconds(1);
+  } while (state == DFU_DNBUSY);
 
-  random_sequence(g_image, g_upgrade_size);
+  assert(state == DFU_DNLOAD_IDLE);
+}
+
+void dnload_zero(void)
+{
+  enum dfu_state state;
+  enum dfu_status status;
+  unsigned timeout;
+  char block[DFU_BLOCK_SIZE_MAX_BYTES];
+
+  dfu_dnload(0, 0, block);
+  state = dfu_getstate();
+  assert(state == DFU_MANIFEST_SYNC);
+
+  do {
+    {status, state, timeout} = dfu_getstatus();
+    assert(status == DFU_OK);
+    delay_microseconds(1);
+  } while (state == DFU_MANIFEST);
+
+  assert(state == DFU_IDLE);
+  assert(status == DFU_OK);
+}
+
+void dnload(int block_size, int block_count, int tail_size)
+{
+  enum dfu_state state;
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -193,33 +219,21 @@ int main(unsigned argc, char * unsafe argv[argc])
 
   for (int i = 0; i < block_count; i++) {
     printintln(i);
-
-    dfu_dnload(i, block_size, (char*)&g_image[i * block_size]);
-    state = dfu_getstate();
-    assert(state == DFU_DNLOAD_SYNC);
-
-    do {
-      {status, state, timeout} = dfu_getstatus();
-      assert(status == DFU_OK);
-      delay_microseconds(1);
-    } while (state == DFU_DNBUSY);
-
-    assert(state == DFU_DNLOAD_IDLE);
+    single_dnload_block(i, block_size,
+                        (const char*)&g_image[i * block_size]);
   }
 
-  dfu_dnload(0, 0, g_image);
-  state = dfu_getstate();
-  assert(state == DFU_MANIFEST_SYNC);
+  if (tail_size > 0) {
+    printintln(block_count);
+    single_dnload_block(block_count, tail_size,
+                        (const char*)&g_image[block_count * block_size]);
+  }
 
-  do {
-    {status, state, timeout} = dfu_getstatus();
-    assert(status == DFU_OK);
-    delay_microseconds(1);
-  } while (state == DFU_MANIFEST);
+  dnload_zero();
+}
 
-  assert(state == DFU_IDLE);
-  assert(status == DFU_OK);
-
+void verify(void)
+{
   for (int i = 0; i < g_upgrade_size; i++) {
     if (g_image[i] != g_flash_upgrade_slot[i]) {
       printf("byte %d mismatch: 0x%02X 0x%02X\n",
@@ -227,6 +241,30 @@ int main(unsigned argc, char * unsafe argv[argc])
       assert(0);
     }
   }
+}
+
+int main(unsigned argc, char * unsafe argv[argc])
+{
+  int block_count = 0;
+  int block_size = 0;
+  int tail_size = 0;
+
+  assert(argc == 4);
+
+  unsafe {
+    sscanf(argv[1], "%d", &block_size);
+    sscanf(argv[2], "%d", &block_count);
+    sscanf(argv[3], "%d", &tail_size);
+  }
+  g_upgrade_size = block_count * block_size + tail_size;
+  printf("+ %d * %d + %d (%d)\n", block_size, block_count, tail_size,
+                                  g_upgrade_size);
+
+  random_sequence(g_image, g_upgrade_size);
+
+  dnload(block_size, block_count, tail_size);
+
+  verify();
 
   printstr("PASS\n");
   return 0;

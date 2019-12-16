@@ -33,18 +33,15 @@ unsafe {
   fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&spec;
 }
 
-int main(unsigned argc, char * unsafe argv[argc])
+FILE * movable write(FILE * movable bin_file, int block_size,
+                     int &upgrade_size)
 {
   enum dfu_state state;
   enum dfu_status status;
   unsigned timeout;
-  unsigned block_count = 0;
-  unsigned page_count = 0;
+  int block_count = 0;
   size_t ret;
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
-  char page[256], actual[256];
-
-  FILE * movable bin_file = fopen((char*)argv[1], "rb");
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -60,13 +57,13 @@ int main(unsigned argc, char * unsafe argv[argc])
   while (!feof(bin_file)) {
     printintln(block_count);
 
-    ret = fread(block, 1, sizeof(block), bin_file);
-    assert(ret >= 0 && ret <= sizeof(block));
+    ret = fread(block, 1, block_size, bin_file);
+    assert(ret >= 0 && ret <= block_size);
 
     if (ret == 0)
       break;
 
-    dfu_dnload(block_count, sizeof(block), block);
+    dfu_dnload(block_count, block_size, block);
 
     do {
       {status, state, timeout} = dfu_getstatus();
@@ -87,31 +84,63 @@ int main(unsigned argc, char * unsafe argv[argc])
   assert(state == DFU_IDLE);
   assert(status == DFU_OK);
 
-  fseek(bin_file, 0, SEEK_SET);
+  upgrade_size = block_count * block_size;
 
-  // assume that upgrade binary is sector aligned
-  // add 2 sectors (8KB) for stage two loader
-  unsigned address = 8192 + block_count * sizeof(block);
-  printstr("use upgrade address 0x");
-  printhexln(address);
+  return move(bin_file);
+}
+
+FILE * movable verify(FILE * movable bin_file, int block_size,
+                      unsigned upgrade_address)
+{
+  int page_count = 0;
+  unsigned addr = upgrade_address;
+  size_t ret;
+  char expected[256], actual[256];
 
   while (!feof(bin_file)) {
     printintln(page_count);
 
-    ret = fread(page, 1, sizeof(page), bin_file);
-    assert(ret >= 0 && ret <= sizeof(page));
+    ret = fread(expected, 1, sizeof(expected), bin_file);
+    assert(ret >= 0 && ret <= sizeof(expected));
 
     if (ret == 0)
       break;
 
-    fl_readData(address, ret, actual);
-    address += ret;
+    fl_readData(addr, ret, actual);
+    addr += ret;
 
-    ret = memcmp(page, actual, sizeof(page));
+    ret = memcmp(expected, actual, sizeof(expected));
     assert(ret == 0);
 
     page_count++;
   }
+
+  return move(bin_file);
+}
+
+int main(unsigned argc, char * unsafe argv[argc])
+{
+  assert(argc == 3);
+
+  FILE * movable bin_file = fopen((char*)argv[1], "rb");
+  int block_size = 0;
+  unsafe {
+    sscanf(argv[2], "%d", &block_size);
+  }
+
+  int upgrade_size = 0;
+  bin_file = write(move(bin_file), block_size, upgrade_size);
+  printf("written %d bytes\n", upgrade_size);
+
+  fseek(bin_file, 0, SEEK_SET);
+
+  // assume that upgrade binary is sector aligned
+  // add 2 sectors (8KB) for stage two loader
+  unsigned upgrade_address = 8192 + upgrade_size;
+  printf("upgrade address 0x%X\n", upgrade_address);
+
+  bin_file = verify(move(bin_file), block_size, upgrade_address);
+  printf("verified\n");
 
   fclose(move(bin_file));
 

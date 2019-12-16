@@ -28,6 +28,8 @@ int main(unsigned argc, char * unsafe argv[argc])
   int ret;
   bool erased, expected;
 
+  assert(argc == 2);
+
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 

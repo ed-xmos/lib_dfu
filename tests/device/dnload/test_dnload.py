@@ -4,15 +4,17 @@ import subprocess, os
 def test_dnload():
     home = os.path.dirname(os.path.abspath(__file__))
     test_instances = [
-        (32, 1), (32, 3), (32, 8), (32, 9), (32, 128), (32, 1024),
-        (128, 1), (128, 2), (128, 8), (128, 9), (128, 128), (128, 256),
-        (256, 1), (256, 2), (256, 8), (256, 16), (256, 17), (256, 128),
-        (512, 1), (512, 7), (512, 8), (512, 9), (512, 32),
+        (32, 1, 0), (32, 1, 1), (32, 3, 0), (32, 8, 0), (32, 9, 0), (32, 9, 31),
+        (32, 128, 0), (32, 1024, 0), (128, 1, 0), (128, 1, 1), (128, 1, 127),
+        (128, 2, 0), (128, 8, 0), (128, 9, 0), (128, 128, 0), (128, 256, 0),
+        (256, 1, 0), (256, 2, 0), (256, 8, 0), (256, 16, 0), (256, 17, 0),
+        (256, 128, 0), (512, 1, 0), (512, 7, 0), (512, 8, 0), (512, 9, 0),
+        (512, 32, 0), (512, 32, 1), (512, 32, 256), (512, 32, 511)
     ]
-    for (block_size, block_count) in test_instances:
+    for (block_size, block_count, tail_size) in test_instances:
         try:
             cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'),
-                   str(block_size), str(block_count)]
+                   str(block_size), str(block_count), str(tail_size)]
             subprocess.check_call(cmd)
         except subprocess.CalledProcessError as e:
             msg = '''Error! Simulator failed
