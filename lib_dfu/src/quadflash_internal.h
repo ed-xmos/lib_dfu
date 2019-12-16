@@ -1,13 +1,11 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
-#ifndef __quadflash_int_h__
-#define __quadflash_int_h__
+#ifndef __quadflash_internal_h__
+#define __quadflash_internal_h__
 
 #include <quadflash.h>
 #include <quadflashlib.h> // the lower level functions
 
 #define QUADFLASHLIB_MAX_PAGE_SIZE 256
-
-void fl_saveSpecPointer(const fl_QuadDeviceSpec spec[1]);
 
 void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress);
 

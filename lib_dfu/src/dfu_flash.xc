@@ -7,7 +7,8 @@
 #include <stdbool.h>
 
 #include <print.h>
-#include "quadflash_int.h"
+#include "quadflash_internal.h"
+#include "quadflash_data_partition.h"
 #include "dfu_flash.h"
 
 static unsigned char sector_erase_command = 0;

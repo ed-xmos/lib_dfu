@@ -1,14 +1,7 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <stdlib.h>
 #include <quadflash.h>
-#include "quadflash_int.h"
-
-static const fl_QuadDeviceSpec* g_flashAccess = NULL;
-
-void fl_saveSpecPointer(const fl_QuadDeviceSpec spec[1])
-{
-  g_flashAccess = spec;
-}
+#include "quadflash_internal.h"
 
 int fl_getSectorEndAddress(int sectorNum)
 {
