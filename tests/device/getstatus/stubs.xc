@@ -72,3 +72,15 @@ void fl_int_write(unsigned char cmd,
 {
   assert(0);
 }
+
+int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+{
+  assert(0);
+  return 1;
+}
+
+int fl_disconnect(void)
+{
+  assert(0);
+  return 1;
+}

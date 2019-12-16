@@ -72,3 +72,9 @@ void fl_int_write(unsigned char cmd,
 {
   assert(0);
 }
+
+int fl_disconnect(void)
+{
+  assert(0);
+  return 1;
+}

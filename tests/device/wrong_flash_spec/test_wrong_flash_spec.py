@@ -15,4 +15,5 @@ def test_wrong_flash_spec():
         raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_wrong_flash_spec')
     test_wrong_flash_spec()

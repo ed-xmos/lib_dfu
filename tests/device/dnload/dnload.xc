@@ -13,6 +13,10 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #include "dfu.h"
 
 fl_QSPIPorts g_ports = {
@@ -71,7 +75,7 @@ int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
 
 void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
 {
-  printstr("fl_int_eraseSector\n");
+  debug_printf("fl_int_eraseSector\n");
 
   assert(g_flash_write_enabled);
   assert(g_flash_working == 0);
@@ -129,7 +133,7 @@ void fl_int_write(unsigned char cmd,
                   const unsigned char data[num_bytes],
                   unsigned int num_bytes)
 {
-  printstr("fl_int_write\n");
+  debug_printf("fl_int_write\n");
 
   assert(g_flash_write_enabled);
   assert(g_flash_working == 0);
@@ -218,13 +222,13 @@ void dnload(int block_size, int block_count, int tail_size)
   assert(state == DFU_IDLE);
 
   for (int i = 0; i < block_count; i++) {
-    printintln(i);
+    debug_printf("%d\n", i);
     single_dnload_block(i, block_size,
                         (const char*)&g_image[i * block_size]);
   }
 
   if (tail_size > 0) {
-    printintln(block_count);
+    debug_printf("%d\n", block_count);
     single_dnload_block(block_count, tail_size,
                         (const char*)&g_image[block_count * block_size]);
   }
@@ -236,7 +240,7 @@ void verify(void)
 {
   for (int i = 0; i < g_upgrade_size; i++) {
     if (g_image[i] != g_flash_upgrade_slot[i]) {
-      printf("byte %d mismatch: 0x%02X 0x%02X\n",
+      debug_printf("byte %d mismatch: 0x%02X 0x%02X\n",
              i, g_image[i], g_flash_upgrade_slot[i]);
       assert(0);
     }
@@ -257,7 +261,7 @@ int main(unsigned argc, char * unsafe argv[argc])
     sscanf(argv[3], "%d", &tail_size);
   }
   g_upgrade_size = block_count * block_size + tail_size;
-  printf("+ %d * %d + %d (%d)\n", block_size, block_count, tail_size,
+  debug_printf("+ %d * %d + %d (%d)\n", block_size, block_count, tail_size,
                                   g_upgrade_size);
 
   random_sequence(g_image, g_upgrade_size);

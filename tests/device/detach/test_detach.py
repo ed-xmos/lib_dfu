@@ -15,4 +15,5 @@ def test_detach():
         raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_detach')
     test_detach()

@@ -15,4 +15,5 @@ def test_getstatus():
         raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_getstatus')
     test_getstatus()

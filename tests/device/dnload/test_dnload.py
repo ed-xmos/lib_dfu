@@ -25,4 +25,5 @@ def test_dnload():
             raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_dnload')
     test_dnload()

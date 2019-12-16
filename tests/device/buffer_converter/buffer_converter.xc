@@ -3,7 +3,7 @@
 #include <print.h>
 
 #define DEBUG_UNIT TEST
-#define DEBUG_PRINT_ENABLE_TEST 1
+#define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
 #define XASSERT_ENABLE_DEBUG 1

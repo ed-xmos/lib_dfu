@@ -6,6 +6,10 @@
 #define _Bool int
 #include <stdbool.h>
 
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
@@ -43,11 +47,8 @@ int main(unsigned argc, char * unsafe argv[argc])
   }
 
   if (expected != erased) {
-    printstr("expected ");
-    printintln(expected);
-    printstr("actual ");
-    printintln(erased);
-    return 1;
+    debug_printf("expected %d actual %d\n", expected, erased);
+    assert(0);
   }
 
   printstr("PASS\n");

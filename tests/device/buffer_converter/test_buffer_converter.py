@@ -15,4 +15,5 @@ def test_buffer_converter():
         raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_buffer_converter')
     test_buffer_converter()

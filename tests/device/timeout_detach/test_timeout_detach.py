@@ -15,4 +15,5 @@ def test_timeout_detach():
         raise Exception(msg)
 
 if __name__ == "__main__":
+    print('test_timeout_detach')
     test_timeout_detach()

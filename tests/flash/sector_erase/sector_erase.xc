@@ -6,6 +6,10 @@
 #define _Bool int
 #include <stdbool.h>
 
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
@@ -57,7 +61,7 @@ int main(void)
 
   tmr :> end;
   assert(timeout > 0);
-  printintln((end - start) / 100000); // erase duration in msec
+  debug_printf("erase duration %d msec\n", (end - start) / 100000);
 
   ret = flash_is_upgrade_slot_valid(valid);
   assert(ret == 0);
