@@ -205,10 +205,10 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
   // it should be an error for the sub-state machine to go out of sync
   // eg host omitting a GETSTATUS request
   if (dnload.sub_state != DNLOAD_SYNC)
-    return 2;
+    return 1;
 
   // transition from dfuIDLE represents the first block
-  // we don't look at block numbers here
+  // don't look at block numbers here
   if (state == DFU_IDLE) {
     buffer_converter_reset(converter);
     dnload.next_page_address = upgrade_slot_address;
@@ -219,12 +219,20 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
   // in the queue of blocks awaiting conversion to pages
   // for some reason there are have been not enough pulls or too many pushes
   if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
-    return 3;
+    return 2;
 
-  // once we have enough blocks to make one page, commit this page for
-  // the next stage: optional sector erase followed by one or more page writes
-  if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
-    dnload.page_ready = true;
+  if (block_size_bytes == 0) {
+    // drain conversion buffer of partial page, if any
+    if (buffer_converter_padded_pull(converter, dnload.page, page_size_bytes) > 0)
+      dnload.page_ready = true;
+  }
+  else {
+    // normal scenario: once we have enough blocks to make one page, commit this
+    // page for // the next stage: optional sector erase followed by one or more
+    // page writes
+    if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
+      dnload.page_ready = true;
+  }
 
   return 0;
 }
@@ -292,9 +300,23 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_MANIFEST_SYNC:
       if (request == DFU_GETSTATUS) {
-        // completed straight away
-        normal_transition(DFU_IDLE);
-        // not disconnecting from flash to allow additional operations
+        bool busy = false;
+        status = getstatus_from_dnload(busy);
+        if (status != DFU_OK) {
+          error_condition(status);
+        }
+        else {
+          if (busy) {
+            normal_transition(DFU_MANIFEST);
+            normal_transition(DFU_MANIFEST_SYNC);
+          }
+          else {
+            normal_transition(DFU_IDLE);
+            // not disconnecting from flash to allow additional operations
+            if (flash_set_write_disable() != 0)
+              error_condition(ERR_WRITE);
+          }
+        }
       }
       else if (request != DFU_GETSTATE) {
         error_condition(ERR_STALLED_PKT);
@@ -303,8 +325,8 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_DNLOAD_IDLE:
       if (block_size_bytes == 0) {
-        if (flash_set_write_disable() != 0)
-          error_condition(ERR_WRITE);
+        if (dnload_block(write_block, 0, 0) != 0)
+          error_condition(ERR_UNKNOWN);
         else
           normal_transition(DFU_MANIFEST_SYNC);
       }

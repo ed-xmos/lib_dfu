@@ -134,8 +134,8 @@ void fl_int_write(unsigned char cmd,
   assert(g_flash_write_enabled);
   assert(g_flash_working == 0);
   assert(num_bytes == 256);
-  assert(pageAddress >= g_upgrade_start &&
-         pageAddress + num_bytes <= g_upgrade_start + g_upgrade_size);
+  assert(pageAddress >= g_upgrade_start && // pad to whole pages
+         pageAddress + num_bytes <= g_upgrade_start + g_upgrade_size + 256);
 
   assert(g_page_erased[(pageAddress - g_upgrade_start) / 256]);
 
@@ -195,6 +195,8 @@ int main(unsigned argc, char * unsafe argv[argc])
     printintln(i);
 
     dfu_dnload(i, block_size, (char*)&g_image[i * block_size]);
+    state = dfu_getstate();
+    assert(state == DFU_DNLOAD_SYNC);
 
     do {
       {status, state, timeout} = dfu_getstatus();
@@ -209,9 +211,22 @@ int main(unsigned argc, char * unsafe argv[argc])
   state = dfu_getstate();
   assert(state == DFU_MANIFEST_SYNC);
 
-  {status, state, timeout} = dfu_getstatus();
+  do {
+    {status, state, timeout} = dfu_getstatus();
+    assert(status == DFU_OK);
+    delay_microseconds(1);
+  } while (state == DFU_MANIFEST);
+
   assert(state == DFU_IDLE);
   assert(status == DFU_OK);
+
+  for (int i = 0; i < g_upgrade_size; i++) {
+    if (g_image[i] != g_flash_upgrade_slot[i]) {
+      printf("byte %d mismatch: 0x%02X 0x%02X\n",
+             i, g_image[i], g_flash_upgrade_slot[i]);
+      assert(0);
+    }
+  }
 
   printstr("PASS\n");
   return 0;
