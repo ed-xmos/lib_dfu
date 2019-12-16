@@ -3,11 +3,17 @@ import subprocess, os
 
 def test_dnload():
     home = os.path.dirname(os.path.abspath(__file__))
-    # 8 blocks to 1 256-byte page, 128 blocks to one 4KB sector (16 pages)
-    for block_count in [1, 8, 128, 1024]:
+    test_instances = [
+        (32, 1), (32, 8), (32, 128), (32, 1024),
+        (128, 1), (128, 8), (128, 128), (128, 256),
+        (256, 1), (256, 8), (256, 128),
+        (512, 1), (512, 8), (512, 32),
+    ]
+    for (block_size, block_count) in test_instances:
         try:
-            cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'), str(block_count)]
-            output = subprocess.check_output(cmd)
+            cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'),
+                   str(block_size), str(block_count)]
+            subprocess.check_call(cmd)
         except subprocess.CalledProcessError as e:
             msg = '''Error! Simulator failed
                    \ncmd: %s
@@ -15,4 +21,6 @@ def test_dnload():
                    \nreturn_code: %d'''\
                    % (str(e.cmd), e.output, e.returncode)
             raise Exception(msg)
-        print(output)
+
+if __name__ == "__main__":
+    test_dnload()

@@ -31,14 +31,13 @@ unsafe {
   fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&g_spec;
 }
 
-#define PAGE_COUNT_MAX (8 * 16)
-#define BLOCK_COUNT_MAX (PAGE_COUNT_MAX * 8)
+#define MAX_IMAGE_SIZE 40000
 
-char g_image[BLOCK_COUNT_MAX][DFU_BLOCK_SIZE_MAX_BYTES];
+char g_image[MAX_IMAGE_SIZE];
 
-char g_flash_upgrade_slot[BLOCK_COUNT_MAX * DFU_BLOCK_SIZE_MAX_BYTES];
+char g_flash_upgrade_slot[MAX_IMAGE_SIZE];
 
-bool g_page_erased[PAGE_COUNT_MAX] = {false};
+bool g_page_erased[MAX_IMAGE_SIZE / 256] = {false};
 bool g_flash_write_enabled = false;
 int g_flash_working = 0;
 
@@ -169,16 +168,17 @@ int main(unsigned argc, char * unsafe argv[argc])
   enum dfu_status status;
   unsigned timeout;
   int block_count = 0;
+  int block_size = 0;
 
   unsafe {
-    sscanf(argv[1], "%d", &block_count);
+    sscanf(argv[1], "%d", &block_size);
+    sscanf(argv[2], "%d", &block_count);
   }
-  printintln(block_count);
-  g_upgrade_size = block_count * DFU_BLOCK_SIZE_MAX_BYTES;
+  printf("+ %d %d\n", block_size, block_count);
 
-  for (int i = 0; i < block_count; i++) {
-    random_sequence(g_image[i], DFU_BLOCK_SIZE_MAX_BYTES);
-  }
+  g_upgrade_size = block_count * block_size;
+
+  random_sequence(g_image, g_upgrade_size);
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -194,7 +194,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   for (int i = 0; i < block_count; i++) {
     printintln(i);
 
-    dfu_dnload(i, DFU_BLOCK_SIZE_MAX_BYTES, g_image[i]);
+    dfu_dnload(i, block_size, (char*)&g_image[i * block_size]);
 
     do {
       {status, state, timeout} = dfu_getstatus();
@@ -205,7 +205,7 @@ int main(unsigned argc, char * unsafe argv[argc])
     assert(state == DFU_DNLOAD_IDLE);
   }
 
-  dfu_dnload(0, 0, g_image[0]);
+  dfu_dnload(0, 0, g_image);
   state = dfu_getstate();
   assert(state == DFU_MANIFEST_SYNC);
 

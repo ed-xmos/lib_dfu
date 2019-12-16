@@ -148,7 +148,7 @@ static void sub_transition_dnload(enum dnload_sub_state new)
 
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
-  busy = false;
+  busy = true;
 
   switch (dnload.sub_state) {
     case DNLOAD_SYNC:
@@ -163,7 +163,9 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
           if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
             return ERR_WRITE;
         }
-        busy = true;
+      }
+      else {
+        busy = false;
       }
       break;
 
@@ -176,7 +178,6 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
         if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
           return ERR_WRITE;
       }
-      busy = true;
       break;
 
     case DNLOAD_WRITING_PAGE:
@@ -185,11 +186,13 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
           return ERR_VERIFY;
 
         sub_transition_dnload(DNLOAD_SYNC);
+
         dnload.next_page_address += page_size_bytes;
-        dnload.page_ready = false;
-      }
-      else {
-        busy = true;
+
+        if (buffer_converter_pull(converter, dnload.page, page_size_bytes) != 0) {
+          dnload.page_ready = false;
+          busy = false;
+        }
       }
       break;
   }
@@ -197,13 +200,8 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
   return DFU_OK;
 }
 
-static int dnload_block(const char write_block[], int block_size_bytes)
+static int dnload_block(const char write_block[], int block_num, int block_size_bytes)
 {
-  // not implemented large block sizes of multiple pages
-  // only small block sizes that multiply up to one page
-  if (block_size_bytes > page_size_bytes)
-    return 1;
-
   // it should be an error for the sub-state machine to go out of sync
   // eg host omitting a GETSTATUS request
   if (dnload.sub_state != DNLOAD_SYNC)
@@ -224,7 +222,7 @@ static int dnload_block(const char write_block[], int block_size_bytes)
     return 3;
 
   // once we have enough blocks to make one page, commit this page for
-  // the next stage: optional sector erase followed by page write
+  // the next stage: optional sector erase followed by one or more page writes
   if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
     dnload.page_ready = true;
 
@@ -234,10 +232,16 @@ static int dnload_block(const char write_block[], int block_size_bytes)
 static void request_with_arguments(enum dfu_request request,
                                    const char (&?write_block)[DFU_BLOCK_SIZE_MAX_BYTES],
                                    char (&?read_block)[DFU_BLOCK_SIZE_MAX_BYTES],
-                                   int block_size_bytes)
+                                   int block_size_bytes, int write_block_num)
 {
+#if DEBUG_PRINT_ENABLE_DFU
+  debug_printf("DFU: %s", request_str(request));
+  if (request == DFU_DNLOAD)
+    debug_printf(" %d %d\n", write_block_num, block_size_bytes);
+  else
+    debug_printf("\n");
+#endif
   enum dfu_status status;
-  debug_printf("DFU: %s\n", request_str(request));
 
   switch (state) {
     case APP_IDLE:
@@ -256,7 +260,7 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_IDLE:
       if (request == DFU_DNLOAD) {
-        if (dnload_block(write_block, block_size_bytes) != 0)
+        if (dnload_block(write_block, write_block_num, block_size_bytes) != 0)
           error_condition(ERR_UNKNOWN);
         else
           normal_transition(DFU_DNLOAD_SYNC);
@@ -305,7 +309,7 @@ static void request_with_arguments(enum dfu_request request,
           normal_transition(DFU_MANIFEST_SYNC);
       }
       else {
-        if (dnload_block(write_block, block_size_bytes) != 0)
+        if (dnload_block(write_block, write_block_num, block_size_bytes) != 0)
           error_condition(ERR_UNKNOWN);
         else
           normal_transition(DFU_DNLOAD_SYNC);
@@ -322,7 +326,7 @@ static void request_with_arguments(enum dfu_request request,
 
 static void request(enum dfu_request request)
 {
-  request_with_arguments(request, null, null, 0);
+  request_with_arguments(request, null, null, 0, 0);
 }
 
 static enum dfu_status enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
@@ -416,5 +420,5 @@ void dfu_timeout_detach(void)
 void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
                 const char block[DFU_BLOCK_SIZE_MAX_BYTES])
 {
-  request_with_arguments(DFU_DNLOAD, block, null, block_size_bytes);
+  request_with_arguments(DFU_DNLOAD, block, null, block_size_bytes, block_num);
 }

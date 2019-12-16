@@ -6,7 +6,7 @@
 #include <xccompat.h>
 #include <quadflash.h>
 
-#define DFU_BLOCK_SIZE_MAX_BYTES 32
+#define DFU_BLOCK_SIZE_MAX_BYTES 512
 #define DFU_PAGE_SIZE_MAX_BYTES 256
 
 enum dfu_state {
