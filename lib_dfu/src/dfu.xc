@@ -1,5 +1,6 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <xs1.h>
+#include <print.h>
 
 #define _Bool int
 #include <stdbool.h>

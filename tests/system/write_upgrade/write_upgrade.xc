@@ -6,6 +6,7 @@
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
+#include <quadflashlib.h>
 
 #define _Bool int
 #include <stdbool.h>
@@ -38,8 +39,10 @@ int main(unsigned argc, char * unsafe argv[argc])
   enum dfu_status status;
   unsigned timeout;
   unsigned block_count = 0;
+  unsigned page_count = 0;
   size_t ret;
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
+  char page[256], actual[256];
 
   FILE * movable bin_file = fopen((char*)argv[1], "rb");
 
@@ -83,6 +86,32 @@ int main(unsigned argc, char * unsafe argv[argc])
   {status, state, timeout} = dfu_getstatus();
   assert(state == DFU_IDLE);
   assert(status == DFU_OK);
+
+  fseek(bin_file, 0, SEEK_SET);
+
+  // assume that upgrade binary is sector aligned
+  // add 2 sectors (8KB) for stage two loader
+  unsigned address = 8192 + block_count * sizeof(block);
+  printstr("use upgrade address 0x");
+  printhexln(address);
+
+  while (!feof(bin_file)) {
+    printintln(page_count);
+
+    ret = fread(page, 1, sizeof(page), bin_file);
+    assert(ret >= 0 && ret <= sizeof(page));
+
+    if (ret == 0)
+      break;
+
+    fl_readData(address, ret, actual);
+    address += ret;
+
+    ret = memcmp(page, actual, sizeof(page));
+    assert(ret == 0);
+
+    page_count++;
+  }
 
   fclose(move(bin_file));
 
