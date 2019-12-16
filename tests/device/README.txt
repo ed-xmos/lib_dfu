@@ -6,8 +6,15 @@ that fails).
 
 Convention is that pass is when last line of test output is 'PASS'
 
-To run all tests I might do:
+To run all tests in Pipenv I might do:
 
   time ( ls | while read t ; do if [ -d $t ] ; then \
-    ( cd $t ; waf configure clean build && cd ../../.. ; \
+    ( cd $t ; waf configure clean build >/dev/null && cd ../../.. ; \
       pipenv run pytest tests/device/$t -s ) || break ; fi ; done )
+
+I've also added a __main__ trigger, so I can invoke the test script outside of
+Pipenv:
+
+  time ( ls | while read t ; do if [ -d $t ] ; then \
+    ( cd $t ; waf configure clean build >/dev/null && \
+      python test_$t.py ) || break ; fi ; done )

@@ -5,7 +5,7 @@ def test_getstate():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
         cmd = ['xsim', os.path.join(home, 'bin/getstate.xe')]
-        output = subprocess.check_output(cmd)
+        output = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed
                \ncmd: %s
@@ -13,4 +13,6 @@ def test_getstate():
                \nreturn_code: %d'''\
                % (str(e.cmd), e.output, e.returncode)
         raise Exception(msg)
-    print(output)
+
+if __name__ == "__main__":
+    test_getstate()
