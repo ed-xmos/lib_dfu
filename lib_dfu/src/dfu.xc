@@ -21,7 +21,8 @@ static enum dfu_status status = DFU_OK;
 static struct buffer_converter converter;
 
 static unsigned page_size_bytes = 0;
-static unsigned upgrade_slot_address = 0;
+static unsigned boot_slot_start = 0;
+static unsigned data_slot_start = 0;
 
 static struct {
   int next_page_address;
@@ -209,18 +210,34 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
     return 1;
 
   // transition from dfuIDLE represents the first block
-  // don't look at block numbers here
+  // set state to suitably start things off
   if (state == DFU_IDLE) {
     buffer_converter_reset(converter);
-    dnload.next_page_address = upgrade_slot_address;
     dnload.page_ready = false;
+  }
+
+  if (block_num & 0x8000) {
+    if (data_slot_start == 0) {
+      if (flash_locate_data_upgrade_slot(data_slot_start) != 0)
+        return 2;
+
+      dnload.next_page_address = data_slot_start;
+    }
+  }
+  else {
+    if (boot_slot_start == 0) {
+      if (flash_locate_upgrade_slot(boot_slot_start) != 0)
+        return 2;
+
+      dnload.next_page_address = boot_slot_start;
+    }
   }
 
   // non-zero return value from the push function indicates not enough space
   // in the queue of blocks awaiting conversion to pages
   // for some reason there are have been not enough pulls or too many pushes
   if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
-    return 2;
+    return 3;
 
   if (block_size_bytes == 0) {
     // drain conversion buffer of partial page, if any
@@ -373,9 +390,6 @@ static enum dfu_status enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec sp
   // only support erase of exact sector size
   if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
     return ERR_UNKNOWN;
-
-  if (flash_locate_upgrade_slot(upgrade_slot_address) != 0)
-    return ERR_WRITE;
 
   return DFU_OK;
 }

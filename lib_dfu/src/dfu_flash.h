@@ -16,7 +16,11 @@ int flash_disconnect();
 
 int flash_locate_upgrade_slot(REFERENCE_PARAM(unsigned, address));
 
+int flash_locate_data_upgrade_slot(REFERENCE_PARAM(unsigned, address));
+
 int flash_is_upgrade_slot_valid(REFERENCE_PARAM(bool, valid));
+
+int flash_is_data_upgrade_slot_valid(REFERENCE_PARAM(bool, valid));
 
 int flash_set_write_disable(void);
 

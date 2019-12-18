@@ -1,0 +1,3 @@
+*.o
+data_partition_generator
+*.dSYM

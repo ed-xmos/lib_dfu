@@ -3,11 +3,13 @@
 #include <quadflash.h>
 #include "quadflash_internal.h"
 
+// copied from quadflashlib.c
 int fl_getSectorEndAddress(int sectorNum)
 {
   return fl_getSectorAddress(sectorNum) + fl_getSectorSize(sectorNum);
 }
 
+// copied from quadflashlib.c
 int fl_getSectorContaining(unsigned address)
 {
   unsigned numSectors = fl_getNumSectors();
@@ -22,6 +24,7 @@ int fl_getSectorContaining(unsigned address)
   return -1;
 }
 
+// copied from quadflashlib.c
 int fl_getSectorAtOrAfter(unsigned address)
 {
   unsigned numSectors = fl_getNumSectors();

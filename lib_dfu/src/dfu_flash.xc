@@ -1,12 +1,17 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <stddef.h>
-#include <quadflash.h>
+#include <assert.h>
 #include <safestring.h>
+#include <print.h>
 
 #define _Bool int
 #include <stdbool.h>
 
-#include <print.h>
+#define DEBUG_UNIT DFU_FLASH
+#define DEBUG_PRINT_ENABLE_DFU_FLASH 0
+#include "debug_print.h"
+
+#include <quadflash.h>
 #include "quadflash_internal.h"
 #include "quadflash_data_partition.h"
 #include "dfu_flash.h"
@@ -36,18 +41,39 @@ int flash_disconnect(void)
 
 int flash_locate_upgrade_slot(unsigned &address)
 {
-  fl_BootImageInfo factory, upgrade;
+  fl_BootImageInfo info;
 
-  int ret = fl_getFactoryImage(factory);
+  int ret = fl_getFactoryImage(info);
   if (ret != 0)
     return ret;
 
-  if (fl_getNextBootImage(upgrade) == 0) {
-    address = upgrade.startAddress;
+  ret = fl_getNextBootImage(info);
+  if (ret == 0) {
+    address = info.startAddress;
   }
   else {
-    address = factory.startAddress + factory.size;
+    // rounding up to whole sectors as per fl_initImageWriteState
+    address = info.startAddress + info.size;
     address = fl_getSectorAddress(fl_getSectorAtOrAfter(address)); // sector aligned
+  }
+
+  return 0;
+}
+
+int flash_locate_data_upgrade_slot(unsigned &address)
+{
+  fl_DataImageInfo info;
+
+  int ret = fl_getFactoryDataImage(info);
+  if (ret != 0)
+    return ret;
+
+  if (fl_getNextDataImage(info) == 0) {
+    address = info.startAddress;
+  }
+  else {
+    address = info.startAddress + info.size;
+    address = fl_getSectorAddress(fl_getSectorAtOrAfter(address));
   }
 
   return 0;
@@ -55,13 +81,26 @@ int flash_locate_upgrade_slot(unsigned &address)
 
 int flash_is_upgrade_slot_valid(bool &valid)
 {
-  fl_BootImageInfo image;
+  fl_BootImageInfo info;
 
-  int ret = fl_getFactoryImage(image);
+  int ret = fl_getFactoryImage(info);
   if (ret != 0)
     return ret;
 
-  valid = (fl_getNextBootImage(image) == 0);
+  valid = (fl_getNextBootImage(info) == 0);
+
+  return 0;
+}
+
+int flash_is_data_upgrade_slot_valid(bool &valid)
+{
+  fl_DataImageInfo info;
+
+  int ret = fl_getFactoryDataImage(info);
+  if (ret != 0)
+    return ret;
+
+  valid = (fl_getNextDataImage(info) == 0);
 
   return 0;
 }
