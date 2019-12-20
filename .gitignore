@@ -1,3 +1,6 @@
 .*.swp
 .venv
 Pipfile.lock
+
+# this one is especially for the XMOS source check
+./.venv*
