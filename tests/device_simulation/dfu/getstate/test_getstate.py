@@ -4,7 +4,7 @@ import subprocess, os
 def test_getstate():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', os.path.join(home, 'bin/getstate.xe')]
+        cmd = ['xsim', os.path.join(home, 'bin', 'getstate.xe')]
         output = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed

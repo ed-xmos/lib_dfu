@@ -15,7 +15,7 @@ def test_dnload():
         for partitions in [1, 2, 3]:
             for (block_size, block_count, tail_size) in test_instances:
                 try:
-                    cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'),
+                    cmd = ['axe', '--args', os.path.join(home, 'bin', 'dnload.xe'),
                            str(block_size), str(block_count), str(tail_size),
                            str(repeats), str(partitions)]
                     subprocess.check_call(cmd)

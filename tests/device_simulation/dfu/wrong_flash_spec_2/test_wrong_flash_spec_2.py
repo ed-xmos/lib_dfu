@@ -4,7 +4,7 @@ import subprocess, os
 def test_wrong_flash_spec_2():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', os.path.join(home, 'bin/wrong_flash_spec_2.xe')]
+        cmd = ['xsim', os.path.join(home, 'bin', 'wrong_flash_spec_2.xe')]
         output = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed
