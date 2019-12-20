@@ -7,39 +7,66 @@
 #include <sys/errno.h>
 #include "options.h"
 
+bool verbose = false;
+
 static struct option option_spec[] = {
+  { "help", no_argument, NULL, 'h' },
+  { "help-advanced", no_argument, NULL, 'a' },
   { "regular-sector-size", required_argument, NULL, 's' },
   { "verbose", no_argument, NULL, 'v' },
   { "factory", required_argument, NULL, 'f' },
   { "upgrade", required_argument, NULL, 'u' },
   { "output", required_argument, NULL, 'o' },
+  { "bad-factory-crc", no_argument, NULL, 'c' },
+  { "bad-upgrade-crc", no_argument, NULL, 'd' },
   { NULL, 0, NULL, 0 }
 };
 
 static const char usage[] = "\
-usage: data_partition_generator [--verbose] [FACTORY] [UPGRADE] -o OUTFILE\n\
+usage: data_partition_generator --help\n\
+\n\
+       data_partition_generator [--verbose] [FACTORY] [UPGRADE] -o OUTFILE\n\
+\n\
        FACTORY =   --factory FACTORY_FILE\n\
        UPGRADE =   --upgrade COMPATIBILITY_VERSION UPGRADE_FILE\n\
 \n\
-       COMPATIBILITY_VERSION is redundant and provided for consistency with xflash\
+       COMPATIBILITY_VERSION is redundant and provided for consistency with xflash\n\
+";
+
+static const char advanced_usage[] = "\
+\n\
+       --bad-factory-crc    invert CRC for test purposes\
+       --bad-upgrade-crc    invert CRC for test purposes\
 ";
 
 struct options parse_command_line(int argc, char **argv)
 {
   struct options o = {
     .regular_sector_size = -1,
-    .verbose = false,
     .factory_file_name = NULL,
     .upgrade_comp_version = -1,
     .upgrade_file_name = NULL,
-    .out_file_name = NULL
+    .out_file_name = NULL,
+    .bad_factory_crc = false,
+    .bad_upgrade_crc = false
   };
 
   int ch;
 
   do {
-    ch = getopt_long(argc, argv, "s:vf:u:o:", option_spec, NULL);
+    ch = getopt_long(argc, argv, "has:vf:u:o:c", option_spec, NULL);
     switch (ch) {
+      case 'h':
+        fprintf(stderr, usage);
+        exit(2);
+        break;
+
+      case 'a':
+        fprintf(stderr, usage);
+        fprintf(stderr, advanced_usage);
+        exit(2);
+        break;
+
       case 's':
         o.regular_sector_size = strtol(optarg, NULL, 10);
         if (o.regular_sector_size == 0 && errno == EINVAL) {
@@ -49,7 +76,7 @@ struct options parse_command_line(int argc, char **argv)
         break;
 
       case 'v':
-        o.verbose = true;
+        verbose = true;
         break;
 
       case 'f':
@@ -69,6 +96,14 @@ struct options parse_command_line(int argc, char **argv)
 
       case 'o':
         o.out_file_name = optarg;
+        break;
+
+      case 'c':
+        o.bad_factory_crc = true;
+        break;
+
+      case 'd':
+        o.bad_upgrade_crc = true;
         break;
 
       case -1:
@@ -108,7 +143,7 @@ struct options parse_command_line(int argc, char **argv)
     exit(1);
   }
 
-  if (o.verbose) {
+  if (verbose) {
     printf("options: ");
     printf("factory file name %s, ",
            o.factory_file_name == NULL ? "-" : o.factory_file_name);

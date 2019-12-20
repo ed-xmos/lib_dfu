@@ -84,3 +84,17 @@ int fl_disconnect(void)
   assert(0);
   return 1;
 }
+
+unsigned fl_getDataPartitionBase()
+{
+  assert(0);
+  return 1;
+}
+
+void fl_int_read(unsigned char cmd, 
+                 unsigned int address, 
+                 unsigned char destination[num_bytes], 
+                 unsigned int num_bytes)
+{
+  assert(0);
+}

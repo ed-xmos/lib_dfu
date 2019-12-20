@@ -26,7 +26,7 @@ static void render_hardware_build_section(struct images *images,
     .checksum = 0
   };
 
-  checksum_hardware_build_section(&build);
+  build.checksum = checksum_hardware_build_section(&build);
 
   size_t section_bytes = sizeof(struct data_partition_hardware_build);
 
@@ -36,7 +36,8 @@ static void render_hardware_build_section(struct images *images,
 }
 
 static void render_factory_section(struct images *images,
-  const struct descriptions *descriptions, unsigned sector_size)
+  const struct descriptions *descriptions, unsigned sector_size,
+  bool bad_crc)
 {
   memset(images->factory, 0, IMAGE_MAX);
 
@@ -47,8 +48,10 @@ static void render_factory_section(struct images *images,
     .checksum = 0
   };
 
-  checksum_image(&header, descriptions->factory.tlv_data,
-                 descriptions->factory.tlv_data_size_words);
+  header.checksum = checksum_image(&header, descriptions->factory.tlv_data,
+                                   descriptions->factory.tlv_data_size_words);
+  if (bad_crc)
+    header.checksum = ~header.checksum;
 
   size_t header_bytes = sizeof(struct data_partition_image_header);
   size_t tlv_bytes = descriptions->factory.tlv_data_size_words * sizeof(int);
@@ -60,7 +63,8 @@ static void render_factory_section(struct images *images,
 }
 
 static void render_upgrade_section(struct images *images,
-  const struct descriptions *descriptions, unsigned sector_size)
+  const struct descriptions *descriptions, unsigned sector_size,
+  bool bad_crc)
 {
   memset(images->upgrade, 0, IMAGE_MAX);
 
@@ -71,8 +75,10 @@ static void render_upgrade_section(struct images *images,
     .checksum = 0
   };
 
-  checksum_image(&header, descriptions->upgrade.tlv_data,
-                 descriptions->upgrade.tlv_data_size_words);
+  header.checksum = checksum_image(&header, descriptions->upgrade.tlv_data,
+                                   descriptions->upgrade.tlv_data_size_words);
+  if (bad_crc)
+    header.checksum = ~header.checksum;
 
   size_t header_bytes = sizeof(struct data_partition_image_header);
   size_t tlv_bytes = descriptions->upgrade.tlv_data_size_words * sizeof(int);
@@ -92,11 +98,13 @@ void render_descriptions(struct images *images,
                                   options->regular_sector_size);
 
     render_factory_section(images, descriptions,
-                           options->regular_sector_size);
+                           options->regular_sector_size,
+                           options->bad_factory_crc);
   }
 
   if (options->upgrade_file_name != NULL) {
     render_upgrade_section(images, descriptions,
-                           options->regular_sector_size);
+                           options->regular_sector_size,
+                           options->bad_upgrade_crc);
   }
 }

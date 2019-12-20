@@ -1,27 +1,38 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <stdio.h>
 #include <stdbool.h>
+#include "options.h"
 #include "crc.h"
 
 unsigned crc_init(void)
 {
+  if (verbose)
+    printf("CRC init\n");
+
   return 0xFFFFFFFF;
 }
 
-unsigned crc_step(unsigned crc, unsigned word)
+void crc_step(unsigned *crc, unsigned word)
 {
-  const unsigned poly = 0xEDB88320;
+  if (verbose)
+    printf("CRC step 0x%X", word);
+
   for (int b = 0; b < 32; b++) {
-    bool xor_bit = (crc & 1) == 1;
-    crc = (crc >> 1) | ((word & 1) << 31);
+    bool xor_bit = (*crc & 1) == 1;
+    *crc = (*crc >> 1) | ((word & 1) << 31);
     word >>= 1;
     if (xor_bit)
-      crc ^= poly;
+      *crc ^= 0xEDB88320;
   }
-  return crc;
+
+  if (verbose)
+    printf(" -> 0x%X\n", *crc);
 }
 
 unsigned crc_finish(unsigned crc)
 {
+  if (verbose)
+    printf("CRC finish 0x%X\n", ~crc);
+
   return ~crc;
 }

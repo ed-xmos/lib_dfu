@@ -5,7 +5,7 @@
 #include <print.h>
 
 #define DEBUG_UNIT TEST
-#define DEBUG_PRINT_ENABLE_TEST 1
+#define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
 #define XASSERT_ENABLE_DEBUG 1
@@ -29,24 +29,24 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 int main(unsigned argc, char * unsafe argv[argc])
 {
   fl_DataImageInfo info;
-  unsigned data_partition_base = ~0;
+  unsigned start_address = ~0;
   unsigned size = ~0;
   unsigned comp_version = ~0;
   int ret;
 
-  if (argc == 2) { // mode 1: upgrade absent
-    unsafe {
-      assert(argv[1][0] == '-');
-      assert(argv[1][1] == '\0');
-    }
-  }
-  else if (argc == 4) { // mode 2: upgrade present
-    sscanf(argv[1], "%d", &data_partition_base);
+  if (argc == 4) { // case 3: upgrade present
+    sscanf(argv[1], "%d", &start_address);
     sscanf(argv[2], "%d", &size);
     sscanf(argv[3], "%d", &comp_version);
   }
+  else if (argc == 2) { // case 2: factory present, upgrade absent
+    unsafe {
+      assert(argv[1][0] == 'F');
+      assert(argv[1][1] == '\0');
+    }
+  }
   else {
-    assert(0);
+    assert(argc == 1); // case 1: factory absent
   }
 
   ret = flash_connect(ports, spec);
@@ -55,25 +55,27 @@ int main(unsigned argc, char * unsafe argv[argc])
   fl_saveSpecPointer(spec);
 
   ret = fl_getFactoryDataImage(info);
-  assert(ret == 0);
 
-  ret = fl_getNextDataImage(info);
-
-  if (argc == 2) {
+  if (argc == 1) { // case 1
     assert(ret != 0);
   }
-  else if (argc == 4) {
-    unsigned start_address = data_partition_base + 4096 * 2;
-    assert(info.startAddress == start_address);
-    assert(info.size == size);
-    assert(info.version == comp_version);
-    assert(!info.factory);
-  }
   else {
-    assert(0);
+    assert(ret == 0);
+    ret = fl_getNextDataImage(info);
+    if (argc == 2) { // case 2
+      assert(ret != 0);
+    }
+    else if (argc == 4) { // case 3
+      assert(ret == 0);
+      assert(info.startAddress == start_address);
+      assert(info.size == size);
+      assert(info.version == comp_version);
+      assert(!info.factory);
+    }
+    else {
+      assert(0);
+    }
   }
-
-  return 0;
 
   ret = flash_disconnect();
   assert(ret == 0);

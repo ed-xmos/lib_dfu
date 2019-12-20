@@ -4,11 +4,16 @@
 #include <stdio.h>
 #include <print.h>
 
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
 #include "dfu_flash.h"
+#include "quadflash_data_partition.h"
 
 fl_QSPIPorts ports = {
   PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
@@ -21,24 +26,21 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   }
 };
 
-int main(unsigned argc, char * unsafe argv[argc])
+int main(void)
 {
+  fl_DataImageInfo info;
   int ret;
-  unsigned address = -1;
-  unsigned expected = 0;
-
-  assert(argc == 2);
-  sscanf(argv[1], "%d", &expected);
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
-  ret = flash_locate_data_upgrade_slot(address);
-  assert(ret == 0);
-  assert(address % spec[0].sectorSizes.regularSectorSize == 0);
+  fl_saveSpecPointer(spec);
 
-  printintln(address);
-  assert(address == expected);
+  ret = fl_getFactoryDataImage(info);
+  assert(ret == 0);
+
+  ret = fl_getNextDataImage(info);
+  assert(ret != 0);
 
   ret = flash_disconnect();
   assert(ret == 0);

@@ -5,7 +5,7 @@
 #include <print.h>
 
 #define DEBUG_UNIT TEST
-#define DEBUG_PRINT_ENABLE_TEST 1
+#define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
 #define XASSERT_ENABLE_DEBUG 1
@@ -29,29 +29,50 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 int main(unsigned argc, char * unsafe argv[argc])
 {
   fl_DataImageInfo info;
-  unsigned data_partition_base = ~0;
+  unsigned start_address = ~0;
   unsigned size = ~0;
   unsigned comp_version = ~0;
   int ret;
 
-  assert(argc == 4);
-  sscanf(argv[1], "%d", &data_partition_base);
-  sscanf(argv[2], "%d", &size);
-  sscanf(argv[3], "%d", &comp_version);
+  if (argc == 2) { // case 1: factory absent
+    unsafe {
+      assert(argv[1][0] == '-');
+      assert(argv[1][1] == '\0');
+    }
+  }
+  else if (argc == 4) { // case 2: factory present
+    sscanf(argv[1], "%d", &start_address);
+    sscanf(argv[2], "%d", &size);
+    sscanf(argv[3], "%d", &comp_version);
+  }
+  else {
+    assert(0);
+  }
 
   ret = flash_connect(ports, spec);
   assert(ret == 0);
 
   fl_saveSpecPointer(spec);
+
   ret = fl_getFactoryDataImage(info);
-  assert(ret == 0);
 
-  unsigned start_address = data_partition_base + 4096;
-
-  assert(info.startAddress == start_address);
-  assert(info.size == size);
-  assert(info.version == comp_version);
-  assert(info.factory);
+  if (argc == 2) { // case 1: empty flash
+    assert(ret != 0);
+    unsafe {
+      assert(argv[1][0] == '-');
+      assert(argv[1][1] == '\0');
+    }
+  }
+  else if (argc == 4) { // case 2: factory present
+    assert(ret == 0);
+    assert(info.startAddress == start_address);
+    assert(info.size == size);
+    assert(info.version == comp_version);
+    assert(info.factory);
+  }
+  else {
+    assert(0);
+  }
 
   ret = flash_disconnect();
   assert(ret == 0);

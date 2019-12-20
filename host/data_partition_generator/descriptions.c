@@ -7,6 +7,7 @@
 #include "input_files.h"
 #include "descriptions.h"
 
+// hardcode values until JSON parsing is implemented
 struct descriptions parse_descriptions(const struct input_files *files)
 {
   struct descriptions d;
@@ -14,23 +15,25 @@ struct descriptions parse_descriptions(const struct input_files *files)
 
   if (files->factory != NULL) {
     d.hardware_build.build_word = 0x123;
-    d.factory.tlv_data_size_words = 1;
-    d.factory.tlv_data = malloc(sizeof(int));
-    d.factory.tlv_data[0] = CUSTOMER_VERSION;
-    d.factory.tlv_data[1] = 2;
-    d.factory.tlv_data[2] = 0x00;
-    d.factory.tlv_data[3] = 0x01;
     d.factory.comp_version = 513;
+
+    static const char tlv[] = {
+      CUSTOMER_VERSION, 2, 0x00, 0x01,
+      DATA_IMAGE_TYPE_STOP, 0, 0x00, 0x00
+    };
+    d.factory.tlv_data = (uint8_t*)tlv;
+    d.factory.tlv_data_size_words = sizeof(tlv) / sizeof(int);
   }
 
   if (files->upgrade != NULL) {
-    d.upgrade.tlv_data_size_words = 1;
-    d.upgrade.tlv_data = malloc(sizeof(int));
-    d.upgrade.tlv_data[0] = CUSTOMER_VERSION;
-    d.upgrade.tlv_data[1] = 2;
-    d.upgrade.tlv_data[2] = 0x01;
-    d.upgrade.tlv_data[3] = 0x01;
     d.upgrade.comp_version = 514;
+
+    static const char tlv[] = {
+      CUSTOMER_VERSION, 2, 0x01, 0x01,
+      DATA_IMAGE_TYPE_STOP, 0, 0x00, 0x00
+    };
+    d.upgrade.tlv_data = (uint8_t*)tlv;
+    d.upgrade.tlv_data_size_words = sizeof(tlv) / sizeof(int);
   }
 
   return d;
@@ -39,12 +42,10 @@ struct descriptions parse_descriptions(const struct input_files *files)
 void free_tlv_data(struct descriptions *descriptions)
 {
   if (descriptions->factory.tlv_data != NULL) {
-    free(descriptions->factory.tlv_data);
     descriptions->factory.tlv_data = NULL;
   }
 
   if (descriptions->upgrade.tlv_data != NULL) {
-    free(descriptions->upgrade.tlv_data);
     descriptions->upgrade.tlv_data = NULL;
   }
 }
