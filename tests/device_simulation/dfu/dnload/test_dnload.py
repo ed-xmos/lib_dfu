@@ -11,20 +11,21 @@ def test_dnload():
         (256, 64, 0), (512, 1, 0), (512, 7, 0), (512, 8, 0), (512, 9, 0),
         (512, 32, 0), (512, 32, 1), (512, 32, 256), (512, 32, 511)
     ]
-    for partitions in [1, 2, 3]:
-        for (block_size, block_count, tail_size) in test_instances:
-            try:
-                cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'),
-                       str(block_size), str(block_count), str(tail_size),
-                       str(partitions)]
-                subprocess.check_call(cmd)
-            except subprocess.CalledProcessError as e:
-                msg = '''Error! Simulator failed
-                       \ncmd: %s
-                       \noutput: %s
-                       \nreturn_code: %d'''\
-                       % (str(e.cmd), e.output, e.returncode)
-                raise Exception(msg)
+    for repeats in [1, 2, 4]:
+        for partitions in [1, 2, 3]:
+            for (block_size, block_count, tail_size) in test_instances:
+                try:
+                    cmd = ['axe', '--args', os.path.join(home, 'bin/dnload.xe'),
+                           str(block_size), str(block_count), str(tail_size),
+                           str(repeats), str(partitions)]
+                    subprocess.check_call(cmd)
+                except subprocess.CalledProcessError as e:
+                    msg = '''Error! Simulator failed
+                           \ncmd: %s
+                           \noutput: %s
+                           \nreturn_code: %d'''\
+                           % (str(e.cmd), e.output, e.returncode)
+                    raise Exception(msg)
 
 if __name__ == "__main__":
     print('test_dnload')

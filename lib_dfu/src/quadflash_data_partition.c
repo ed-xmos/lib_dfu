@@ -1,4 +1,5 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
+#ifndef QUADFLASH_DATA_PARTITION_UNIT_TEST
 #include <stdlib.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -136,3 +137,4 @@ int fl_getNextDataImage(fl_DataImageInfo *dataImageInfo)
 
   return 1;
 }
+#endif

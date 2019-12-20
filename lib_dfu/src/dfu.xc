@@ -21,8 +21,8 @@ static enum dfu_status status = DFU_OK;
 static struct buffer_converter converter;
 
 static unsigned page_size_bytes = 0;
-static unsigned boot_slot_start = 0;
-static unsigned data_slot_start = 0;
+static unsigned boot_upgrade_slot_start = 0;
+static unsigned data_upgrade_slot_start = 0;
 
 static struct {
   int next_page_address;
@@ -122,8 +122,7 @@ static const char * unsafe status_str(enum dfu_status s)
 static void normal_transition(enum dfu_state new)
 {
   unsafe {
-    debug_printf("DFU: %s (%d) -> %s (%d)\n",
-                 state_str(state), state, state_str(new), new);
+    debug_printf("DFU: %s -> %s\n", state_str(state), state_str(new));
   }
   status = DFU_OK;
   state = new;
@@ -209,46 +208,52 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
   if (dnload.sub_state != DNLOAD_SYNC)
     return 1;
 
-  // transition from dfuIDLE represents the first block
-  // set state to suitably start things off
-  if (state == DFU_IDLE) {
-    buffer_converter_reset(converter);
-    dnload.page_ready = false;
-  }
+  // there should never be an unprocessed page when DNLOAD request is sent
+  // an unprocessed page is written out first with repeated GETSTATUS requests
+  if (dnload.page_ready)
+    return 2;
 
-  if (block_num & 0x8000) {
-    if (data_slot_start == 0) {
-      if (flash_locate_data_upgrade_slot(data_slot_start) != 0)
-        return 2;
-
-      dnload.next_page_address = data_slot_start;
+  if (block_size_bytes > 0) {
+    // find slot start only once we know that the required operation is DNLOAD
+    if (block_num & 0x8000) {
+      if (data_upgrade_slot_start == 0) {
+        if (flash_locate_data_upgrade_slot(data_upgrade_slot_start) != 0)
+          return 3;
+      }
+      debug_printf("DFU: data upgrade slot start 0x%X\n", data_upgrade_slot_start);
     }
-  }
-  else {
-    if (boot_slot_start == 0) {
-      if (flash_locate_upgrade_slot(boot_slot_start) != 0)
-        return 2;
-
-      dnload.next_page_address = boot_slot_start;
+    else {
+      if (boot_upgrade_slot_start == 0) {
+        if (flash_locate_upgrade_slot(boot_upgrade_slot_start) != 0)
+          return 4;
+      }
+      debug_printf("DFU: boot upgrade slot start 0x%X\n", boot_upgrade_slot_start);
     }
-  }
 
-  // non-zero return value from the push function indicates not enough space
-  // in the queue of blocks awaiting conversion to pages
-  // for some reason there are have been not enough pulls or too many pushes
-  if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
-    return 3;
+    // peek at main state here to determine if this is the first DNLOAD bloc of
+    // a given operation so we can suitably start things off
+    if (state == DFU_IDLE) {
+      dnload.next_page_address = block_num & 0x8000 ? data_upgrade_slot_start :
+                                                      boot_upgrade_slot_start;
+      buffer_converter_reset(converter);
+    }
+
+    // non-zero return value from the push function indicates not enough space
+    // in the queue of blocks awaiting conversion to pages
+    // for some reason there are have been not enough pulls or too many pushes
+    if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
+      return 5;
+
+    // normal scenario: once we have enough blocks to make one page, commit this
+    // page for the next stage: optional sector erase followed by one or more
+    // page writes
+    if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
+      dnload.page_ready = true;
+  }
 
   if (block_size_bytes == 0) {
     // drain conversion buffer of partial page, if any
     if (buffer_converter_padded_pull(converter, dnload.page, page_size_bytes) > 0)
-      dnload.page_ready = true;
-  }
-  else {
-    // normal scenario: once we have enough blocks to make one page, commit this
-    // page for // the next stage: optional sector erase followed by one or more
-    // page writes
-    if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
       dnload.page_ready = true;
   }
 
@@ -263,7 +268,7 @@ static void request_with_arguments(enum dfu_request request,
 #if DEBUG_PRINT_ENABLE_DFU
   debug_printf("DFU: %s", request_str(request));
   if (request == DFU_DNLOAD)
-    debug_printf(" %d %d\n", write_block_num, block_size_bytes);
+    debug_printf(" 0x%X %d\n", write_block_num, block_size_bytes);
   else
     debug_printf("\n");
 #endif
