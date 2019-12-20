@@ -16,7 +16,7 @@ To run all tests in Pipenv I might do:
 I've also added a __main__ trigger, so I can invoke the test script outside of
 Pipenv:
 
-  time ( ls -d buffer_converter dfu/* | \
+  time ( ls -d buffer_converter dfu/* quadflash_data_partition/* | \
     while read t ; do if [ -d $t ] ; then \
       ( cd $t ; waf configure clean build >/dev/null && \
         python test_`basename $t`.py ) || break ; fi ; done )
