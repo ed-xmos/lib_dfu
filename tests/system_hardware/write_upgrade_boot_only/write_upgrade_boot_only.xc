@@ -3,7 +3,6 @@
 #include <platform.h>
 #include <stdio.h>
 #include <stddef.h>
-#include <stdbool.h>
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
@@ -34,9 +33,15 @@ unsafe {
   fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&spec;
 }
 
-void write_begin(void)
+FILE * movable write(FILE * movable bin_file, int block_size,
+                     int &upgrade_size)
 {
   enum dfu_state state;
+  enum dfu_status status;
+  unsigned timeout;
+  int block_count = 0;
+  size_t ret;
+  char block[DFU_BLOCK_SIZE_MAX_BYTES];
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -48,17 +53,6 @@ void write_begin(void)
   dfu_bus_reset(ports, spec);
   state = dfu_getstate();
   assert(state == DFU_IDLE);
-}
-
-FILE * movable write(FILE * movable bin_file,
-                     int &upgrade_size, int block_size, int marker)
-{
-  enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
-  size_t ret;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES];
-  int block_count = 0;
 
   while (!feof(bin_file)) {
     printintln(block_count);
@@ -69,7 +63,7 @@ FILE * movable write(FILE * movable bin_file,
     if (ret == 0)
       break;
 
-    dfu_dnload(marker | block_count, block_size, block);
+    dfu_dnload(block_count, block_size, block);
 
     do {
       {status, state, timeout} = dfu_getstatus();
@@ -86,13 +80,12 @@ FILE * movable write(FILE * movable bin_file,
   state = dfu_getstate();
   assert(state == DFU_MANIFEST_SYNC);
 
-  do {
-    {status, state, timeout} = dfu_getstatus();
-    assert(status == DFU_OK);
-    delay_microseconds(1);
-  } while (state == DFU_DNBUSY);
+  {status, state, timeout} = dfu_getstatus();
+  assert(state == DFU_IDLE);
+  assert(status == DFU_OK);
 
   upgrade_size = block_count * block_size;
+
   return move(bin_file);
 }
 
@@ -127,41 +120,27 @@ FILE * movable verify(FILE * movable bin_file, int block_size,
 
 int main(unsigned argc, char * unsafe argv[argc])
 {
-  assert(argc == 6);
+  assert(argc == 4);
 
-  FILE * movable boot_file = fopen((char*)argv[1], "rb");
-  FILE * movable data_file = fopen((char*)argv[2], "rb");
+  FILE * movable bin_file = fopen((char*)argv[1], "rb");
   int block_size = 0;
-  int boot_address = 0;
-  int data_address = 0;
+  int upgrade_address = 0;
   unsafe {
-    sscanf(argv[3], "%d", &block_size);
-    sscanf(argv[4], "%d", &boot_address);
-    sscanf(argv[5], "%d", &data_address);
+    sscanf(argv[2], "%d", &block_size);
+    sscanf(argv[3], "%d", &upgrade_address);
   }
 
-  int boot_size = 0;
-  int data_size = 0;
+  int upgrade_size = 0;
+  bin_file = write(move(bin_file), block_size, upgrade_size);
+  printf("written %d bytes\n", upgrade_size);
 
-  write_begin();
+  fseek(bin_file, 0, SEEK_SET);
 
-  boot_file = write(move(boot_file), boot_size, block_size, 0);
-  printf("written %d boot bytes\n", boot_size);
+  printf("upgrade address 0x%X\n", upgrade_address);
+  bin_file = verify(move(bin_file), block_size, upgrade_address);
+  printf("verified\n");
 
-  data_file = write(move(data_file), data_size, block_size, 0x8000);
-  printf("written %d data bytes\n", data_size);
-
-  fseek(boot_file, 0, SEEK_SET);
-  fseek(data_file, 0, SEEK_SET);
-
-  boot_file = verify(move(boot_file), block_size, boot_address);
-  printf("boot verified\n");
-
-  data_file = verify(move(data_file), block_size, data_address);
-  printf("data verified\n");
-
-  fclose(move(boot_file));
-  fclose(move(data_file));
+  fclose(move(bin_file));
 
   printstr("PASS\n");
   return 0;

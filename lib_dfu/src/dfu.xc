@@ -219,15 +219,17 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
       if (data_upgrade_slot_start == 0) {
         if (flash_locate_data_upgrade_slot(data_upgrade_slot_start) != 0)
           return 3;
+
+        debug_printf("DFU: data upgrade slot start 0x%X\n", data_upgrade_slot_start);
       }
-      debug_printf("DFU: data upgrade slot start 0x%X\n", data_upgrade_slot_start);
     }
     else {
       if (boot_upgrade_slot_start == 0) {
         if (flash_locate_upgrade_slot(boot_upgrade_slot_start) != 0)
           return 4;
+
+        debug_printf("DFU: boot upgrade slot start 0x%X\n", boot_upgrade_slot_start);
       }
-      debug_printf("DFU: boot upgrade slot start 0x%X\n", boot_upgrade_slot_start);
     }
 
     // peek at main state here to determine if this is the first DNLOAD bloc of
