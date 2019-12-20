@@ -6,6 +6,8 @@ EXECUTABLE = crc_algorithm
 DUT_OBJS = crc.o
 TEST_OBJS = crc_algorithm.o
 
+all: ${EXECUTABLE}
+
 ${EXECUTABLE}: ${TEST_OBJS} $(addprefix ${DUT_PATH}/,${DUT_OBJS})
 	${CC} ${CFLAGS} $^ -o $@
 
