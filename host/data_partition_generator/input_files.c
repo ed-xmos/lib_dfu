@@ -1,17 +1,17 @@
 // Copyright (c) 2019, XMOS Ltd, All rights reserved
 #include <stdio.h>
 #include <stdlib.h>
-#include "options.h"
 #include "input_files.h"
 
-struct input_files open_input_files(const struct options *options)
+struct input_files open_input_files(const char *factory_file_name,
+                                    const char *upgrade_file_name)
 {
   struct input_files files;
 
-  if (options->factory_file_name != NULL) {
-    files.factory = fopen(options->factory_file_name, "rb");
+  if (factory_file_name != NULL) {
+    files.factory = fopen(factory_file_name, "rb");
     if (files.factory == NULL) {
-      fprintf(stderr, "problem opening factory file %s\n", options->factory_file_name);
+      fprintf(stderr, "problem opening factory file %s\n", factory_file_name);
       exit(1);
     }
   }
@@ -19,10 +19,10 @@ struct input_files open_input_files(const struct options *options)
     files.factory = NULL;
   }
 
-  if (options->upgrade_file_name != NULL) {
-    files.upgrade = fopen(options->upgrade_file_name, "rb");
+  if (upgrade_file_name != NULL) {
+    files.upgrade = fopen(upgrade_file_name, "rb");
     if (files.upgrade == NULL) {
-      fprintf(stderr, "problem opening upgrade file %s\n", options->upgrade_file_name);
+      fprintf(stderr, "problem opening upgrade file %s\n", upgrade_file_name);
       exit(1);
     }
   }

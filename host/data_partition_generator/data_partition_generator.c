@@ -12,8 +12,10 @@ int main(int argc, char **argv)
 {
   struct options options = parse_command_line(argc, argv);
 
-  struct input_files input_files = open_input_files(&options);
-  struct output_file output_file = open_output_file(&options);
+  struct input_files input_files = open_input_files(options.factory_file_name,
+                                                    options.upgrade_file_name);
+
+  struct output_file output_file = open_output_file(options.out_file_name);
 
   struct descriptions descriptions = parse_descriptions(&input_files);
 

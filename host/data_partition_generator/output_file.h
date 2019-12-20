@@ -4,13 +4,12 @@
 
 #include <stdio.h>
 #include "images.h"
-#include "options.h"
 
 struct output_file {
   FILE *output;
 };
 
-struct output_file open_output_file(const struct options *options);
+struct output_file open_output_file(const char *out_file_name);
 void close_output_file(struct output_file *file);
 
 void write_images(struct output_file *file, const struct images *images);

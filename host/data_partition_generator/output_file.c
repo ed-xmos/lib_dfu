@@ -2,17 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "images.h"
-#include "options.h"
 #include "output_file.h"
 
-struct output_file open_output_file(const struct options *options)
+struct output_file open_output_file(const char *out_file_name)
 {
   struct output_file file;
 
-  if (options->out_file_name != NULL) {
-    file.output = fopen(options->out_file_name, "wb");
+  if (out_file_name != NULL) {
+    file.output = fopen(out_file_name, "wb");
     if (file.output == NULL) {
-      fprintf(stderr, "problem opening output file %s\n", options->out_file_name);
+      fprintf(stderr, "problem opening output file %s\n", out_file_name);
       exit(1);
     }
   }
