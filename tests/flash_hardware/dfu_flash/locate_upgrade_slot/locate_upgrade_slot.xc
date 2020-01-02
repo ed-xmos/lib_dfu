@@ -8,6 +8,10 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #include "dfu_flash.h"
 
 fl_QSPIPorts ports = {
@@ -37,7 +41,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   assert(ret == 0);
   assert(address % spec[0].sectorSizes.regularSectorSize == 0);
 
-  printintln(address);
+  debug_printf("%d\n", address);
   assert(address == expected);
 
   ret = flash_disconnect();

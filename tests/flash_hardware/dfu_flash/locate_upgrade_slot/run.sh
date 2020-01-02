@@ -8,5 +8,5 @@ xflash --no-compression --noinq --quad-spi-clock=12.5MHz --factory ../../hello_w
 xrun --io --args bin/locate_upgrade_slot.xe 28672
 
 # case 2: upgrade present
-xflash --no-compression --noinq --quad-spi-clock=12.5MHz --factory ../../hello_world.xe --upgrade 1 ../hello_world.xe || exit $?
+xflash --no-compression --noinq --quad-spi-clock=12.5MHz --factory ../../hello_world.xe --upgrade 1 ../../hello_world.xe || exit $?
 xrun --io --args bin/locate_upgrade_slot.xe 28672
