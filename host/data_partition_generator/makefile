@@ -1,16 +1,22 @@
 # Copyright (c) 2019, XMOS Ltd, All rights reserved
-CFLAGS = -g -O2 -Wall -I ../../lib_dfu/api
-EXECUTABLE = data_partition_generator
+CFLAGS = -g -O2 -Wall -I ../../lib_dfu/src/data_partition
+EXECUTABLE = bin/data_partition_generator
+MKDIR ?= mkdir
 
 OBJS = data_partition_generator.o \
   options.o input_files.o output_file.o descriptions.o images.o \
   checksum.o crc.o
 
-${EXECUTABLE}: ${OBJS}
+all: dirs ${EXECUTABLE}
+
+dirs:
+	@${MKDIR} -p bin obj
+
+${EXECUTABLE}: $(addprefix obj/,${OBJS})
 	${CC} ${CFLAGS} $^ -o $@
 
-%.o: %.c
-	${CC} -c ${CFLAGS} $*.c -o $*.o
+obj/%.o: src/%.c
+	${CC} -c ${CFLAGS} $^ -o $@
 
 clean:
-	${RM} *.o ${EXECUTABLE}
+	${RM} obj/*.o ${EXECUTABLE}
