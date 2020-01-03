@@ -13,7 +13,7 @@ def build(bld):
         'TARGET': ['XCORE-200-EXPLORER'],
         'XCC_FLAGS': ['-O2', '-g', '-Wall', '-lsqiaccess', '-lquadspi',
                       '-fcmdline-buffer-bytes=256'],
-        'INCLUDE_DIRS': ['../../../../boot'],
+        'INCLUDE_DIRS': ['../../../../boot', '../../../../lib_dfu/api'],
         'USED_MODULES': ['lib_xassert', 'lib_logging'],
         'XCOMMON_MAKEFILE': ['Makefile.common']
     }
