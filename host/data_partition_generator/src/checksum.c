@@ -2,7 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <assert.h>
-#include "data_partition.h"
+#include "data_partition_structures.h"
 #include "crc.h"
 #include "checksum.h"
 

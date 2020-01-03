@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "data_partition.h"
+#include "data_partition_structures.h"
 #include "options.h"
 #include "descriptions.h"
 #include "checksum.h"

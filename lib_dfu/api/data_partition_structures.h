@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
-#ifndef __data_partition_h__
-#define __data_partition_h__
+#ifndef __data_partition_strucures_h__
+#define __data_partition_strucures_h__
 
 #include <stdint.h>
 

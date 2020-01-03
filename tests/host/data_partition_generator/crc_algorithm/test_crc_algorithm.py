@@ -1,10 +1,10 @@
-# Copyright (c) 2019, XMOS Ltd, All rights reserved
+# Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 import subprocess, os
 
 def test_crc_algorithm():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = [os.path.join(home, 'crc_algorithm')]
+        cmd = [os.path.join(home, os.path.join('bin', 'crc_algorithm'))]
         output = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Test failed

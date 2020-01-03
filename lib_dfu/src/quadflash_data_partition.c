@@ -11,7 +11,7 @@
 #define DEBUG_PRINT_ENABLE_QUADFLASH_DATA_PARTITION 0
 #include "debug_print.h"
 
-#include "data_partition.h"
+#include "data_partition_structures.h"
 #include "quadflash_crc.h"
 #include "quadflash_internal.h"
 #include "quadflash_data_partition.h"
@@ -90,7 +90,7 @@ int fl_getFactoryDataImage(fl_DataImageInfo *dataImageInfo)
   fl_int_read(g_flashAccess->readCommand, header_address,
               (void*)&header, sizeof(struct data_partition_image_header));
 
-  unsigned size;
+  unsigned size = 0;
   int ret = validateDataImage(&header, header_address, &size);
   if (ret != 0)
     return 1;

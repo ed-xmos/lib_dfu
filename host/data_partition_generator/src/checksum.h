@@ -4,7 +4,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
-#include "data_partition.h"
+#include "data_partition_structures.h"
 
 uint32_t checksum_hardware_build_section(const struct data_partition_hardware_build *build);
 

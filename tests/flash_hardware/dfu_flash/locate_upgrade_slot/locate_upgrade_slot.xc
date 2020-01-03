@@ -39,9 +39,10 @@ int main(unsigned argc, char * unsafe argv[argc])
 
   ret = flash_locate_upgrade_slot(address);
   assert(ret == 0);
-  assert(address % spec[0].sectorSizes.regularSectorSize == 0);
 
   debug_printf("%d\n", address);
+  assert(address % spec[0].sectorSizes.regularSectorSize == 0);
+
   assert(address == expected);
 
   ret = flash_disconnect();

@@ -1,4 +1,4 @@
-// Copyright (c) 2019, XMOS Ltd, All rights reserved
+// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 #ifndef __dfu_flash_h__
 #define __dfu_flash_h__
 
@@ -14,8 +14,12 @@ int flash_connect(REFERENCE_PARAM(fl_QSPIPorts, ports),
 
 int flash_disconnect();
 
+// requires a valid factory slot to skip over and calculate upgrade address
+// but the upgrade slot does not have to be valid
 int flash_locate_upgrade_slot(REFERENCE_PARAM(unsigned, address));
 
+// requires a valid factory slot to skip over and calculate upgrade address
+// but the upgrade slot does not have to be valid
 int flash_locate_data_upgrade_slot(REFERENCE_PARAM(unsigned, address));
 
 int flash_is_upgrade_slot_valid(REFERENCE_PARAM(bool, valid));

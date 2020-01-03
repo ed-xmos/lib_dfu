@@ -1,6 +1,6 @@
 // Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
-#ifndef __data_image_h_
-#define __data_image_h_
+#ifndef __data_image_defines_h__
+#define __data_image_defines_h__
 
 enum data_image_type {
   DATA_IMAGE_TYPE_RESERVED = 0,

@@ -1,5 +1,5 @@
-# Copyright (c) 2019, XMOS Ltd, All rights reserved
-CFLAGS = -g -O2 -Wall -I ../../lib_dfu/src/data_partition
+# Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
+CFLAGS = -g -O2 -Wall -I ../../lib_dfu/api
 EXECUTABLE = bin/data_partition_generator
 MKDIR ?= mkdir
 

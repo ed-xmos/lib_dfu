@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "data_image.h"
+#include "data_image_defines.h"
 #include "input_files.h"
 #include "descriptions.h"
 

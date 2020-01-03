@@ -35,8 +35,8 @@ usage: data_partition_generator --help\n\
 
 static const char advanced_usage[] = "\
 \n\
-       --bad-factory-crc    invert CRC for test purposes\
-       --bad-upgrade-crc    invert CRC for test purposes\
+       --bad-factory-crc    invert CRC for test purposes\n\
+       --bad-upgrade-crc    invert CRC for test purposes\n\
 ";
 
 struct options parse_command_line(int argc, char **argv)
