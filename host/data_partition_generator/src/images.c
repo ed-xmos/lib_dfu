@@ -10,9 +10,12 @@
 #include "checksum.h"
 #include "images.h"
 
-static size_t pad_to_flash_sector(size_t section_size, unsigned sector_size)
+size_t pad_to_flash_sector(size_t section_size, unsigned sector_size)
 {
-  return (section_size / sector_size + 1) * sector_size;
+  if (section_size % sector_size == 0)
+    return section_size;
+  else
+    return (section_size / sector_size + 1) * sector_size;
 }
 
 static void render_hardware_build_section(struct images *images,
@@ -32,7 +35,7 @@ static void render_hardware_build_section(struct images *images,
 
   memcpy(images->hardware_build, &build, section_bytes);
 
-  images->hardware_build_size = pad_to_flash_sector(section_bytes,  sector_size);
+  images->hardware_build_size = pad_to_flash_sector(section_bytes, sector_size);
 }
 
 static void render_factory_section(struct images *images,

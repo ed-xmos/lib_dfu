@@ -1,10 +1,10 @@
 # Copyright (c) 2019, XMOS Ltd, All rights reserved
 import subprocess, os
 
-def test_crc_algorithm():
+def test_sector_padding():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = ['xsim', os.path.join(home, 'bin', 'crc_algorithm.xe')]
+        cmd = ['xsim', os.path.join(home, 'bin', 'sector_padding.xe')]
         output = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Simulator failed
@@ -15,5 +15,5 @@ def test_crc_algorithm():
         raise Exception(msg)
 
 if __name__ == "__main__":
-    print('test_crc_algorithm')
-    test_crc_algorithm()
+    print('test_sector_padding')
+    test_sector_padding()

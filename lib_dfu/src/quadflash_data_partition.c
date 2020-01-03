@@ -84,8 +84,8 @@ int fl_getFactoryDataImage(fl_DataImageInfo *dataImageInfo)
 
   // skip over sector-aligned hardware build section
   unsigned header_address =
-    fl_getSectorAddress(fl_getSectorContaining(fl_getDataPartitionBase() +
-      sizeof(struct data_partition_hardware_build)) + 1);
+    fl_getSectorAddress(fl_getSectorAtOrAfter(fl_getDataPartitionBase() +
+      sizeof(struct data_partition_hardware_build)));
 
   fl_int_read(g_flashAccess->readCommand, header_address,
               (void*)&header, sizeof(struct data_partition_image_header));
