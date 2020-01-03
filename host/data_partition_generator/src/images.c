@@ -36,6 +36,11 @@ static void render_hardware_build_section(struct images *images,
   memcpy(images->hardware_build, &build, section_bytes);
 
   images->hardware_build_size = pad_to_flash_sector(section_bytes, sector_size);
+
+  if (verbose) {
+    printf("hardware build section: %lu bytes padded to %lu\n",
+           section_bytes, images->hardware_build_size);
+  }
 }
 
 static void render_factory_section(struct images *images,
@@ -63,6 +68,11 @@ static void render_factory_section(struct images *images,
   memcpy(images->factory + header_bytes, descriptions->factory.tlv_data, tlv_bytes);
 
   images->factory_size = pad_to_flash_sector(header_bytes + tlv_bytes, sector_size);
+
+  if (verbose) {
+    printf("factory section: %lu bytes padded to %lu\n",
+           header_bytes + tlv_bytes, images->factory_size);
+  }
 }
 
 static void render_upgrade_section(struct images *images,
@@ -90,6 +100,11 @@ static void render_upgrade_section(struct images *images,
   memcpy(images->upgrade + header_bytes, descriptions->upgrade.tlv_data, tlv_bytes);
 
   images->upgrade_size = pad_to_flash_sector(header_bytes + tlv_bytes, sector_size);
+
+  if (verbose) {
+    printf("upgrade section: %lu bytes padded to %lu\n",
+           header_bytes + tlv_bytes, images->upgrade_size);
+  }
 }
 
 void render_descriptions(struct images *images,
