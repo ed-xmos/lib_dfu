@@ -43,7 +43,7 @@ unsigned int DEVICE_SECTOR_WORD_SIZE = 1024; // IS25LQ016B
 int main(int argc, char **argv)
 {
   int ret;
-  unsigned address = -1;
+  unsigned factory = -1, upgrade = -1;
   unsigned expected = 0;
 
   assert(argc == 2);
@@ -51,14 +51,14 @@ int main(int argc, char **argv)
 
   DeviceAccess_Connect();
 
-  ret = flash_find_factory_image(&address);
+  ret = flash_find_factory_image(&factory);
   assert(ret == 0);
 
-  ret = flash_find_upgrade_image(&address, address);
+  ret = flash_find_upgrade_image(&upgrade, factory);
   assert(ret == 0);
 
-  debug_printf("%d\n", address);
-  assert(address == expected);
+  debug_printf("%d\n", upgrade);
+  assert(upgrade == expected);
 
   DeviceAccess_Disconnect(0);
 

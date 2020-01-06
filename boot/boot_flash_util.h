@@ -36,4 +36,20 @@ static inline unsigned sector_address_at_or_after(unsigned address)
     return (address / sector_size + 1) * sector_size; // or after
 }
 
+static inline unsigned crc_init(void)
+{
+  return 0xFFFFFFFF;
+}
+
+static inline void crc_step(unsigned *crc, unsigned word)
+{
+  asm volatile("crc32 %0, %2, %3" : "=r"(*crc) : "0"(*crc),
+                                    "r"(word), "r"(0xEDB88320));
+}
+
+static inline unsigned crc_finish(unsigned crc)
+{
+  return ~crc;
+}
+
 #endif

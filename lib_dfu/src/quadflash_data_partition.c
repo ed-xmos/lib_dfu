@@ -54,7 +54,7 @@ int fl_dataImageChecksum(unsigned header_address, unsigned checksum_offset,
   crc_step(&crc, checksum);
 
   if (crc_finish(crc) != 0)
-    return 1;
+    return 2;
 
   return 0;
 }
