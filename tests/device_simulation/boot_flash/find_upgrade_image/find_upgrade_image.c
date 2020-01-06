@@ -18,7 +18,8 @@
 #define FACTORY_BYTE_SIZE 22052
 
 const unsigned factory_start = 1418; // word address
-const unsigned upgrade_start = 8192;
+const unsigned upgrade_start = 7168;
+const unsigned boot_partition_size = 1048576;
 
 const unsigned upgrade_page_crc = 0xD27CAF74;
 
@@ -62,6 +63,9 @@ unsigned DeviceAccess_ReadWord(unsigned word_address)
 {
   if (word_address == 0) { // stage 2 loader word size
     return factory_start - 2;
+  }
+  else if (word_address == 3) {
+    return boot_partition_size;
   }
   else if (word_address >= factory_start && word_address < upgrade_start) {
     unsigned word_offset = word_address - factory_start;
