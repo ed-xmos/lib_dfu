@@ -39,7 +39,7 @@ flash_qe_config_t qe_config = { // 0/6 for XCORE-200-EXPLORER (see XN file)
   flash_qe_bit_6
 };
 
-unsigned int DEVICE_SECTOR_WORD_SIZE = 1024; // IS25LQ016B
+unsigned DEVICE_SECTOR_WORD_SIZE = 1024; // IS25LQ016B
 
 int main(int argc, char **argv)
 {

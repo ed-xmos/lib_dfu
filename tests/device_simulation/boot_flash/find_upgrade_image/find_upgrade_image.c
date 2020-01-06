@@ -80,7 +80,7 @@ unsigned DeviceAccess_ReadWord(unsigned word_address)
   return -1;
 }
 
-unsigned DEVICE_SECTOR_WORD_SIZE = 1024;
+unsigned DEVICE_SECTOR_WORD_SIZE = 1024; // IS25LQ016B
 
 int main(void)
 {
