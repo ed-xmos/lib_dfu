@@ -22,9 +22,16 @@
 //
 #ifndef __boot_flash_h__
 #define __boot_flash_h__
+#ifdef BOOT_FLASH_UNIT_TEST
+
+int flash_find_factory_image(unsigned *address);
+int flash_find_upgrade_image(unsigned *address, unsigned factory_start);
+int flash_is_data_upgrade_slot_valid(bool *valid);
+
+#else
 
 #include <stdint.h>
-#include <stdint.h>
+#include <stddef.h>
 #include <print.h>
 
 #ifdef __XC__
@@ -181,4 +188,5 @@ static inline int flash_is_data_upgrade_slot_valid(bool *valid)
   return 0;
 }
 
+#endif
 #endif
