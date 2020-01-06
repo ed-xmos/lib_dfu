@@ -43,7 +43,8 @@ static inline unsigned crc_init(void)
 
 static inline void crc_step(unsigned *crc, unsigned word)
 {
-  asm volatile("crc32 %0, %2, %3" : "=r"(*crc) : "0"(*crc),
+  // xflash custom loader compiled as C99 where asm keyword is missing
+  __asm__ volatile("crc32 %0, %2, %3" : "=r"(*crc) : "0"(*crc),
                                     "r"(word), "r"(0xEDB88320));
 }
 
