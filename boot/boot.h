@@ -1,4 +1,8 @@
 // Copyright (c) 2020, XMOS Ltd, All rights reserved
+//
+// Remember that dependency tree building under xcommon-based waf often means
+// a clean build is required
+//
 #ifndef __boot_h__
 #define __boot_h__
 
