@@ -15,3 +15,6 @@ CP ?= cp
 
 headers:
 	@${CP} $(addprefix ../lib_dfu/api/,${HEADERS}) .
+
+clean:
+	-${RM} ${HEADERS}

@@ -1,4 +1,4 @@
-// Copyright (c) 2020, XMOS Ltd, All rights reserved
+// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 #include <assert.h>
 #include "quadflash_crc.h"
 
