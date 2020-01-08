@@ -23,7 +23,7 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 };
 
 void fl_int_write(unsigned char cmd,
-                  unsigned int pageAddress, 
+                  unsigned int pageAddress,
                   const unsigned char data[],
                   unsigned int num_bytes);
 

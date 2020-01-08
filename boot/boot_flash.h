@@ -66,7 +66,7 @@ static inline int flash_find_factory_image(unsigned *address)
 
   unsigned page_crc = DeviceAccess_ReadWord(header + PAGE_CRC);
   unsigned result = DeviceAccess_Streamed_CRC(header + CRC_START,
-                                              CRC_PAGE_SIZE_WORDS - CRC_START, 
+                                              CRC_PAGE_SIZE_WORDS - CRC_START,
                                               page_crc);
   if (result != 0)
     return 2;
@@ -94,7 +94,7 @@ static inline int flash_find_upgrade_image(unsigned *address,
 
   unsigned page_crc = DeviceAccess_ReadWord(header + PAGE_CRC);
   unsigned result = DeviceAccess_Streamed_CRC(header + CRC_START,
-                                              CRC_PAGE_SIZE_WORDS - CRC_START, 
+                                              CRC_PAGE_SIZE_WORDS - CRC_START,
                                               page_crc);
   if (result != 0)
     return 2;

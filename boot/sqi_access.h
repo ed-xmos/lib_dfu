@@ -11,11 +11,11 @@ void DeviceAccess_Disconnect(unsigned int perm_disconnect);
 unsigned int DeviceAccess_ReadWord(unsigned int word_address);
 
 #ifdef __XC__
-void DeviceAccess_Read(unsigned int word_address, 
+void DeviceAccess_Read(unsigned int word_address,
                        unsigned int destination[num_words],
                        unsigned int num_words);
 #else
-void DeviceAccess_Read(unsigned int word_address, 
+void DeviceAccess_Read(unsigned int word_address,
                        unsigned int * destination,
                        unsigned int num_words);
 #endif

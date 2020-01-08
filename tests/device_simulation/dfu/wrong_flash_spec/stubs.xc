@@ -1,4 +1,4 @@
-// Copyright (c) 2019, XMOS Ltd, All rights reserved
+// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 #include <xs1.h>
 #include <quadflash.h>
 
@@ -66,7 +66,7 @@ int fl_readPage(unsigned int address, unsigned char data[])
 }
 
 void fl_int_write(unsigned char cmd,
-                  unsigned int pageAddress, 
+                  unsigned int pageAddress,
                   const unsigned char data[num_bytes],
                   unsigned int num_bytes)
 {
@@ -85,9 +85,9 @@ unsigned fl_getDataPartitionBase()
   return 1;
 }
 
-void fl_int_read(unsigned char cmd, 
-                 unsigned int address, 
-                 unsigned char destination[num_bytes], 
+void fl_int_read(unsigned char cmd,
+                 unsigned int address,
+                 unsigned char destination[num_bytes],
                  unsigned int num_bytes)
 {
   assert(0);

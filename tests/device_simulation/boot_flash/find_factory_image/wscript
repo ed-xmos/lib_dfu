@@ -5,7 +5,7 @@ def options(opt):
     opt.load('xwaf.xcommon')
 
 def configure(conf):
-    conf.load('xwaf.xcommon')    
+    conf.load('xwaf.xcommon')
     conf.env.PROJECT_ROOT = '../../../../..'
 
 def build(bld):
