@@ -2,6 +2,7 @@
 .venv
 Pipfile.lock
 
-# satisfy dumb parsing in XMOS source check
-./.venv*
+# satisfy parsing in XMOS source check based on regular expressions
+# (normal parsing is based on shell wildcards)
+*/.venv*
 */build/*
