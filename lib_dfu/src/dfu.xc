@@ -9,8 +9,8 @@
 #define DEBUG_PRINT_ENABLE_DFU 0
 #include "debug_print.h"
 
+#include "flash_data_partition.h"
 #include "dfu_buffer_converter.h"
-#include "dfu_flash.h"
 #include "dfu.h"
 
 #define POLL_TIMEOUT_MS 1

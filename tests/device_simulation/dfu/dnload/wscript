@@ -13,7 +13,7 @@ def build(bld):
         'TARGET': ['XCORE-200-EXPLORER'],
         'XCC_FLAGS': ['-O2', '-g', '-Wall', '-fcmdline-buffer-bytes=256',
                       '-DQUADFLASH_DATA_PARTITION_UNIT_TEST'],
-        'INCLUDE_DIRS': ['../../../../lib_dfu/src'],
+        'INCLUDE_DIRS': ['../../../../../lib_flash_data_partition/lib_flash_data_partition/src'],
         'USED_MODULES': ['lib_dfu', 'lib_xassert', 'lib_logging'],
         'XCOMMON_MAKEFILE': ['Makefile.common']
     }
