@@ -13,7 +13,7 @@
 #include "dfu_buffer_converter.h"
 #include "dfu.h"
 
-#define POLL_TIMEOUT_MS 1
+#define POLL_TIMEOUT_MSEC 1
 
 static enum dfu_state state = APP_IDLE;
 static enum dfu_status status = DFU_OK;
@@ -407,20 +407,27 @@ enum dfu_state dfu_getstate(void)
   return state;
 }
 
-{enum dfu_status, enum dfu_state, unsigned} dfu_getstatus(void)
+struct dfu_getstatus dfu_getstatus(void)
 {
   request(DFU_GETSTATUS);
+
+  struct dfu_getstatus ret;
+  ret.status = status;
+  ret.state = state;
+  ret.poll_timeout_msec = POLL_TIMEOUT_MSEC;
 
   // special treament for the sync states:
   // make it look like we've stayed in the busy state (either dfuDNBUSY or
   // dfuMANIFEST) for the duration of poll timeout, while we actually leave
   // immediately (going back to the sync state)
   if (state == DFU_DNLOAD_SYNC)
-    return {status, DFU_DNBUSY, POLL_TIMEOUT_MS};
+    ret.state = DFU_DNBUSY;
   else if (state == DFU_MANIFEST_SYNC)
-    return {status, DFU_MANIFEST, POLL_TIMEOUT_MS};
+    ret.state = DFU_MANIFEST;
+  else
+    ret.poll_timeout_msec = 0;
 
-  return {status, state, 0};
+  return ret;
 }
 
 void dfu_clrstatus(void)

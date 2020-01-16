@@ -10,12 +10,8 @@
 
 int main(void)
 {
-  enum dfu_status status;
-  enum dfu_state state;
-  unsigned timeout;
-
-  {status, state, timeout} = dfu_getstatus();
-  assert(status == DFU_OK);
+  struct dfu_getstatus ret = dfu_getstatus();
+  assert(ret.status == DFU_OK);
 
   printstr("PASS\n");
   return 0;

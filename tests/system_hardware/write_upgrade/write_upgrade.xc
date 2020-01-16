@@ -53,31 +53,30 @@ void write_begin(void)
 FILE * movable write(FILE * movable bin_file,
                      int &upgrade_size, int block_size, int marker)
 {
+  struct dfu_getstatus ret;
   enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
-  size_t ret;
+  size_t read;
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
   int block_count = 0;
 
   while (!feof(bin_file)) {
     printintln(block_count);
 
-    ret = fread(block, 1, block_size, bin_file);
-    assert(ret >= 0 && ret <= block_size);
+    read = fread(block, 1, block_size, bin_file);
+    assert(read >= 0 && read <= block_size);
 
-    if (ret == 0)
+    if (read == 0)
       break;
 
     dfu_dnload(marker | block_count, block_size, block);
 
     do {
-      {status, state, timeout} = dfu_getstatus();
-      assert(status == DFU_OK);
+      ret = dfu_getstatus();
+      assert(ret.status == DFU_OK);
       delay_microseconds(1);
-    } while (state == DFU_DNBUSY);
+    } while (ret.state == DFU_DNBUSY);
 
-    assert(state == DFU_DNLOAD_IDLE);
+    assert(ret.state == DFU_DNLOAD_IDLE);
 
     block_count++;
   }
@@ -87,10 +86,10 @@ FILE * movable write(FILE * movable bin_file,
   assert(state == DFU_MANIFEST_SYNC);
 
   do {
-    {status, state, timeout} = dfu_getstatus();
-    assert(status == DFU_OK);
+    ret = dfu_getstatus();
+    assert(ret.status == DFU_OK);
     delay_microseconds(1);
-  } while (state == DFU_DNBUSY);
+  } while (ret.state == DFU_DNBUSY);
 
   upgrade_size = block_count * block_size;
   return move(bin_file);

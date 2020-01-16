@@ -10,23 +10,21 @@
 
 int main(void)
 {
-  enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
+  struct dfu_getstatus ret;
 
-  {status, state, timeout} = dfu_getstatus();
-  assert(state == APP_IDLE);
-  assert(status == DFU_OK);
+  ret = dfu_getstatus();
+  assert(ret.state == APP_IDLE);
+  assert(ret.status == DFU_OK);
 
   dfu_detach();
-  {status, state, timeout} = dfu_getstatus();
-  assert(state == APP_DETACH);
-  assert(status == DFU_OK);
+  ret = dfu_getstatus();
+  assert(ret.state == APP_DETACH);
+  assert(ret.status == DFU_OK);
 
   dfu_timeout_detach();
-  {status, state, timeout} = dfu_getstatus();
-  assert(state == APP_IDLE);
-  assert(status == DFU_OK);
+  ret = dfu_getstatus();
+  assert(ret.state == APP_IDLE);
+  assert(ret.status == DFU_OK);
 
   printstr("PASS\n");
   return 0;

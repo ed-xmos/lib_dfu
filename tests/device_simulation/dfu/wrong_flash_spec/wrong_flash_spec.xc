@@ -29,22 +29,21 @@ fl_QuadDeviceSpec g_spec[] = { // IS25LQ016B
 
 int main(void)
 {
+  struct dfu_getstatus ret;
   enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
 
   dfu_detach();
-  {status, state, timeout} = dfu_getstatus();
-  assert(state == APP_DETACH);
-  assert(status == DFU_OK);
+  ret = dfu_getstatus();
+  assert(ret.state == APP_DETACH);
+  assert(ret.status == DFU_OK);
 
   dfu_bus_reset(g_ports, g_spec);
-  {status, state, timeout} = dfu_getstatus();
-  assert(state == DFU_ERROR);
-  assert(status == ERR_UNKNOWN);
+  ret = dfu_getstatus();
+  assert(ret.state == DFU_ERROR);
+  assert(ret.status == ERR_UNKNOWN);
 
   printstr("PASS\n");
   return 0;

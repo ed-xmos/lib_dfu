@@ -42,11 +42,15 @@ enum dfu_status {
   ERR_STALLED_PKT
 };
 
+struct dfu_getstatus {
+  enum dfu_status status;
+  enum dfu_state state;
+  unsigned poll_timeout_msec;
+};
+
 enum dfu_state dfu_getstate(void);
 
-#ifdef __XC__
-{enum dfu_status, enum dfu_state, unsigned} dfu_getstatus(void);
-#endif
+struct dfu_getstatus dfu_getstatus(void);
 
 void dfu_clrstatus(void);
 

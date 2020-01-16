@@ -256,28 +256,26 @@ void random_sequence(char seq[], int length)
 
 void single_dnload_block(int block_num, size_t block_size, const char block[])
 {
+  struct dfu_getstatus ret;
   enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
 
   dfu_dnload(block_num, block_size, block);
   state = dfu_getstate();
   assert(state == DFU_DNLOAD_SYNC);
 
   do {
-    {status, state, timeout} = dfu_getstatus();
-    assert(status == DFU_OK);
+    ret = dfu_getstatus();
+    assert(ret.status == DFU_OK);
     delay_microseconds(1);
-  } while (state == DFU_DNBUSY);
+  } while (ret.state == DFU_DNBUSY);
 
-  assert(state == DFU_DNLOAD_IDLE);
+  assert(ret.state == DFU_DNLOAD_IDLE);
 }
 
 void dnload_zero(void)
 {
+  struct dfu_getstatus ret;
   enum dfu_state state;
-  enum dfu_status status;
-  unsigned timeout;
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
 
   dfu_dnload(0, 0, block);
@@ -285,13 +283,13 @@ void dnload_zero(void)
   assert(state == DFU_MANIFEST_SYNC);
 
   do {
-    {status, state, timeout} = dfu_getstatus();
-    assert(status == DFU_OK);
+    ret = dfu_getstatus();
+    assert(ret.status == DFU_OK);
     delay_microseconds(1);
-  } while (state == DFU_MANIFEST);
+  } while (ret.state == DFU_MANIFEST);
 
-  assert(state == DFU_IDLE);
-  assert(status == DFU_OK);
+  assert(ret.state == DFU_IDLE);
+  assert(ret.status == DFU_OK);
 }
 
 void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
