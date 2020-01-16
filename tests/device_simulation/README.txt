@@ -6,17 +6,17 @@ that fails).
 
 Convention is that pass is when last line of test output is 'PASS'
 
+Build is using Waf with a customised top level script that traverses test
+subdirectories and builds each test
+
 To run all tests in Pipenv I might do:
 
-  time ( ls -d buffer_converter dfu/* | \
-    while read t ; do if [ -d $t ] ; then \
-      ( cd $t ; waf configure clean build >/dev/null && cd - ; cd ../.. ; \
-        pipenv run pytest tests/device_simulation/$t -s ) || break ; fi ; done )
+  waf configure clean build
+  pipenv run pytest -s
 
 I've also added a __main__ trigger, so I can invoke the test script outside of
 Pipenv:
 
-  time ( ls -d buffer_converter dfu/* | \
-    while read t ; do if [ -d $t ] ; then \
-      ( cd $t ; waf configure clean build >/dev/null && \
-        python test_`basename $t`.py ) || break ; fi ; done )
+  waf configure clean build
+  find . -name test_\*.py | while read f ; do \
+    ( cd `dirname $f` ; python `basename $f` ) || break ; done

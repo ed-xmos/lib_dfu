@@ -27,21 +27,26 @@ pipeline {
     stage('xCORE builds') {
       steps {
         dir("${REPO}") {
-          //xcoreAllAppsBuild('examples')
-          //xcoreAllAppNotesBuild('examples')
           dir("${REPO}") {
             runXdoc('doc')
           }
         }
       }
     }
-    stage('Tests') {
+    stage('Device simulation tests') {
       steps {
-        dir("${REPO}/tests") {
+        dir("${REPO}/tests/device_simulation") {
           runWaf('.')
           viewEnv() {
             runPytest()
           }
+        }
+      }
+    }
+    stage('Build of hardware system tests') {
+      steps {
+        dir("${REPO}/tests/system_hardware") {
+          runWaf('.')
         }
       }
     }
