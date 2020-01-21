@@ -1,5 +1,5 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
-DUT_PATH = ../../../../host/suffix_verifier
+DUT_PATH = ../../../../host/libsuffix_verifier
 CFLAGS = -g -O2 -Wall -I ${DUT_PATH}
 LDFLAGS = -L ${DUT_PATH}/lib -lsuffix_verifier
 EXECUTABLE = bin/error_conditions
