@@ -62,7 +62,7 @@ FILE * movable write(FILE * movable bin_file, int block_size,
     if (read == 0)
       break;
 
-    dfu_dnload(0x8000 | block_count, block_size, block);
+    dfu_dnload(0x8000 | block_count, read, block);
 
     do {
       ret = dfu_getstatus();
