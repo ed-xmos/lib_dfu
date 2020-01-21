@@ -215,7 +215,7 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
 
   if (block_size_bytes > 0) {
     // find slot start only once we know that the required operation is DNLOAD
-    if (block_num & 0x8000) {
+    if (block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER) {
       if (data_upgrade_slot_start == 0) {
         if (flash_locate_data_upgrade_slot(data_upgrade_slot_start) != 0)
           return 3;
@@ -235,8 +235,8 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
     // peek at main state here to determine if this is the first DNLOAD bloc of
     // a given operation so we can suitably start things off
     if (state == DFU_IDLE) {
-      dnload.next_page_address = block_num & 0x8000 ? data_upgrade_slot_start :
-                                                      boot_upgrade_slot_start;
+      dnload.next_page_address = block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER
+                                 ? data_upgrade_slot_start : boot_upgrade_slot_start;
       buffer_converter_reset(converter);
     }
 

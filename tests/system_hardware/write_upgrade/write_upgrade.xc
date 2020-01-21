@@ -147,7 +147,8 @@ int main(unsigned argc, char * unsafe argv[argc])
   boot_file = write(move(boot_file), boot_size, block_size, 0);
   printf("written %d boot bytes\n", boot_size);
 
-  data_file = write(move(data_file), data_size, block_size, 0x8000);
+  data_file = write(move(data_file), data_size, block_size,
+                    DFU_BLOCK_NUM_DATA_IMAGE_MARKER);
   printf("written %d data bytes\n", data_size);
 
   fseek(boot_file, 0, SEEK_SET);
