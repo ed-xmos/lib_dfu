@@ -10,8 +10,7 @@
 #pragma pack(push, 1)
 
 struct dfu_suffix {
-  // The CRC of the entire file, excluding dwCRC. (Calculation specified in the
-  // following section).
+  // Checksum of file excluding suffix (specification does include the suffix).
   uint32_t crc;
 
   // The length of this DFU suffix including dwCRC.

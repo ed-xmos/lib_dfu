@@ -56,13 +56,15 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
     return 5;
   }
 
-  if (suffix.vendor_id != 0xFFFF && suffix.vendor_id != vendor_id) {
+  if (suffix.vendor_id != 0xFFFF && vendor_id != 0xFFFF &&
+      suffix.vendor_id != vendor_id) {
     sprintf(msg, "vendor ID mismatch: suffix 0x%04X expected 0x%04X\n",
                   suffix.vendor_id, vendor_id);
     return 6;
   }
 
-  if (suffix.product_id != 0xFFFF && suffix.product_id != product_id) {
+  if (suffix.product_id != 0xFFFF && product_id != 0xFFFF &&
+      suffix.product_id != product_id) {
     sprintf(msg, "product ID mismatch: suffix 0x%04X expected 0x%04X\n",
                   suffix.product_id, product_id);
     return 7;
