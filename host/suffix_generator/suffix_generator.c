@@ -12,20 +12,22 @@ bool verbose = false;
 int main(int argc, char **argv)
 {
   bool correct_usage = false;
-  unsigned vendor_id, product_id, bcd_device;
-  if (argc == 4) {
+  unsigned vendor_id, product_id;
+  if (argc == 3) {
     vendor_id = strtoul(argv[1], NULL, 0);
     product_id = strtoul(argv[2], NULL, 0);
-    bcd_device = strtoul(argv[3], NULL, 0);
-    if (vendor_id != 0 && product_id != 0 && bcd_device != 0)
+    if (vendor_id != 0 && product_id != 0)
       correct_usage = true;
   }
   if (!correct_usage) {
     fprintf(stderr, "\
-usage: suffix_generator VENDOR_ID PRODUCT_ID BCD_DEVICE\n\
+usage: suffix_generator VENDOR_ID PRODUCT_ID\n\
+\n\
+       input is stdin, output is stdout\n\
 \n\
        arguments are non-zero 16bit hex values, eg 0x01AB\n\
-       specify 0xFFFF if unused (eg BCD_DEVICE)\n");
+       0xFFFF means do not verify this field\n\
+       0 is invalid value\n");
     exit(1);
   }
 
@@ -50,7 +52,7 @@ usage: suffix_generator VENDOR_ID PRODUCT_ID BCD_DEVICE\n\
     .bcd_dfu = DFU_BCD,
     .vendor_id = vendor_id,
     .product_id = product_id,
-    .bcd_device = bcd_device
+    .bcd_device = 0xFFFF
   };
   char reversed[sizeof(struct dfu_suffix)];
   for (int i = 0; i < sizeof(reversed); i++) {

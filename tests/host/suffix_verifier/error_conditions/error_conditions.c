@@ -18,56 +18,49 @@ int main(void)
   unsigned char data[32];
 
   // input too short
-  ret = verify_dfu_suffix(data, 1, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 1, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad CRC
   memcpy(data, template, 32);
   data[31] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad suffix length field
   memcpy(data, template, 32);
   data[27] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad signature field
   memcpy(data, template, 32);
   data[26] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad specification number
   memcpy(data, template, 32);
   data[23] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad vendor ID
   memcpy(data, template, 32);
   data[21] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 
   // bad product ID
   memcpy(data, template, 32);
   data[19] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
-  printf("%d\n", ret);
-  assert(ret != 0);
-
-  // bad BCD device
-  memcpy(data, template, 32);
-  data[17] = 0x00;
-  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, 0x1234, &suffix_length, msg);
+  ret = verify_dfu_suffix(data, 32, 0xAB, 0xCD, &suffix_length, msg);
   printf("%d\n", ret);
   assert(ret != 0);
 

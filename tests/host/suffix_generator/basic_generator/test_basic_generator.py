@@ -5,7 +5,7 @@ def test_basic_generator():
     home = os.path.dirname(os.path.abspath(__file__))
     with open(os.path.join(home, 'input.bin'), 'rb') as in_file:
         cmd = [os.path.join(home, 'bin', 'suffix_generator'),
-               '0x21B1', '0x0014', '0x0210']
+               '0x20B1', '0x0014']
         try:
             output = subprocess.check_output(cmd, stdin=in_file)
         except subprocess.CalledProcessError as e:

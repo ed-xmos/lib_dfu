@@ -16,7 +16,7 @@ int main(void)
     0x55, 0x46, 0x44, 0x10, 0x0A, 0x10, 0x49, 0x53
   };
 
-  ret = verify_dfu_suffix(data, sizeof(data), 0xAB, 0xCD, 0x1234,
+  ret = verify_dfu_suffix(data, sizeof(data), 0xAB, 0xCD,
                           &suffix_length, msg);
   assert(ret == 0);
   assert(suffix_length == 16);
