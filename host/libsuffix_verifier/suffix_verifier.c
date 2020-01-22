@@ -8,7 +8,7 @@
 #include "dfu_suffix.h"
 #include "crc.h"
 
-int verify_dfu_suffix(const char *file, size_t num_bytes,
+int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
                       unsigned short vendor_id,
                       unsigned short product_id,
                       unsigned short bcd_device,
@@ -22,7 +22,7 @@ int verify_dfu_suffix(const char *file, size_t num_bytes,
 
   struct dfu_suffix suffix;
   for (int i = 0; i < sizeof(struct dfu_suffix); i++) {
-    ((char*)&suffix)[i] = file[num_bytes - 1 - i];
+    ((unsigned char*)&suffix)[i] = file[num_bytes - 1 - i];
   }
 
   unsigned crc = crc_init();

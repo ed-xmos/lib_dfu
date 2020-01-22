@@ -3,7 +3,7 @@
 #include <stdbool.h>
 #include "crc.h"
 
-bool verbose = false;
+static bool verbose = false;
 
 unsigned crc_init(void)
 {

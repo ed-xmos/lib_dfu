@@ -21,8 +21,11 @@ int main(int argc, char **argv)
       correct_usage = true;
   }
   if (!correct_usage) {
-    fprintf(stderr, "usage: suffix_generator VENDOR_ID PRODUCT_ID BCD_DEVICE\n");
-    fprintf(stderr, "       arguments are non-zero 16bit hex values, eg 0x01AB\n");
+    fprintf(stderr, "\
+usage: suffix_generator VENDOR_ID PRODUCT_ID BCD_DEVICE\n\
+\n\
+       arguments are non-zero 16bit hex values, eg 0x01AB\n\
+       specify 0xFFFF if unused (eg BCD_DEVICE)\n");
     exit(1);
   }
 
