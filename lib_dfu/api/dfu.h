@@ -56,6 +56,8 @@ enum dfu_state dfu_getstate(void);
 
 struct dfu_getstatus dfu_getstatus(void);
 
+int dfu_get_error_info(void);
+
 void dfu_clrstatus(void);
 
 void dfu_detach(void);

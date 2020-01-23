@@ -17,6 +17,7 @@
 
 static enum dfu_state state = APP_IDLE;
 static enum dfu_status status = DFU_OK;
+static int error_info = 0;
 
 static struct buffer_converter converter;
 
@@ -93,6 +94,7 @@ static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
     }
   }
 }
+
 static const char * unsafe status_str(enum dfu_status s)
 {
   unsafe {
@@ -128,13 +130,15 @@ static void normal_transition(enum dfu_state new)
   state = new;
 }
 
-static void error_condition(enum dfu_status code)
+static void error_condition(enum dfu_status code, int extra)
 {
   unsafe {
-    debug_printf("DFU: %s -> DFU_ERROR (%s)\n", state_str(state), status_str(code));
+    debug_printf("DFU: %s -> DFU_ERROR (%s %d)\n",
+                 state_str(state), status_str(code), extra);
   }
   status = code;
   state = DFU_ERROR;
+  error_info = extra;
 }
 
 static void sub_transition_dnload(enum dnload_sub_state new)
@@ -275,6 +279,7 @@ static void request_with_arguments(enum dfu_request request,
     debug_printf("\n");
 #endif
   enum dfu_status status;
+  int ret;
 
   switch (state) {
     case APP_IDLE:
@@ -293,14 +298,15 @@ static void request_with_arguments(enum dfu_request request,
 
     case DFU_IDLE:
       if (request == DFU_DNLOAD) {
-        if (dnload_block(write_block, write_block_num, block_size_bytes) != 0)
-          error_condition(ERR_UNKNOWN);
+        ret = dnload_block(write_block, write_block_num, block_size_bytes);
+        if (ret != 0)
+          error_condition(ERR_UNKNOWN, ret);
         else
           normal_transition(DFU_DNLOAD_SYNC);
       }
       else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
         // no other requests expected, defined as error
-        error_condition(ERR_STALLED_PKT);
+        error_condition(ERR_STALLED_PKT, request);
       }
       break;
 
@@ -309,7 +315,7 @@ static void request_with_arguments(enum dfu_request request,
         bool busy = false;
         status = getstatus_from_dnload(busy);
         if (status != DFU_OK) {
-          error_condition(status);
+          error_condition(status, 0);
         }
         else {
           if (busy) {
@@ -328,7 +334,7 @@ static void request_with_arguments(enum dfu_request request,
         bool busy = false;
         status = getstatus_from_dnload(busy);
         if (status != DFU_OK) {
-          error_condition(status);
+          error_condition(status, 0);
         }
         else {
           if (busy) {
@@ -338,28 +344,36 @@ static void request_with_arguments(enum dfu_request request,
           else {
             normal_transition(DFU_IDLE);
             // not disconnecting from flash to allow additional operations
-            if (flash_set_write_disable() != 0)
-              error_condition(ERR_WRITE);
+            ret = flash_set_write_disable();
+            if (ret != 0)
+              error_condition(ERR_WRITE, ret);
           }
         }
       }
       else if (request != DFU_GETSTATE) {
-        error_condition(ERR_STALLED_PKT);
+        error_condition(ERR_STALLED_PKT, request);
       }
       break;
 
     case DFU_DNLOAD_IDLE:
-      if (block_size_bytes == 0) {
-        if (dnload_block(write_block, 0, 0) != 0)
-          error_condition(ERR_UNKNOWN);
-        else
-          normal_transition(DFU_MANIFEST_SYNC);
+      if (request == DFU_DNLOAD) {
+        if (block_size_bytes == 0) {
+          ret = dnload_block(write_block, 0, 0);
+          if (ret != 0)
+            error_condition(ERR_UNKNOWN, ret);
+          else
+            normal_transition(DFU_MANIFEST_SYNC);
+        }
+        else {
+          ret = dnload_block(write_block, write_block_num, block_size_bytes);
+          if (ret != 0)
+            error_condition(ERR_UNKNOWN, ret);
+          else
+            normal_transition(DFU_DNLOAD_SYNC);
+        }
       }
-      else {
-        if (dnload_block(write_block, write_block_num, block_size_bytes) != 0)
-          error_condition(ERR_UNKNOWN);
-        else
-          normal_transition(DFU_DNLOAD_SYNC);
+      else if (request != DFU_GETSTATE) {
+        error_condition(ERR_UNKNOWN, request);
       }
       break;
 
@@ -445,7 +459,7 @@ void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
   if (state == APP_DETACH) {
     enum dfu_status status = enter_dfu(ports, spec);
     if (status != DFU_OK)
-      error_condition(status);
+      error_condition(status, 0);
     else
       normal_transition(DFU_IDLE);
   }
@@ -453,7 +467,7 @@ void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
     normal_transition(APP_IDLE);
   }
   else {
-    error_condition(ERR_USBR);
+    error_condition(ERR_USBR, state);
   }
 }
 
@@ -472,4 +486,9 @@ void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
                 const char block[DFU_BLOCK_SIZE_MAX_BYTES])
 {
   request_with_arguments(DFU_DNLOAD, block, null, block_size_bytes, block_num);
+}
+
+int dfu_get_error_info(void)
+{
+  return error_info;
 }

@@ -201,6 +201,7 @@ int fl_setWritability(int enable)
 int fl_getBusyStatus(void)
 {
   if (fl.busy_countdown > 0) {
+    debug_printf("busy countdown %d\n", fl.busy_countdown);
     fl.busy_countdown--;
     return 1;
   }
