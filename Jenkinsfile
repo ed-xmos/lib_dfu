@@ -50,6 +50,16 @@ pipeline {
         }
       }
     }
+    stage('Host tests') {
+      steps {
+        dir("${REPO}/tests/host") {
+          sh 'make'
+          viewEnv() {
+            runPytest()
+          }
+        }
+      }
+    }
   }
   post {
     success {
