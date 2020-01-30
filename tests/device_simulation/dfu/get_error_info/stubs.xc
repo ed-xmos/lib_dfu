@@ -1,9 +1,15 @@
-// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
+// Copyright (c) 2020, XMOS Ltd, All rights reserved
 #include <quadflash.h>
 
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
+
+int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+{
+  assert(0);
+  return -1;
+}
 
 int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
 {
@@ -70,12 +76,6 @@ void fl_int_write(unsigned char cmd,
                   unsigned int num_bytes)
 {
   assert(0);
-}
-
-int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
-{
-  assert(0);
-  return 1;
 }
 
 int fl_disconnect(void)

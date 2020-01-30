@@ -8,13 +8,11 @@
 #include <quadflash.h>
 #include <quadflashlib.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
+#include "flash_data_partition.h"
 #include "dfu.h"
 
 fl_QSPIPorts ports = {
@@ -28,19 +26,11 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   }
 };
 
-unsafe {
-  fl_QSPIPorts * unsafe p_ports = (fl_QSPIPorts * unsafe)&ports;
-  fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&spec;
-}
-
-FILE * movable write(FILE * movable bin_file, int block_size,
-                     int &upgrade_size)
+void write_begin(int upgrade_address)
 {
-  struct dfu_getstatus ret;
   enum dfu_state state;
-  int block_count = 0;
-  size_t read;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES];
+  struct dfu_slots slots = {0, 0};
+  int ret;
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -49,9 +39,24 @@ FILE * movable write(FILE * movable bin_file, int block_size,
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  dfu_bus_reset(ports, spec);
+  ret = flash_connect(ports, spec);
+  assert(ret == 0);
+
+  ret = flash_locate_data_upgrade_slot(slots.data_address);
+  assert(ret == 0);
+
+  dfu_bus_reset(slots);
   state = dfu_getstate();
   assert(state == DFU_IDLE);
+}
+
+FILE * movable write(FILE * movable bin_file, int block_size,
+                     int &upgrade_size)
+{
+  struct dfu_getstatus ret;
+  int block_count = 0;
+  size_t read;
+  char block[DFU_BLOCK_SIZE_MAX_BYTES];
 
   while (!feof(bin_file)) {
     printintln(block_count);
@@ -128,6 +133,8 @@ int main(unsigned argc, char * unsafe argv[argc])
     sscanf(argv[2], "%d", &block_size);
     sscanf(argv[3], "%d", &upgrade_address);
   }
+
+  write_begin(upgrade_address);
 
   int upgrade_size = 0;
   bin_file = write(move(bin_file), block_size, upgrade_size);

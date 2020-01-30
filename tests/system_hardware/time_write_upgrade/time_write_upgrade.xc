@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
+// Copyright (c) 2020, XMOS Ltd, All rights reserved
 #include <xs1.h>
 #include <platform.h>
 #include <stdio.h>
@@ -12,7 +12,10 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
-#include "flash_data_partition.h"
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 0
+#include "debug_print.h"
+
 #include "dfu.h"
 
 fl_QSPIPorts ports = {
@@ -26,17 +29,46 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   }
 };
 
-void write_begin(int boot_address, int data_address)
+struct {
+  int start;
+  int locator;
+  int threshold;
+} timing = {0, 0, 0};
+
+static void t_start(int locator) {
+  timer t;
+  timing.locator = locator;
+  t :> timing.start;
+}
+
+static void t_end(void) {
+  timer t;
+  int start = timing.start;
+  int end;
+  t :> end;
+  if (end - start >= timing.threshold) {
+    debug_printf("%d: %d\n", timing.locator, end - start);
+    assert(0);
+  }
+}
+
+void write_begin(void)
 {
   enum dfu_state state;
   struct dfu_slots slots = {0, 0};
   int ret;
 
+  t_start(1);
   state = dfu_getstate();
+  t_end();
   assert(state == APP_IDLE);
 
+  t_start(2);
   dfu_detach();
+  t_end();
+  t_start(3);
   state = dfu_getstate();
+  t_end();
   assert(state == APP_DETACH);
 
   ret = flash_connect(ports, spec);
@@ -48,13 +80,16 @@ void write_begin(int boot_address, int data_address)
   ret = flash_locate_data_upgrade_slot(slots.data_address);
   assert(ret == 0);
 
+  t_start(4);
   dfu_bus_reset(slots);
+  t_end();
+  t_start(5);
   state = dfu_getstate();
+  t_end();
   assert(state == DFU_IDLE);
 }
 
-FILE * movable write(FILE * movable bin_file,
-                     int &upgrade_size, int block_size, int marker)
+FILE * movable write(FILE * movable bin_file, int block_size, int marker)
 {
   struct dfu_getstatus ret;
   enum dfu_state state;
@@ -71,12 +106,16 @@ FILE * movable write(FILE * movable bin_file,
     if (read == 0)
       break;
 
+    t_start(6);
     dfu_dnload(marker | block_count, read, block);
+    t_end();
 
     do {
+      t_start(7);
       ret = dfu_getstatus();
+      t_end();
       assert(ret.status == DFU_OK);
-      delay_microseconds(1);
+      delay_milliseconds(ret.poll_timeout_msec);
     } while (ret.state == DFU_DNBUSY);
 
     assert(ret.state == DFU_DNLOAD_IDLE);
@@ -84,84 +123,40 @@ FILE * movable write(FILE * movable bin_file,
     block_count++;
   }
 
+  t_start(8);
   dfu_dnload(0, 0, block);
+  t_end();
   state = dfu_getstate();
+  t_end();
   assert(state == DFU_MANIFEST_SYNC);
 
   do {
+    t_start(9);
     ret = dfu_getstatus();
+    t_end();
     assert(ret.status == DFU_OK);
-    delay_microseconds(1);
+    delay_microseconds(ret.poll_timeout_msec);
   } while (ret.state == DFU_DNBUSY);
-
-  upgrade_size = block_count * block_size;
-  return move(bin_file);
-}
-
-FILE * movable verify(FILE * movable bin_file, int block_size,
-                      unsigned upgrade_address)
-{
-  int page_count = 0;
-  unsigned addr = upgrade_address;
-  size_t ret;
-  char expected[256], actual[256];
-
-  while (!feof(bin_file)) {
-    printintln(page_count);
-
-    ret = fread(expected, 1, sizeof(expected), bin_file);
-    assert(ret >= 0 && ret <= sizeof(expected));
-
-    if (ret == 0)
-      break;
-
-    fl_readPage(addr, actual);
-    addr += ret;
-
-    ret = memcmp(expected, actual, ret);
-    assert(ret == 0);
-
-    page_count++;
-  }
 
   return move(bin_file);
 }
 
 int main(unsigned argc, char * unsafe argv[argc])
 {
-  assert(argc == 6);
+  const int block_size = 128;
+
+  assert(argc == 4);
 
   FILE * movable boot_file = fopen((char*)argv[1], "rb");
   FILE * movable data_file = fopen((char*)argv[2], "rb");
-  int block_size = 0;
-  int boot_address = 0;
-  int data_address = 0;
   unsafe {
-    sscanf(argv[3], "%d", &block_size);
-    sscanf(argv[4], "%d", &boot_address);
-    sscanf(argv[5], "%d", &data_address);
+    sscanf(argv[3], "%d", &timing.threshold);
   }
 
-  int boot_size = 0;
-  int data_size = 0;
+  write_begin();
 
-  write_begin(boot_address, data_address);
-
-  boot_file = write(move(boot_file), boot_size, block_size, 0);
-  printf("written %d boot bytes\n", boot_size);
-
-  data_file = write(move(data_file), data_size, block_size,
-                    DFU_BLOCK_NUM_DATA_IMAGE_MARKER);
-  printf("written %d data bytes\n", data_size);
-
-  fseek(boot_file, 0, SEEK_SET);
-  fseek(data_file, 0, SEEK_SET);
-
-  boot_file = verify(move(boot_file), block_size, boot_address);
-  printf("boot verified\n");
-
-  data_file = verify(move(data_file), block_size, data_address);
-  printf("data verified\n");
+  boot_file = write(move(boot_file), block_size, 0);
+  data_file = write(move(data_file), block_size, DFU_BLOCK_NUM_DATA_IMAGE_MARKER);
 
   fclose(move(boot_file));
   fclose(move(data_file));

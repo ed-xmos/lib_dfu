@@ -6,6 +6,7 @@
 #ifdef __xcore__
 #include <xccompat.h>
 #include <quadflash.h>
+#include "flash_data_partition.h"
 #endif
 
 #define DFU_BLOCK_SIZE_MAX_BYTES 512
@@ -51,24 +52,28 @@ struct dfu_getstatus {
   unsigned poll_timeout_msec;
 };
 
+struct dfu_slots {
+  unsigned boot_address;
+  unsigned data_address;
+};
+
 #ifdef __xcore__
 enum dfu_state dfu_getstate(void);
 
 struct dfu_getstatus dfu_getstatus(void);
 
-int dfu_get_error_info(void);
-
 void dfu_clrstatus(void);
 
 void dfu_detach(void);
 
-void dfu_bus_reset(REFERENCE_PARAM(fl_QSPIPorts, ports),
-                   const fl_QuadDeviceSpec spec[1]);
+void dfu_bus_reset(struct dfu_slots slots);
 
 void dfu_timeout_detach(void);
 
 void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
                 const char block[DFU_BLOCK_SIZE_MAX_BYTES]);
+
+int dfu_get_error_info(void);
 #endif
 
 #endif

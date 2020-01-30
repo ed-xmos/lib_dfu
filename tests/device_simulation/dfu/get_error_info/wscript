@@ -1,4 +1,4 @@
-# Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
+# Copyright (c) 2020, XMOS Ltd, All rights reserved
 import shutil
 
 def options(opt):
@@ -11,8 +11,7 @@ def configure(conf):
 def build(bld):
     makefile_opts = {
         'TARGET': ['XCORE-200-EXPLORER'],
-        'XCC_FLAGS': ['-O2', '-g', '-Wall', '-fcmdline-buffer-bytes=256',
-                      '-DFLASH_UNIT_TEST'],
+        'XCC_FLAGS': ['-O2', '-g', '-Wall'],
         'USED_MODULES': ['lib_dfu', 'lib_xassert', 'lib_logging'],
         'XCOMMON_MAKEFILE': ['Makefile.common']
     }

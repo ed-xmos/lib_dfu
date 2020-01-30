@@ -1,10 +1,15 @@
-// Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
-#include <xs1.h>
+// Copyright (c) 2020, XMOS Ltd, All rights reserved
 #include <quadflash.h>
 
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
+
+int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
+{
+  assert(0);
+  return 1;
+}
 
 int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
 {
@@ -16,6 +21,11 @@ int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
 {
   assert(0);
   return 1;
+}
+
+void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
+{
+  assert(0);
 }
 
 int fl_setWritability(int enable)
@@ -30,9 +40,16 @@ int fl_getBusyStatus(void)
   return 1;
 }
 
-void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
+unsigned fl_getPageSize(void)
 {
   assert(0);
+  return 1;
+}
+
+int fl_readPage(unsigned int address, unsigned char data[])
+{
+  assert(0);
+  return 1;
 }
 
 int fl_getSectorSize(int sectorNum)
@@ -48,18 +65,6 @@ int fl_getNumSectors(void)
 }
 
 int fl_getSectorAddress(int sectorNum)
-{
-  assert(0);
-  return 1;
-}
-
-unsigned fl_getPageSize(void)
-{
-  assert(0);
-  return 1;
-}
-
-int fl_readPage(unsigned int address, unsigned char data[])
 {
   assert(0);
   return 1;

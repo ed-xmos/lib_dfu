@@ -1,6 +1,5 @@
 // Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 #include <print.h>
-#include <quadflash.h>
 
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1

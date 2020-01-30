@@ -1,9 +1,5 @@
 // Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
-#include <xs1.h>
-#include <platform.h>
 #include <print.h>
-#include <string.h>
-#include <quadflash.h>
 
 #define XASSERT_ENABLE_DEBUG 1
 #define XASSERT_ENABLE_LINE_NUMBERS 1
@@ -11,75 +7,11 @@
 
 #include "dfu.h"
 
-fl_QSPIPorts g_ports = {
-  PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
-};
-
-fl_QuadDeviceSpec g_spec[] = { // IS25LQ016B
-  { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
-    PROT_TYPE_NONE, {{0,0},{0x00,0x00}}, 0x02, 0xEB, 1,
-    SECTOR_LAYOUT_REGULAR, {4096,{0,{0}}}, 0x05, 0x01, 0x01
-  }
-};
-
-unsafe {
-  fl_QSPIPorts * unsafe p_ports = (fl_QSPIPorts * unsafe)&g_ports;
-  fl_QuadDeviceSpec * unsafe p_spec = (fl_QuadDeviceSpec * unsafe)&g_spec;
-}
-
-int g_connected = 0;
-
-int fl_connectToDevice(fl_QSPIPorts &ports, const fl_QuadDeviceSpec specs[], unsigned n)
-{
-  unsafe {
-    assert(n == 1);
-    assert(specs == p_spec);
-    assert((int)ports.qspiCS == (int)p_ports->qspiCS);
-    assert((int)ports.qspiSCLK == (int)p_ports->qspiSCLK);
-    assert((int)ports.qspiSIO == (int)p_ports->qspiSIO);
-    assert((int)ports.qspiClkblk == (int)p_ports->qspiClkblk);
-  }
-  g_connected = 1;
-  return 0;
-}
-
-int fl_disconnect(void)
-{
-  assert(g_connected);
-  g_connected = 0;
-  return 0;
-}
-
-int fl_getNumSectors(void)
-{
-  unsafe {
-    return p_spec->numPages * p_spec->pageSize / p_spec->sectorSizes.regularSectorSize;
-  }
-}
-
-int fl_getSectorAddress(int sectorNum)
-{
-  unsafe {
-    return p_spec->sectorSizes.regularSectorSize * sectorNum;
-  }
-}
-
-int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
-{
-  // report a factory image exists but omit details (test does not need them)
-  return 0;
-}
-
-int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
-{
-  // report no upgrade image exists
-  return 1;
-}
-
 int main(void)
 {
   struct dfu_getstatus ret;
   enum dfu_state state;
+  struct dfu_slots slots = {4096, 8192};
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -89,7 +21,7 @@ int main(void)
   assert(ret.state == APP_DETACH);
   assert(ret.status == DFU_OK);
 
-  dfu_bus_reset(g_ports, g_spec);
+  dfu_bus_reset(slots);
   ret = dfu_getstatus();
   assert(ret.state == DFU_IDLE);
   assert(ret.status == DFU_OK);

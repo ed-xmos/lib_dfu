@@ -21,9 +21,9 @@ static int error_info = 0;
 
 static struct buffer_converter converter;
 
+static bool flash_checked = false;
 static unsigned page_size_bytes = 0;
-static unsigned boot_upgrade_slot_start = 0;
-static unsigned data_upgrade_slot_start = 0;
+static struct dfu_slots slots = {0, 0};
 
 static struct {
   int next_page_address;
@@ -151,6 +151,28 @@ static void sub_transition_dnload(enum dnload_sub_state new)
   dnload.sub_state = new;
 }
 
+static int check_flash(void)
+{
+  fl_QuadDeviceSpec spec[1];
+
+  if (flash_copy_specification(spec) != 0)
+    return 1;
+
+  page_size_bytes = spec[0].pageSize;
+  if (page_size_bytes == 0 || page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
+    return 2;
+
+  // only support regular sector layout
+  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
+    return 3;
+
+  // only support erase of exact sector size
+  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
+    return 4;
+
+  return 0;
+}
+
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = true;
@@ -207,40 +229,33 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
 static int dnload_block(const char write_block[], int block_num, int block_size_bytes)
 {
+  // perform sanity checks on provided flash including sector layout or page size
+  // save the page size for download/upload addressing
+  // and ensure that flash is actually connected
+  if (!flash_checked) {
+    if (check_flash() != 0)
+      return 1;
+
+    flash_checked = true;
+  }
+
   // it should be an error for the sub-state machine to go out of sync
   // eg host omitting a GETSTATUS request
   if (dnload.sub_state != DNLOAD_SYNC)
-    return 1;
+    return 2;
 
   // there should never be an unprocessed page when DNLOAD request is sent
   // an unprocessed page is written out first with repeated GETSTATUS requests
   if (dnload.page_ready)
-    return 2;
+    return 3;
 
   if (block_size_bytes > 0) {
-    // find slot start only once we know that the required operation is DNLOAD
-    if (block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER) {
-      if (data_upgrade_slot_start == 0) {
-        if (flash_locate_data_upgrade_slot(data_upgrade_slot_start) != 0)
-          return 3;
-
-        debug_printf("DFU: data upgrade slot start 0x%X\n", data_upgrade_slot_start);
-      }
-    }
-    else {
-      if (boot_upgrade_slot_start == 0) {
-        if (flash_locate_upgrade_slot(boot_upgrade_slot_start) != 0)
-          return 4;
-
-        debug_printf("DFU: boot upgrade slot start 0x%X\n", boot_upgrade_slot_start);
-      }
-    }
-
-    // peek at main state here to determine if this is the first DNLOAD bloc of
+    // peek at main state here to determine if this is the first DNLOAD block of
     // a given operation so we can suitably start things off
     if (state == DFU_IDLE) {
       dnload.next_page_address = block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER
-                                 ? data_upgrade_slot_start : boot_upgrade_slot_start;
+                                 ? slots.data_address :
+                                   slots.boot_address;
       buffer_converter_reset(converter);
     }
 
@@ -248,7 +263,7 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
     // in the queue of blocks awaiting conversion to pages
     // for some reason there are have been not enough pulls or too many pushes
     if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
-      return 5;
+      return 4;
 
     // normal scenario: once we have enough blocks to make one page, commit this
     // page for the next stage: optional sector erase followed by one or more
@@ -390,31 +405,6 @@ static void request(enum dfu_request request)
   request_with_arguments(request, null, null, 0, 0);
 }
 
-static enum dfu_status enter_dfu(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
-{
-  int ret;
-
-  ret = flash_connect(ports, spec);
-  if (ret != 0) {
-    debug_printf("error: quadflash connectToDevice returned %d\n", ret);
-    return ERR_UNKNOWN;
-  }
-
-  page_size_bytes = spec[0].pageSize;
-  if (page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
-    return ERR_UNKNOWN;
-
-  // only support regular sector layout
-  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
-    return ERR_UNKNOWN;
-
-  // only support erase of exact sector size
-  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
-    return ERR_UNKNOWN;
-
-  return DFU_OK;
-}
-
 enum dfu_state dfu_getstate(void)
 {
   request(DFU_GETSTATE);
@@ -454,14 +444,11 @@ void dfu_detach(void)
   request(DFU_DETACH);
 }
 
-void dfu_bus_reset(fl_QSPIPorts &ports, const fl_QuadDeviceSpec spec[1])
+void dfu_bus_reset(struct dfu_slots argument)
 {
   if (state == APP_DETACH) {
-    enum dfu_status status = enter_dfu(ports, spec);
-    if (status != DFU_OK)
-      error_condition(status, 0);
-    else
-      normal_transition(DFU_IDLE);
+    normal_transition(DFU_IDLE);
+    slots = argument;
   }
   else if (state == APP_IDLE) {
     normal_transition(APP_IDLE);

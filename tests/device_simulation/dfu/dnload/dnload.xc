@@ -17,7 +17,7 @@
 #define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
-#include "quadflash_data_partition.h"
+#include "flash_data_partition.h"
 #include "dfu.h"
 
 fl_QSPIPorts ports = {
@@ -43,11 +43,108 @@ struct {
     char u_contents[MAX_IMAGE_SIZE];
   } partitions[2];
   int busy_countdown;
-  bool write_enabled;
-  bool page_erased[8192];
+  char page_erased[8192];   // bool type occupies 32 bits
+  char page_verified[8192]; // which makes data region offset overrun
 } fl;
 
 const char labels[2][5] = {"boot", "data"};
+
+int flash_copy_specification(fl_QuadDeviceSpec copy[1])
+{
+  copy[0] = spec[0];
+  return 0;
+}
+
+int flash_set_write_disable(void)
+{
+  return 0; // no checking of write enable
+}
+
+bool flash_is_first_whole_page_in_sector(unsigned address)
+{
+  if (address < 256)
+    return true;
+
+  debug_printf("is %d first whole page in sector: %d\n", address,
+               (address - 256) / 4096 != address / 4096);
+
+  return (address - 256) / 4096 != address / 4096;
+}
+
+int flash_erase_sector_async(unsigned address)
+{
+  debug_printf("flash_erase_sector_async 0x%X\n", address);
+
+  assert(fl.busy_countdown == 0);
+
+  for (int i = 0; i < 16; i++) {
+    int page_address = address + 256 * i;
+    int page_index = address / 256 + i;
+
+    for (int p = 0; p < 2; p++) {
+      if (page_address >= fl.partitions[p].u_start &&
+          page_address < fl.partitions[p].u_start + fl.partitions[p].u_size) {
+
+        int contents_offset = address - fl.partitions[p].u_start + 256 * i;
+        debug_printf("erase %s upgrade offset 0x%X (flash page %d)\n",
+                     labels[p], contents_offset, page_index);
+
+        memset(&fl.partitions[p].u_contents[contents_offset], 0xFF, 256);
+      }
+    }
+    fl.page_erased[page_index] = true;
+  }
+  fl.busy_countdown = 5;
+
+  return 0;
+}
+
+bool flash_is_sector_erased(unsigned address)
+{
+  return fl.page_erased[address / 256]; // it's ok to only look at first page
+}
+
+int flash_write_page_async(unsigned address, const char page[])
+{
+  debug_printf("flash_write_page_async\n");
+
+  assert(fl.busy_countdown == 0);
+  assert(fl.page_erased[address / 256]);
+
+  for (int p = 0; p < 2; p++) {
+    if (address >= fl.partitions[p].u_start &&
+        address < fl.partitions[p].u_start + fl.partitions[p].u_size) {
+
+      int contents_offset = address - fl.partitions[p].u_start;
+      debug_printf("write %s upgrade offset 0x%X (flash page %d) %02X\n",
+                   labels[p], contents_offset, address / 256, page[0]);
+
+      memcpy(&fl.partitions[p].u_contents[contents_offset], page, 256);
+    }
+  }
+
+  fl.busy_countdown = 1;
+
+  return 0;
+}
+
+int flash_verify_page(unsigned address, const char page[])
+{
+  fl.page_verified[address / 256] = true;
+  return 0; // always report success, test verification is performed later
+}
+
+bool flash_is_busy(void)
+{
+  if (fl.busy_countdown > 0) {
+    debug_printf("busy countdown %d\n", fl.busy_countdown);
+    fl.busy_countdown--;
+    return true;
+  }
+  else {
+    return false;
+  }
+}
 
 void layout_flash(int block_count, int block_size, int tail_size)
 {
@@ -70,183 +167,12 @@ void layout_flash(int block_count, int block_size, int tail_size)
   }
 
   fl.busy_countdown = 0;
-  fl.write_enabled = false;
 
   memset(fl.page_erased, 0, sizeof(fl.page_erased));
+  memset(fl.page_verified, 0, sizeof(fl.page_verified));
 }
 
-int fl_getFactoryImage(fl_BootImageInfo &bootImageInfo)
-{
-  bootImageInfo.startAddress = fl.partitions[0].f_start;
-  bootImageInfo.size = fl.partitions[0].f_size;
-  bootImageInfo.factory = 1;
-  return 0; // 0 represents a valid factory image
-}
-
-int fl_getFactoryDataImage(fl_DataImageInfo &dataImageInfo)
-{
-  dataImageInfo.startAddress = fl.partitions[1].f_start;
-  dataImageInfo.size = fl.partitions[1].f_size;
-  dataImageInfo.factory = 1;
-  return 0;
-}
-
-int fl_getNextBootImage(fl_BootImageInfo &bootImageInfo)
-{
-  return 1; // 1 simulates an empty upgrade slot
-}
-
-int fl_getNextDataImage(fl_DataImageInfo &dataImageInfo)
-{
-  return 1;
-}
-
-void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress)
-{
-  debug_printf("fl_int_eraseSector 0x%X\n", sectorAddress);
-
-  assert(cmd == 0x20);
-  assert(fl.write_enabled);
-  assert(fl.busy_countdown == 0);
-
-  for (int i = 0; i < 16; i++) {
-    int page_address = sectorAddress + 256 * i;
-    int page_index = sectorAddress / 256 + i;
-
-    for (int p = 0; p < 2; p++) {
-      if (page_address >= fl.partitions[p].u_start &&
-          page_address < fl.partitions[p].u_start + fl.partitions[p].u_size) {
-
-        int contents_offset = sectorAddress - fl.partitions[p].u_start + 256 * i;
-        debug_printf("erase %s upgrade offset 0x%X (flash page %d)\n",
-                     labels[p], contents_offset, page_index);
-
-        memset(&fl.partitions[p].u_contents[contents_offset], 0xFF, 256);
-      }
-    }
-    fl.page_erased[page_index] = true;
-  }
-  fl.busy_countdown = 5;
-}
-
-void fl_int_write(unsigned char cmd,
-                  unsigned int pageAddress,
-                  const unsigned char data[num_bytes],
-                  unsigned int num_bytes)
-{
-  debug_printf("fl_int_write\n");
-
-  assert(cmd == 0x02);
-  assert(fl.write_enabled);
-  assert(fl.busy_countdown == 0);
-  assert(num_bytes == 256); // only expect whole page writes
-  assert(fl.page_erased[pageAddress / 256]);
-
-  for (int p = 0; p < 2; p++) {
-    if (pageAddress >= fl.partitions[p].u_start &&
-        pageAddress < fl.partitions[p].u_start + fl.partitions[p].u_size) {
-
-      int contents_offset = pageAddress - fl.partitions[p].u_start;
-      debug_printf("write %s upgrade offset 0x%X (flash page %d)\n",
-                   labels[p], contents_offset, pageAddress / 256);
-
-      memcpy(&fl.partitions[p].u_contents[contents_offset], data, num_bytes);
-    }
-  }
-
-  fl.busy_countdown = 1;
-}
-
-int fl_readPage(unsigned int address, unsigned char data[])
-{
-  debug_printf("fl_readPage 0x%X\n", address);
-
-  assert(fl.busy_countdown == 0);
-
-  for (int p = 0; p < 2; p++) {
-    if (address >= fl.partitions[p].u_start &&
-        address < fl.partitions[p].u_start + fl.partitions[p].u_size) {
-
-      int contents_offset = address - fl.partitions[p].u_start;
-      debug_printf("read %s upgrade offset 0x%X (flash page %d)\n",
-                   labels[p], contents_offset, address / 256);
-
-      memcpy(data, &fl.partitions[p].u_contents[contents_offset], 256);
-    }
-  }
-
-  return 0;
-}
-
-void fl_int_read(unsigned char cmd,
-                 unsigned int address,
-                 unsigned char destination[num_bytes],
-                 unsigned int num_bytes)
-{
-  debug_printf("fl_int_read 0x%X %d\n", address, num_bytes);
-  assert(0);
-}
-
-unsigned fl_getDataPartitionBase()
-{
-  return fl.partitions[1].base;
-}
-
-int fl_setWritability(int enable)
-{
-  fl.write_enabled = enable;
-  return 0;
-}
-
-int fl_getBusyStatus(void)
-{
-  if (fl.busy_countdown > 0) {
-    debug_printf("busy countdown %d\n", fl.busy_countdown);
-    fl.busy_countdown--;
-    return 1;
-  }
-  else {
-    return 0;
-  }
-}
-
-int fl_connectToDevice(fl_QSPIPorts &ports,
-                       const fl_QuadDeviceSpec specs[], unsigned n)
-{
-  return 0; // 0 indicates a matching f device found and connected to
-}
-
-int fl_disconnect(void)
-{
-  return 0;
-}
-
-unsigned fl_getPageSize(void)
-{
-  return 256;
-}
-
-int fl_getSectorSize(int sectorNum)
-{
-  return 4096;
-}
-
-int fl_getNumSectors(void)
-{
-  return 512;
-}
-
-int fl_getSectorAddress(int sectorNum)
-{
-  return sectorNum * 4096;
-}
-
-void fl_saveSpecPointer(const fl_QuadDeviceSpec spec[1])
-{
-  // nothing
-}
-
-void random_sequence(char seq[], int length)
+void make_test_data(char seq[], int length)
 {
   for (int i = 0; i < length; i++) {
     unsigned x;
@@ -297,6 +223,7 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
             int block_size, int block_count, int tail_size, int repeats)
 {
   enum dfu_state state;
+  struct dfu_slots slots = {fl.partitions[0].u_start, fl.partitions[1].u_start};
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -305,7 +232,7 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  dfu_bus_reset(ports, spec);
+  dfu_bus_reset(slots);
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 
@@ -340,6 +267,10 @@ void verify(int partitions, const char images[2][MAX_IMAGE_SIZE])
     if (partitions & (1 << p)) {
       debug_printf("verify %d\n", p);
       for (int i = 0; i < fl.partitions[p].u_size; i++) {
+        int address = fl.partitions[p].u_start + i;
+        if (address % 256 == 0) {
+          assert(fl.page_verified[address / 256]);
+        }
         if (images[p][i] != fl.partitions[p].u_contents[i]) {
           debug_printf("byte %d mismatch: 0x%02X 0x%02X\n",
                         i, images[p][i], fl.partitions[p].u_contents[i]);
@@ -372,8 +303,8 @@ int main(unsigned argc, char * unsafe argv[argc])
 
   layout_flash(block_count, block_size, tail_size);
 
-  random_sequence(images[0], fl.partitions[0].u_size);
-  random_sequence(images[1], fl.partitions[1].u_size);
+  make_test_data(images[0], fl.partitions[0].u_size);
+  make_test_data(images[1], fl.partitions[1].u_size);
 
   dnload(partitions, images, block_size, block_count, tail_size, repeats);
 
