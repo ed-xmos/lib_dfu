@@ -1,4 +1,4 @@
-# Copyright (c) 2020, XMOS Ltd, All rights reserved
+# Copyright (c) 2019-2020, XMOS Ltd, All rights reserved
 import subprocess, os
 
 def test_clrstatus():
