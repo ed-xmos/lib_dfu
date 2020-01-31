@@ -33,29 +33,31 @@ pipeline {
         }
       }
     }
-    stage('Device simulation tests') {
-      steps {
-        dir("${REPO}/tests/device_simulation") {
-          runWaf('.')
-          viewEnv() {
-            runPytest()
+    parallel {
+      stage('Device simulation tests') {
+        steps {
+          dir("${REPO}/tests/device_simulation") {
+            runWaf('.')
+            viewEnv() {
+              runPytest()
+            }
           }
         }
       }
-    }
-    stage('Build of hardware system tests') {
-      steps {
-        dir("${REPO}/tests/system_hardware") {
-          runWaf('.')
+      stage('Build of hardware system tests') {
+        steps {
+          dir("${REPO}/tests/system_hardware") {
+            runWaf('.')
+          }
         }
       }
-    }
-    stage('Host tests') {
-      steps {
-        dir("${REPO}/tests/host") {
-          sh 'make'
-          viewEnv() {
-            runPytest()
+      stage('Host tests') {
+        steps {
+          dir("${REPO}/tests/host") {
+            sh 'make'
+            viewEnv() {
+              runPytest()
+            }
           }
         }
       }
