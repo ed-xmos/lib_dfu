@@ -358,7 +358,7 @@ static void request_with_arguments(enum dfu_request request,
           }
           else {
             normal_transition(DFU_IDLE);
-            // not disconnecting from flash to allow additional operations
+            // flash could be disconnected now
             ret = flash_set_write_disable();
             if (ret != 0)
               error_condition(ERR_WRITE, ret);
