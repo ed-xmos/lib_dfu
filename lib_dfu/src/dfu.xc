@@ -9,11 +9,15 @@
 #define DEBUG_PRINT_ENABLE_DFU 0
 #include "debug_print.h"
 
-#include "flash_data_partition.h"
 #include "dfu_buffer_converter.h"
+#include "dfu_flash.h"
 #include "dfu.h"
 
 #define POLL_TIMEOUT_MSEC 1
+
+// only supporting one page size (while we could supported a different page
+// size supplied in flash specification there has been no need)
+#define DFU_PAGE_SIZE 256
 
 static enum dfu_state state = APP_IDLE;
 static enum dfu_status status = DFU_OK;
@@ -21,9 +25,11 @@ static int error_info = 0;
 
 static struct buffer_converter converter;
 
-static bool flash_checked = false;
 static unsigned page_size_bytes = 0;
-static struct dfu_slots slots = {0, 0};
+
+static struct {
+  unsigned boot, data;
+} upgrade_slots = {0, 0};
 
 static struct {
   int next_page_address;
@@ -151,28 +157,6 @@ static void sub_transition_dnload(enum dnload_sub_state new)
   dnload.sub_state = new;
 }
 
-static int check_flash(void)
-{
-  fl_QuadDeviceSpec spec[1];
-
-  if (flash_copy_specification(spec) != 0)
-    return 1;
-
-  page_size_bytes = spec[0].pageSize;
-  if (page_size_bytes == 0 || page_size_bytes > DFU_PAGE_SIZE_MAX_BYTES)
-    return 2;
-
-  // only support regular sector layout
-  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
-    return 3;
-
-  // only support erase of exact sector size
-  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
-    return 4;
-
-  return 0;
-}
-
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = true;
@@ -229,33 +213,22 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
 static int dnload_block(const char write_block[], int block_num, int block_size_bytes)
 {
-  // perform sanity checks on provided flash including sector layout or page size
-  // save the page size for download/upload addressing
-  // and ensure that flash is actually connected
-  if (!flash_checked) {
-    if (check_flash() != 0)
-      return 1;
-
-    flash_checked = true;
-  }
-
   // it should be an error for the sub-state machine to go out of sync
   // eg host omitting a GETSTATUS request
   if (dnload.sub_state != DNLOAD_SYNC)
-    return 2;
+    return 1;
 
   // there should never be an unprocessed page when DNLOAD request is sent
   // an unprocessed page is written out first with repeated GETSTATUS requests
   if (dnload.page_ready)
-    return 3;
+    return 2;
 
   if (block_size_bytes > 0) {
     // peek at main state here to determine if this is the first DNLOAD block of
     // a given operation so we can suitably start things off
     if (state == DFU_IDLE) {
       dnload.next_page_address = block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER
-                                 ? slots.data_address :
-                                   slots.boot_address;
+                                 ? upgrade_slots.data : upgrade_slots.boot;
       buffer_converter_reset(converter);
     }
 
@@ -263,7 +236,7 @@ static int dnload_block(const char write_block[], int block_num, int block_size_
     // in the queue of blocks awaiting conversion to pages
     // for some reason there are have been not enough pulls or too many pushes
     if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
-      return 4;
+      return 3;
 
     // normal scenario: once we have enough blocks to make one page, commit this
     // page for the next stage: optional sector erase followed by one or more
@@ -444,18 +417,14 @@ void dfu_detach(void)
   request(DFU_DETACH);
 }
 
-void dfu_bus_reset(struct dfu_slots argument)
+void dfu_bus_reset(void)
 {
-  if (state == APP_DETACH) {
+  if (state == APP_DETACH)
     normal_transition(DFU_IDLE);
-    slots = argument;
-  }
-  else if (state == APP_IDLE) {
+  else if (state == APP_IDLE)
     normal_transition(APP_IDLE);
-  }
-  else {
+  else
     error_condition(ERR_USBR, state);
-  }
 }
 
 void dfu_timeout_detach(void)
@@ -478,4 +447,29 @@ void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
 int dfu_get_error_info(void)
 {
   return error_info;
+}
+
+int dfu_locate_upgrade_slots(void)
+{
+  if (flash_locate_boot_upgrade_slot(upgrade_slots.boot) != 0)
+    return 1;
+
+  if (flash_locate_data_upgrade_slot(upgrade_slots.data) != 0)
+    return 2;
+
+  return 0;
+}
+
+bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
+{
+  if (spec[0].pageSize != DFU_PAGE_SIZE)
+    return false;
+
+  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
+    return false;
+
+  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
+    return false;
+
+  return true;
 }
