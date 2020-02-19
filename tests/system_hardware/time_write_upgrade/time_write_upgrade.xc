@@ -55,8 +55,13 @@ static void t_end(void) {
 void write_begin(void)
 {
   enum dfu_state state;
-  struct dfu_slots slots = {0, 0};
   int ret;
+
+  ret = fl_connectToDevice(ports, spec, 1);
+  assert(ret == 0);
+
+  dfu_locate_upgrade_slots();
+  fl_disconnect();
 
   t_start(1);
   state = dfu_getstate();
@@ -71,17 +76,11 @@ void write_begin(void)
   t_end();
   assert(state == APP_DETACH);
 
-  ret = flash_connect(ports, spec);
-  assert(ret == 0);
-
-  ret = flash_locate_upgrade_slot(slots.boot_address);
-  assert(ret == 0);
-
-  ret = flash_locate_data_upgrade_slot(slots.data_address);
+  ret = fl_connectToDevice(ports, spec, 1);
   assert(ret == 0);
 
   t_start(4);
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   t_end();
   t_start(5);
   state = dfu_getstate();
@@ -161,7 +160,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   fclose(move(boot_file));
   fclose(move(data_file));
 
-  flash_disconnect();
+  fl_disconnect();
 
   printstr("PASS\n");
   return 0;
