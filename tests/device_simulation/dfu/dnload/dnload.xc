@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <print.h>
 #include <string.h>
-#include <quadflash.h>
 
 #define _Bool int
 #include <stdbool.h>
@@ -17,19 +16,7 @@
 #define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
-#include "flash_data_partition.h"
 #include "dfu.h"
-
-fl_QSPIPorts ports = {
-  PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
-};
-
-fl_QuadDeviceSpec spec[] = { // IS25LQ016B
-  { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
-    PROT_TYPE_NONE, {{0,0},{0x00,0x00}}, 0x02, 0xEB, 1,
-    SECTOR_LAYOUT_REGULAR, {4096,{0,{0}}}, 0x05, 0x01, 0x01
-  }
-};
 
 #define MAX_IMAGE_SIZE 20480
 
@@ -43,21 +30,20 @@ struct {
     char u_contents[MAX_IMAGE_SIZE];
   } partitions[2];
   int busy_countdown;
-  char page_erased[8192];   // bool type occupies 32 bits
-  char page_verified[8192]; // which makes data region offset overrun
+  char page_erased[8192];   // use 8bit char instead of 32bit bool
+  char page_verified[8192]; // 32bit would make data region offset overrun
 } fl;
 
 const char labels[2][5] = {"boot", "data"};
 
-int flash_copy_specification(fl_QuadDeviceSpec copy[1])
-{
-  copy[0] = spec[0];
-  return 0;
-}
-
 int flash_set_write_disable(void)
 {
   return 0; // no checking of write enable
+}
+
+int flash_get_page_size(void)
+{
+  return 256;
 }
 
 bool flash_is_first_whole_page_in_sector(unsigned address)
@@ -92,7 +78,7 @@ int flash_erase_sector_async(unsigned address)
         memset(&fl.partitions[p].u_contents[contents_offset], 0xFF, 256);
       }
     }
-    fl.page_erased[page_index] = true;
+    fl.page_erased[page_index] = (char)true;
   }
   fl.busy_countdown = 5;
 
@@ -130,7 +116,8 @@ int flash_write_page_async(unsigned address, const char page[])
 
 int flash_verify_page(unsigned address, const char page[])
 {
-  fl.page_verified[address / 256] = true;
+  debug_printf("flash_verify_page 0x%X\n", address);
+  fl.page_verified[address / 256] = (char)true;
   return 0; // always report success, test verification is performed later
 }
 
@@ -144,6 +131,18 @@ bool flash_is_busy(void)
   else {
     return false;
   }
+}
+
+int flash_locate_boot_upgrade_slot(unsigned &address)
+{
+  address = fl.partitions[0].u_start;
+  return 0;
+}
+
+int flash_locate_data_upgrade_slot(unsigned &address)
+{
+  address = fl.partitions[1].u_start;
+  return 0;
 }
 
 void layout_flash(int block_count, int block_size, int tail_size)
@@ -223,7 +222,9 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
             int block_size, int block_count, int tail_size, int repeats)
 {
   enum dfu_state state;
-  struct dfu_slots slots = {fl.partitions[0].u_start, fl.partitions[1].u_start};
+
+  int ret = dfu_locate_upgrade_slots();
+  assert(ret == 0);
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -232,7 +233,7 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 

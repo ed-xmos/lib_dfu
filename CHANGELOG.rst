@@ -6,10 +6,6 @@ DFU library change log
 
   * First release
 
-  * Changes to dependencies:
-
-    - lib_flash_data_partition: Added dependency 2.0.0
-
 0.0.1
 -----
 

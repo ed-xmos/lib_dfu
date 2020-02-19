@@ -3,7 +3,7 @@
 #define __dfu_types_h__
 
 #define DFU_BLOCK_SIZE_MAX_BYTES 512
-#define DFU_PAGE_SIZE_MAX_BYTES 256
+#define DFU_MAX_PAGE_SIZE_BYTES 256
 #define DFU_BLOCK_NUM_DATA_IMAGE_MARKER 0x8000
 
 enum dfu_state {

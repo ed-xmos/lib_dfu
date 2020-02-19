@@ -12,7 +12,6 @@
 #define XASSERT_ENABLE_LINE_NUMBERS 1
 #include "xassert.h"
 
-#include "flash_data_partition.h"
 #include "dfu.h"
 
 fl_QSPIPorts ports = {
@@ -29,8 +28,13 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
 void write_begin(int upgrade_address)
 {
   enum dfu_state state;
-  struct dfu_slots slots = {0, 0};
   int ret;
+
+  ret = fl_connectToDevice(ports, spec, 1);
+  assert(ret == 0);
+
+  dfu_locate_upgrade_slots();
+  fl_disconnect();
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -39,13 +43,10 @@ void write_begin(int upgrade_address)
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  ret = flash_connect(ports, spec);
+  ret = fl_connectToDevice(ports, spec, 1);
   assert(ret == 0);
 
-  ret = flash_locate_upgrade_slot(slots.boot_address);
-  assert(ret == 0);
-
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 }
@@ -148,6 +149,8 @@ int main(unsigned argc, char * unsafe argv[argc])
   printf("verified\n");
 
   fclose(move(bin_file));
+
+  fl_disconnect();
 
   printstr("PASS\n");
   return 0;

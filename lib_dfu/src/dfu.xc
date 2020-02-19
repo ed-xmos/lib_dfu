@@ -15,17 +15,11 @@
 
 #define POLL_TIMEOUT_MSEC 1
 
-// only supporting one page size (while we could supported a different page
-// size supplied in flash specification there has been no need)
-#define DFU_PAGE_SIZE 256
-
 static enum dfu_state state = APP_IDLE;
 static enum dfu_status status = DFU_OK;
 static int error_info = 0;
 
 static struct buffer_converter converter;
-
-static unsigned page_size_bytes = 0;
 
 static struct {
   unsigned boot, data;
@@ -33,7 +27,7 @@ static struct {
 
 static struct {
   int next_page_address;
-  char page[DFU_PAGE_SIZE_MAX_BYTES];
+  char page[DFU_MAX_PAGE_SIZE_BYTES];
   bool page_ready;
   enum dnload_sub_state {
     DNLOAD_SYNC,
@@ -196,6 +190,8 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
         if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
           return ERR_VERIFY;
 
+        const int page_size_bytes = flash_get_page_size();
+
         sub_transition_dnload(DNLOAD_SYNC);
 
         dnload.next_page_address += page_size_bytes;
@@ -211,8 +207,11 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
   return DFU_OK;
 }
 
-static int dnload_block(const char write_block[], int block_num, int block_size_bytes)
+static int dnload_block(const char write_block[], int block_num,
+                        int block_size_bytes)
 {
+  const int page_size_bytes = flash_get_page_size();
+
   // it should be an error for the sub-state machine to go out of sync
   // eg host omitting a GETSTATUS request
   if (dnload.sub_state != DNLOAD_SYNC)
@@ -462,7 +461,7 @@ int dfu_locate_upgrade_slots(void)
 
 bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
 {
-  if (spec[0].pageSize != DFU_PAGE_SIZE)
+  if (spec[0].pageSize > DFU_MAX_PAGE_SIZE_BYTES)
     return false;
 
   if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
