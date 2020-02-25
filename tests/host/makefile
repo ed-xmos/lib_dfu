@@ -3,6 +3,9 @@ all:
 	find . -mindepth 3 -name makefile | while read f ; do \
 	  echo `dirname +$$f` ; make -C `dirname $$f` all ; done
 
+	cmake  ../../host/suffix_generator
+	make -C  ../../host/suffix_generator
+
 clean:
 	find . -mindepth 3 -name makefile | while read f ; do \
 	  echo `dirname +$$f` ; make -C `dirname $$f` clean ; done
