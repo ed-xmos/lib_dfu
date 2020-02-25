@@ -52,6 +52,15 @@ pipeline {
             }
           }
         }
+        stage('Build host app') {
+          steps {
+            dir("${REPO}/host/data_partition_generator") {
+              sh "cmake ."                                                                                                      
+              sh "make"
+              stash name: "host-app", includes: "bin/dfu_suffix_generator"
+            }
+          }
+        }
         stage('Host tests') {
           steps {
             dir("${REPO}/tests/host") {
@@ -67,6 +76,8 @@ pipeline {
   }
   post {
     success {
+      unstash "host-app"
+      archiveArtifacts artifacts: "bin/dfu_suffix_generator", fingerprint: true
       updateViewfiles()
     }
     cleanup {

@@ -6,3 +6,7 @@ Pipfile.lock
 # (normal parsing is based on shell wildcards)
 */.venv*
 */build/*
+*/CMakeFiles/*
+CMakeFiles
+CMakeCache.txt
+cmake_install.cmake
