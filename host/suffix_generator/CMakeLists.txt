@@ -7,7 +7,7 @@ set (INCLUDE_DIRS
 )
 
 set (SOURCE_FILES
-        src/suffix_generator.c
+        src/dfu_suffix_generator.c
         src/crc.c
 )
 
