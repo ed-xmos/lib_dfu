@@ -12,7 +12,6 @@
 int main(void)
 {
   enum dfu_state state;
-  struct dfu_slots slots = {4096, 8192};
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -21,7 +20,7 @@ int main(void)
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 

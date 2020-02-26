@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <print.h>
 #include <string.h>
-#include <quadflash.h>
 
 #define _Bool int
 #include <stdbool.h>
@@ -17,28 +16,13 @@
 #define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
 
-#include "flash_data_partition.h"
 #include "dfu.h"
 
-fl_QSPIPorts ports = {
-  PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, XS1_CLKBLK_1
-};
-
-fl_QuadDeviceSpec spec[] = { // IS25LQ016B
-  { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
-    PROT_TYPE_NONE, {{0,0},{0x00,0x00}}, 0x02, 0xEB, 1,
-    SECTOR_LAYOUT_REGULAR, {4096,{0,{0}}}, 0x05, 0x01, 0x01
-  }
-};
+unsigned boot_slot_address = 0;
+unsigned data_slot_address = 0;
 
 unsigned first_test_address = 0;
 unsigned erase_sector_address = 0;
-
-int flash_copy_specification(fl_QuadDeviceSpec copy[1])
-{
-  copy[0] = spec[0];
-  return 0;
-}
 
 bool flash_is_first_whole_page_in_sector(unsigned address)
 {
@@ -57,23 +41,63 @@ bool flash_is_busy(void)
   return false;
 }
 
+int flash_locate_boot_upgrade_slot(unsigned &address)
+{
+  address = boot_slot_address;
+  return 0;
+}
+
+int flash_locate_data_upgrade_slot(unsigned &address)
+{
+  address = data_slot_address;
+  return 0;
+}
+
+bool flash_is_sector_erased(unsigned address)
+{
+  return false;
+}
+
+int flash_set_write_disable(void)
+{
+  return 0;
+}
+
+int flash_write_page_async(unsigned address, const char page[])
+{
+  return 0;
+}
+
+int flash_verify_page(unsigned address, const char page[])
+{
+  return 0;
+}
+
+int flash_get_page_size(void)
+{
+  return 0;
+}
+
 int main(unsigned argc, char * unsafe argv[argc])
 {
-  struct dfu_getstatus ret;
+  struct dfu_getstatus getstatus;
   enum dfu_state state;
-  struct dfu_slots slots = {0, 0};
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
   int block_num = -1;
   unsigned expected = ~0;
+  int ret;
 
   assert(argc == 5);
 
   unsafe {
-    sscanf(argv[1], "%u", &slots.boot_address);
-    sscanf(argv[2], "%u", &slots.data_address);
+    sscanf(argv[1], "%u", &boot_slot_address);
+    sscanf(argv[2], "%u", &data_slot_address);
     sscanf(argv[3], "0x%x", &block_num);
     sscanf(argv[4], "%u", &expected);
   }
+
+  ret = dfu_locate_upgrade_slots();
+  assert(ret == 0);
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -82,7 +106,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   state = dfu_getstate();
   assert(state == APP_DETACH);
 
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 
@@ -91,8 +115,8 @@ int main(unsigned argc, char * unsafe argv[argc])
   state = dfu_getstate();
   assert(state == DFU_DNLOAD_SYNC);
 
-  ret = dfu_getstatus();
-  assert(ret.status == DFU_OK);
+  getstatus = dfu_getstatus();
+  assert(getstatus.status == DFU_OK);
 
   assert(erase_sector_address == expected);
   assert(first_test_address == expected);

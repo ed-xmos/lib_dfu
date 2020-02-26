@@ -11,7 +11,6 @@ int main(void)
 {
   struct dfu_getstatus ret;
   enum dfu_state state;
-  struct dfu_slots slots = {4096, 8192};
 
   state = dfu_getstate();
   assert(state == APP_IDLE);
@@ -21,7 +20,7 @@ int main(void)
   assert(ret.state == APP_DETACH);
   assert(ret.status == DFU_OK);
 
-  dfu_bus_reset(slots);
+  dfu_bus_reset();
   ret = dfu_getstatus();
   assert(ret.state == DFU_IDLE);
   assert(ret.status == DFU_OK);
