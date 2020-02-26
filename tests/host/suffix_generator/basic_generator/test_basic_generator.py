@@ -7,7 +7,7 @@ HOME = Path(__file__).resolve().parent
 
 def test_basic_generator():
     os.chdir(HOME)
-    cmd = ['../../../../host/suffix_generator/bin/dfu_suffix_generator',
+    cmd = ['bin/dfu_suffix_generator',
            '0x20B1', '0x0014', 'input.bin', 'output.bin' ]
     try:
         output = subprocess.check_output(cmd)
