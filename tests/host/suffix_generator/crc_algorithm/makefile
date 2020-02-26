@@ -1,5 +1,5 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
-DUT_PATH = ../../../../host/suffix_generator
+DUT_PATH = ../../../../host/suffix_generator/src
 CFLAGS = -g -O2 -Wall -I ${DUT_PATH}
 EXECUTABLE = bin/crc_algorithm
 MKDIR ?= mkdir
