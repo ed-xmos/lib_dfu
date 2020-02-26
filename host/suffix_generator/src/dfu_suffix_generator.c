@@ -14,14 +14,13 @@ int main(int argc, char **argv)
 {
   bool correct_usage = false;
   unsigned vendor_id, product_id;
-  char file_in[100];
-  char file_out[100];
+  const char *in_file = NULL, *out_file = NULL;
 
   if (argc == 5) {
     vendor_id = strtoul(argv[1], NULL, 0);
     product_id = strtoul(argv[2], NULL, 0);
-    strcpy(file_in, argv[3]);
-    strcpy(file_out, argv[4]);
+    in_file = argv[3];
+    out_file = argv[4];
 
     if (vendor_id != 0 && product_id != 0)
       correct_usage = true;
@@ -38,22 +37,22 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID BIN_FILE_IN DFU_FILE_OUT\n\
 
   unsigned crc = crc_init();
   char buf[1024];
-  FILE * file_in_stream = fopen(file_in, "r");
-  FILE * file_out_stream = fopen(file_out, "w");
+  FILE * in_stream = fopen(in_file, "r");
+  FILE * out_stream = fopen(out_file, "w");
   size_t read = 0;
-  if (file_in_stream && file_out_stream) {
-    while ((read = fread(buf, 1, sizeof(buf), file_in_stream)) != 0) {
+  if (in_stream && out_stream) {
+    while ((read = fread(buf, 1, sizeof(buf), in_stream)) != 0) {
             
       for (int i = 0; i < read; i++) {
         crc_step(&crc, buf[i]);
       }
     
-      if (fwrite(buf, 1, read, file_out_stream) != read) {
+      if (fwrite(buf, 1, read, out_stream) != read) {
         fprintf(stderr, "error: I/O write and read mismatch\n");
         exit(1);
       }
     }
-    fclose(file_in_stream);
+    fclose(in_stream);
 
     crc = crc_finish(crc);
 
@@ -70,7 +69,7 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID BIN_FILE_IN DFU_FILE_OUT\n\
     for (int i = 0; i < sizeof(reversed); i++) {
       reversed[i] = ((char*)&suffix)[sizeof(reversed) - 1 - i];
     }
-    if (fwrite(reversed, sizeof(reversed), 1, file_out_stream) != 1) {
+    if (fwrite(reversed, sizeof(reversed), 1, out_stream) != 1) {
       fprintf(stderr, "error: I/O write of suffix invalid return value\n");
       exit(1);
     }

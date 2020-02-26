@@ -54,7 +54,7 @@ pipeline {
         }
         stage('Build host app') {
           steps {
-            dir("${REPO}/host/data_partition_generator") {
+            dir("${REPO}/host/suffix_generator") {
               sh "cmake ."                                                                                                      
               sh "make"
               stash name: "host-app", includes: "bin/dfu_suffix_generator"
