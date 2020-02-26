@@ -33,6 +33,15 @@ pipeline {
         }
       }
     }
+    stage('Build host app') {
+      steps {
+        dir("${REPO}/host/suffix_generator") {
+          sh "cmake ."
+          sh "make"
+          stash name: "host-app", includes: "bin/dfu_suffix_generator"
+        }
+      }
+    }
     stage('Tests') {
       parallel {
         stage('Device simulation tests') {
@@ -49,15 +58,6 @@ pipeline {
           steps {
             dir("${REPO}/tests/system_hardware") {
               runWaf('.')
-            }
-          }
-        }
-        stage('Build host app') {
-          steps {
-            dir("${REPO}/host/suffix_generator") {
-              sh "cmake ."                                                                                                      
-              sh "make"
-              stash name: "host-app", includes: "bin/dfu_suffix_generator"
             }
           }
         }
