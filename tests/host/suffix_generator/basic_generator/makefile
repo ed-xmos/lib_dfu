@@ -1,6 +1,6 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
 DUT_PATH = ../../../../host/suffix_generator
-EXECUTABLE = suffix_generator
+EXECUTABLE = dfu_suffix_generator
 MKDIR ?= mkdir
 CP ?= cp
 
