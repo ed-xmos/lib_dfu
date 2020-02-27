@@ -9,7 +9,7 @@ image produced by the appropriate generator utility (Flash data partition
 library). Output (final.bin below) is a version of the same with DFU suffix
 appended.
 
-    suffix_generator 0x20B1 0x0014 image.bin final.bin
+    dfu_suffix_generator 0x20B1 0x0014 image.bin final.bin
 
 BCD device
 ----------
