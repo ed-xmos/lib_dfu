@@ -40,8 +40,21 @@ int flash_locate_data_upgrade_slot(unsigned &address)
 
 int flash_erase_sector_async(unsigned address)
 {
-  if (fl_setWritability(1) != 0)
+  // protect first sector of boot partition
+  if (address >= fl_getSectorAddress(0) && address < fl_getSectorEndAddress(0))
     return 1;
+
+  // protect first sector of data partition
+  if (address >= fl_getDataPartitionBase() &&
+      address < fl_getSectorEndAddress(fl_getSectorContaining(fl_getDataPartitionBase())))
+    return 2;
+
+  // disallow wrap-around flash address in order to protect boot partition
+  if (address >= fl_getFlashSize())
+    return 3;
+
+  if (fl_setWritability(1) != 0)
+    return 4;
 
   unsafe {
     fl_int_eraseSector(g_flashAccess->sectorEraseCommand, address);
@@ -91,8 +104,21 @@ int flash_write_page_async(unsigned address, const char page[])
 {
   int page_size = fl_getPageSize();
 
-  if (fl_setWritability(1) != 0)
+  // protect first sector of boot partition
+  if (address >= fl_getSectorAddress(0) && address < fl_getSectorEndAddress(0))
     return 1;
+
+  // protect first sector of data partition
+  if (address >= fl_getDataPartitionBase() &&
+      address < fl_getSectorEndAddress(fl_getSectorContaining(fl_getDataPartitionBase())))
+    return 2;
+
+  // disallow wrap-around flash address in order to protect boot partition
+  if (address >= fl_getFlashSize())
+    return 3;
+
+  if (fl_setWritability(1) != 0)
+    return 4;
 
   unsafe {
     fl_int_write(g_flashAccess->programPageCommand, address, page, page_size);
