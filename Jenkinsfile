@@ -27,20 +27,48 @@ pipeline {
     stage('xCORE builds') {
       steps {
         dir("${REPO}") {
-          //xcoreAllAppsBuild('examples')
-          //xcoreAllAppNotesBuild('examples')
           dir("${REPO}") {
             runXdoc('doc')
           }
         }
       }
     }
-    stage('Tests') {
+    stage('Build host app') {
       steps {
-        dir("${REPO}/tests") {
-          runWaf('.')
-          viewEnv() {
-            runPytest()
+        dir("${REPO}/host/suffix_generator") {
+          sh "cmake ."
+          sh "make"
+          stash name: "host-app", includes: "bin/dfu_suffix_generator"
+        }
+      }
+    }
+    stage('Tests') {
+      parallel {
+        stage('Device simulation tests') {
+          steps {
+            dir("${REPO}/tests/device_simulation") {
+              runWaf('.')
+              viewEnv() {
+                runPytest()
+              }
+            }
+          }
+        }
+        stage('Build of hardware system tests') {
+          steps {
+            dir("${REPO}/tests/system_hardware") {
+              runWaf('.')
+            }
+          }
+        }
+        stage('Host tests') {
+          steps {
+            dir("${REPO}/tests/host") {
+              sh 'make'
+              viewEnv() {
+                runPytest()
+              }
+            }
           }
         }
       }
@@ -48,6 +76,8 @@ pipeline {
   }
   post {
     success {
+      unstash "host-app"
+      archiveArtifacts artifacts: "bin/dfu_suffix_generator", fingerprint: true
       updateViewfiles()
     }
     cleanup {

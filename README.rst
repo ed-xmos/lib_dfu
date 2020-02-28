@@ -8,19 +8,18 @@ DFU library
 DFU library
 -----------
 
-TODO ...
+Device firmware upgrade
 
 Features
 ........
 
-  - TODO
-  - ...
+  - One upgrade slot
 
 Components
 ...........
 
- * TODO
- * ...
+Device and host code for requests such as *get status* and *download* that
+implement firmware upgrade with data partition support.
 
 Software version and dependencies
 .................................
