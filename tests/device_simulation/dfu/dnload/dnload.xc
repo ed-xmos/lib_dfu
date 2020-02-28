@@ -46,6 +46,16 @@ int flash_get_page_size(void)
   return 256;
 }
 
+int flash_get_size(void)
+{
+  return 2097152;
+}
+
+int flash_get_data_partition_base(void)
+{
+  return 1048576;
+}
+
 bool flash_is_first_whole_page_in_sector(unsigned address)
 {
   if (address < 256)
@@ -240,7 +250,7 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
   for (int i = 0; i < repeats; i++) {
     for (int p = 0; p < 2; p++) {
       if (partitions & (1 << p)) {
-        const unsigned marker = (p << 15);
+        const unsigned marker = DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
         for (int i = 0; i < block_count; i++) {
           debug_printf("dnload block %d 0x%04X (%d bytes)\n",
                        i, marker | i, block_size);

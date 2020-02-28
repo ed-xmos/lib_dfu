@@ -78,12 +78,17 @@ int flash_get_page_size(void)
   return 0;
 }
 
+int flash_get_data_partition_base(void)
+{
+  return 1048576;
+}
+
 int main(unsigned argc, char * unsafe argv[argc])
 {
   struct dfu_getstatus getstatus;
   enum dfu_state state;
   char block[DFU_BLOCK_SIZE_MAX_BYTES];
-  int block_num = -1;
+  int partition = -1;
   unsigned expected = ~0;
   int ret;
 
@@ -92,7 +97,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   unsafe {
     sscanf(argv[1], "%u", &boot_slot_address);
     sscanf(argv[2], "%u", &data_slot_address);
-    sscanf(argv[3], "0x%x", &block_num);
+    sscanf(argv[3], "0x%x", &partition);
     sscanf(argv[4], "%u", &expected);
   }
 
@@ -110,6 +115,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   state = dfu_getstate();
   assert(state == DFU_IDLE);
 
+  int block_num = partition == 2 ? DFU_BLOCK_NUM_DATA_IMAGE_MARKER : 0;
   dfu_dnload(block_num, sizeof(block), block);
   
   state = dfu_getstate();

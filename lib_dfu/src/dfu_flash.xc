@@ -136,8 +136,19 @@ int flash_verify_page(unsigned address, const char page[])
   return safememcmp(verify, page, page_size);
 }
 
+int flash_get_data_partition_base(void)
+{
+  return fl_getDataPartitionBase();
+}
+
 int flash_get_page_size(void)
 {
   return fl_getPageSize();
 }
+
+int flash_get_size(void)
+{
+  return fl_getFlashSize();
+}
+
 #endif

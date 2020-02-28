@@ -93,4 +93,23 @@ int flash_get_page_size(void)
   assert(0);
   return -1;
 }
+
+__attribute__((weak))
+int flash_get_data_partition_base(void);
+
+int flash_get_data_partition_base(void)
+{
+  assert(0);
+  return -1;
+}
+
+__attribute__((weak))
+int flash_get_size(void);
+
+int flash_get_size(void)
+{
+  assert(0);
+  return -1;
+}
+
 #endif

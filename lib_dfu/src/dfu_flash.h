@@ -31,4 +31,10 @@ int flash_verify_page(unsigned address, const char page[]);
 
 int flash_write_page_async(unsigned address, const char page[]);
 
+int flash_get_data_partition_base(void);
+
+int flash_get_page_size(void);
+
+int flash_get_size(void);
+
 #endif

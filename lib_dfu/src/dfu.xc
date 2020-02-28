@@ -132,6 +132,9 @@ static void normal_transition(enum dfu_state new)
 
 static void error_condition(enum dfu_status code, int extra)
 {
+  if (dnload.page_ready)
+    dnload.page_ready = false;
+
   unsafe {
     debug_printf("DFU: %s -> DFU_ERROR (%s %d)\n",
                  state_str(state), status_str(code), extra);
@@ -151,6 +154,18 @@ static void sub_transition_dnload(enum dnload_sub_state new)
   dnload.sub_state = new;
 }
 
+static bool is_address_in_an_upgrade_slot(int address)
+{
+  if (address >= upgrade_slots.boot && address < flash_get_data_partition_base())
+    return true;
+
+  if (address >= upgrade_slots.data && address < flash_get_size())
+    return true;
+
+  return false;
+}
+
+
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = true;
@@ -159,12 +174,20 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
     case DNLOAD_SYNC:
       if (dnload.page_ready) {
         if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
+          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+            return ERR_ADDRESS;
+
           sub_transition_dnload(DNLOAD_ERASING_SECTOR);
+
           if (flash_erase_sector_async(dnload.next_page_address) != 0)
             return ERR_ERASE;
         }
         else {
+          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+            return ERR_ADDRESS;
+
           sub_transition_dnload(DNLOAD_WRITING_PAGE);
+
           if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
             return ERR_WRITE;
         }
@@ -179,7 +202,11 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
         if (!flash_is_sector_erased(dnload.next_page_address))
           return ERR_CHECK_ERASED;
 
+        if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+          return ERR_ADDRESS;
+
         sub_transition_dnload(DNLOAD_WRITING_PAGE);
+
         if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
           return ERR_WRITE;
       }
