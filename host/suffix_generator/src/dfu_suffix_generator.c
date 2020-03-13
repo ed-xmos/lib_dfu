@@ -37,8 +37,8 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID BIN_FILE_IN DFU_FILE_OUT\n\
 
   unsigned crc = crc_init();
   char buf[1024];
-  FILE * in_stream = fopen(in_file, "r");
-  FILE * out_stream = fopen(out_file, "w");
+  FILE * in_stream = fopen(in_file, "rb");
+  FILE * out_stream = fopen(out_file, "wb");
   size_t read = 0;
   if (in_stream && out_stream) {
     while ((read = fread(buf, 1, sizeof(buf), in_stream)) != 0) {
