@@ -27,7 +27,7 @@ static struct {
 
 static struct {
   int next_page_address;
-  char page[DFU_MAX_PAGE_SIZE_BYTES];
+  char page[DFU_PAGE_SIZE_MAX_BYTES];
   bool page_ready;
   enum dnload_sub_state {
     DNLOAD_SYNC,
@@ -488,7 +488,7 @@ int dfu_locate_upgrade_slots(void)
 
 bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
 {
-  if (spec[0].pageSize > DFU_MAX_PAGE_SIZE_BYTES)
+  if (spec[0].pageSize > DFU_PAGE_SIZE_MAX_BYTES)
     return false;
 
   if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
