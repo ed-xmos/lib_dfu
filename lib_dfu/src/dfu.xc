@@ -11,6 +11,7 @@
 
 #include "dfu_buffer_converter.h"
 #include "dfu_flash.h"
+#include "dfu_flash_result.h"
 #include "dfu.h"
 
 #define POLL_TIMEOUT_MSEC 1
@@ -214,7 +215,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
     case DNLOAD_WRITING_PAGE:
       if (!flash_is_busy()) {
-        if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
+        if (!flash_verify_page(dnload.next_page_address, dnload.page))
           return ERR_VERIFY;
 
         const int page_size_bytes = flash_get_page_size();

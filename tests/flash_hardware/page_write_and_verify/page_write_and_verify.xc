@@ -91,11 +91,11 @@ int main(void)
   erased = flash_is_sector_erased(address);
   assert(!erased);
 
-  ret = flash_verify_page(address, page);
+  ret = flash_verify_page(address, page) ? 0 : 1;
   assert(ret == 0);
 
   page[255] = 0;
-  ret = flash_verify_page(address, page);
+  ret = flash_verify_page(address, page) ? 0 : 1;
   assert(ret != 0);
 
   ret = fl_disconnect();
