@@ -1,16 +1,13 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
 import subprocess, os
 
-def test_slots():
+def test_oversize_image():
     home = os.path.dirname(os.path.abspath(__file__))
-    boot_address = 4096
-    data_address = 8192
-    for (partition, expected) in [(1, boot_address), (2, data_address)]:
+    for partitions in [1, 2, 3]:
         try:
-            cmd = ['xsim', '--args', os.path.join(home, 'bin', 'slots.xe'),
-                   str(boot_address), str(data_address),
-                   '0x%x' % partition, str(expected)]
-            output = subprocess.check_call(cmd)
+            cmd = ['axe', '--args', os.path.join(home, 'bin', 'oversize_image.xe'),
+                   str(partitions)]
+            subprocess.check_call(cmd)
         except subprocess.CalledProcessError as e:
             msg = '''Error! Simulator failed
                    \ncmd: %s
@@ -20,5 +17,5 @@ def test_slots():
             raise Exception(msg)
 
 if __name__ == "__main__":
-    print('test_slots')
-    test_slots()
+    print('test_oversize_image')
+    test_oversize_image()
