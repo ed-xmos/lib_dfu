@@ -11,6 +11,7 @@
 
 #include "dfu_buffer_converter.h"
 #include "dfu_flash.h"
+#include "dfu_flash_result.h"
 #include "dfu.h"
 
 #define POLL_TIMEOUT_MSEC 1
@@ -27,7 +28,7 @@ static struct {
 
 static struct {
   int next_page_address;
-  char page[DFU_MAX_PAGE_SIZE_BYTES];
+  char page[DFU_PAGE_SIZE_MAX_BYTES];
   bool page_ready;
   enum dnload_sub_state {
     DNLOAD_SYNC,
@@ -132,6 +133,9 @@ static void normal_transition(enum dfu_state new)
 
 static void error_condition(enum dfu_status code, int extra)
 {
+  if (dnload.page_ready)
+    dnload.page_ready = false;
+
   unsafe {
     debug_printf("DFU: %s -> DFU_ERROR (%s %d)\n",
                  state_str(state), status_str(code), extra);
@@ -151,6 +155,18 @@ static void sub_transition_dnload(enum dnload_sub_state new)
   dnload.sub_state = new;
 }
 
+static bool is_address_in_an_upgrade_slot(int address)
+{
+  if (address >= upgrade_slots.boot && address < flash_get_data_partition_base())
+    return true;
+
+  if (address >= upgrade_slots.data && address < flash_get_size())
+    return true;
+
+  return false;
+}
+
+
 static enum dfu_status getstatus_from_dnload(bool &busy)
 {
   busy = true;
@@ -159,12 +175,20 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
     case DNLOAD_SYNC:
       if (dnload.page_ready) {
         if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
+          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+            return ERR_ADDRESS;
+
           sub_transition_dnload(DNLOAD_ERASING_SECTOR);
+
           if (flash_erase_sector_async(dnload.next_page_address) != 0)
             return ERR_ERASE;
         }
         else {
+          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+            return ERR_ADDRESS;
+
           sub_transition_dnload(DNLOAD_WRITING_PAGE);
+
           if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
             return ERR_WRITE;
         }
@@ -179,7 +203,11 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
         if (!flash_is_sector_erased(dnload.next_page_address))
           return ERR_CHECK_ERASED;
 
+        if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
+          return ERR_ADDRESS;
+
         sub_transition_dnload(DNLOAD_WRITING_PAGE);
+
         if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
           return ERR_WRITE;
       }
@@ -187,7 +215,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
     case DNLOAD_WRITING_PAGE:
       if (!flash_is_busy()) {
-        if (flash_verify_page(dnload.next_page_address, dnload.page) != 0)
+        if (!flash_verify_page(dnload.next_page_address, dnload.page))
           return ERR_VERIFY;
 
         const int page_size_bytes = flash_get_page_size();
@@ -461,7 +489,7 @@ int dfu_locate_upgrade_slots(void)
 
 bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
 {
-  if (spec[0].pageSize > DFU_MAX_PAGE_SIZE_BYTES)
+  if (spec[0].pageSize > DFU_PAGE_SIZE_MAX_BYTES)
     return false;
 
   if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)

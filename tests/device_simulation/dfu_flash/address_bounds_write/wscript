@@ -11,10 +11,9 @@ def configure(conf):
 def build(bld):
     makefile_opts = {
         'TARGET': ['XCORE-200-EXPLORER'],
-        'XCC_FLAGS': ['-O2', '-g', '-Wall', '-fcmdline-buffer-bytes=256',
-                      '-DDFU_FLASH_UNIT_TEST'],
-        'INCLUDE_DIRS': ['../../../../lib_dfu/src'],
+        'XCC_FLAGS': ['-O2', '-g', '-Wall', '-DQUADFLASH_UNIT_TEST'],
         'USED_MODULES': ['lib_dfu', 'lib_xassert', 'lib_logging'],
+        'INCLUDE_DIRS': ['../../../../lib_dfu/src'],
         'XCOMMON_MAKEFILE': ['Makefile.common']
     }
     bld.do_xcommon(makefile_opts)
