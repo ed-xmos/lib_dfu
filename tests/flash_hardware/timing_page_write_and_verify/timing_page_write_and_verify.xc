@@ -105,7 +105,7 @@ int main(unsigned argc, char * unsafe argv[argc])
   assert(!erased);
 
   t :> start;
-  ret = flash_verify_page(address, page);
+  ret = flash_verify_page(address, page) ? 0 : 1;
   t :> end;
   times[2] = end - start;
   assert(ret == 0);

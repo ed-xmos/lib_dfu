@@ -3,29 +3,36 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "dfu_flash.h"
+#include "dfu_flash_result.h"
 
 __attribute__((weak))
-int flash_locate_boot_upgrade_slot(unsigned *address);
+enum flash_locate_boot_upgrade_slot_result
+  flash_locate_boot_upgrade_slot(unsigned *address);
 
-int flash_locate_boot_upgrade_slot(unsigned *address)
+enum flash_locate_boot_upgrade_slot_result
+  flash_locate_boot_upgrade_slot(unsigned *address)
 {
   assert(0);
   return -1;
 }
 
 __attribute__((weak))
-int flash_locate_data_upgrade_slot(unsigned *address);
+enum flash_locate_data_upgrade_slot_result
+  flash_locate_data_upgrade_slot(unsigned *address);
 
-int flash_locate_data_upgrade_slot(unsigned *address)
+enum flash_locate_data_upgrade_slot_result
+  flash_locate_data_upgrade_slot(unsigned *address)
 {
   assert(0);
   return -1;
 }
 
 __attribute__((weak))
-int flash_erase_sector_async(unsigned address);
+enum flash_erase_sector_async_result
+  flash_erase_sector_async(unsigned address);
 
-int flash_erase_sector_async(unsigned address)
+enum flash_erase_sector_async_result
+  flash_erase_sector_async(unsigned address)
 {
   assert(0);
   return -1;
@@ -59,30 +66,34 @@ int flash_is_sector_erased(unsigned address)
 }
 
 __attribute__((weak))
-int flash_set_write_disable(void);
+enum flash_set_write_disable_result
+  flash_set_write_disable(void);
 
-int flash_set_write_disable(void)
+enum flash_set_write_disable_result
+  flash_set_write_disable(void)
 {
   assert(0);
   return -1;
 }
 
 __attribute__((weak))
-int flash_write_page_async(unsigned address, const char page[]);
+enum flash_write_page_async_result
+  flash_write_page_async(unsigned address, const char page[]);
 
-int flash_write_page_async(unsigned address, const char page[])
+enum flash_write_page_async_result
+  flash_write_page_async(unsigned address, const char page[])
 {
   assert(0);
   return -1;
 }
 
 __attribute__((weak))
-int flash_verify_page(unsigned address, const char page[]);
+bool flash_verify_page(unsigned address, const char page[]);
 
-int flash_verify_page(unsigned address, const char page[])
+bool flash_verify_page(unsigned address, const char page[])
 {
   assert(0);
-  return -1;
+  return false;
 }
 
 __attribute__((weak))
@@ -93,4 +104,23 @@ int flash_get_page_size(void)
   assert(0);
   return -1;
 }
+
+__attribute__((weak))
+int flash_get_data_partition_base(void);
+
+int flash_get_data_partition_base(void)
+{
+  assert(0);
+  return -1;
+}
+
+__attribute__((weak))
+int flash_get_size(void);
+
+int flash_get_size(void)
+{
+  assert(0);
+  return -1;
+}
+
 #endif

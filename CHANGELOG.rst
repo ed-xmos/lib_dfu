@@ -1,6 +1,11 @@
 DFU library change log
 ======================
 
+1.0.1
+-----
+
+  * ADDED: Handling of oversize images (protect factory programming in flash)
+
 1.0.0
 -----
 
