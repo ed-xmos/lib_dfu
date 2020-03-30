@@ -1,4 +1,4 @@
-@Library('xmos_jenkins_shared_library@debug/get_view_name') _
+@Library('xmos_jenkins_shared_library@0.11.0') _
 
 getApproval()
 
@@ -8,7 +8,7 @@ pipeline {
   }
   environment {
     REPO = 'lib_dfu'
-/*    VIEW = getViewName(REPO) */
+    VIEW = getViewName(REPO)
   }
   options {
     skipDefaultCheckout()
@@ -16,7 +16,6 @@ pipeline {
   stages {
     stage('Get view') {
       steps {
-        VIEW = getViewName("${REPO}")
         xcorePrepareSandbox("${VIEW}", "${REPO}")
       }
     }
