@@ -1,9 +1,9 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
 import subprocess, os
 import filecmp
-from pathlib import Path
+import pathlib
 
-HOME = Path(__file__).resolve().parent
+HOME = str(pathlib.Path(__file__).resolve().parent)
 
 def test_basic_generator():
     os.chdir(HOME)
@@ -17,7 +17,8 @@ def test_basic_generator():
                 \nreturn_code: %d'''\
                 % (' '.join(e.cmd), e.returncode)
         raise Exception(msg)
-    if not filecmp.cmp(HOME / 'output.bin', HOME / 'golden.bin' ):
+    if not filecmp.cmp(os.path.join(HOME, 'output.bin'),
+                       os.path.join(HOME, 'golden.bin')):
         raise Exception('''Error! Test failed
               \ncommand line: %s'''\
               % ' '.join(cmd))

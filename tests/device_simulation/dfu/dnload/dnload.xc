@@ -17,6 +17,8 @@
 #include "debug_print.h"
 
 #include "dfu.h"
+#include "dfu_flash.h"
+#include "dfu_flash_result.h"
 
 #define MAX_IMAGE_SIZE 20480
 
@@ -36,7 +38,8 @@ struct {
 
 const char labels[2][5] = {"boot", "data"};
 
-int flash_set_write_disable(void)
+enum flash_set_write_disable_result
+  flash_set_write_disable(void)
 {
   return 0; // no checking of write enable
 }
@@ -44,6 +47,16 @@ int flash_set_write_disable(void)
 int flash_get_page_size(void)
 {
   return 256;
+}
+
+int flash_get_size(void)
+{
+  return 2097152;
+}
+
+int flash_get_data_partition_base(void)
+{
+  return 1048576;
 }
 
 bool flash_is_first_whole_page_in_sector(unsigned address)
@@ -57,7 +70,8 @@ bool flash_is_first_whole_page_in_sector(unsigned address)
   return (address - 256) / 4096 != address / 4096;
 }
 
-int flash_erase_sector_async(unsigned address)
+enum flash_erase_sector_async_result
+  flash_erase_sector_async(unsigned address)
 {
   debug_printf("flash_erase_sector_async 0x%X\n", address);
 
@@ -90,7 +104,8 @@ bool flash_is_sector_erased(unsigned address)
   return fl.page_erased[address / 256]; // it's ok to only look at first page
 }
 
-int flash_write_page_async(unsigned address, const char page[])
+enum flash_write_page_async_result
+  flash_write_page_async(unsigned address, const char page[])
 {
   debug_printf("flash_write_page_async\n");
 
@@ -114,11 +129,11 @@ int flash_write_page_async(unsigned address, const char page[])
   return 0;
 }
 
-int flash_verify_page(unsigned address, const char page[])
+bool flash_verify_page(unsigned address, const char page[])
 {
   debug_printf("flash_verify_page 0x%X\n", address);
   fl.page_verified[address / 256] = (char)true;
-  return 0; // always report success, test verification is performed later
+  return true; // always report success, test verification is performed later
 }
 
 bool flash_is_busy(void)
@@ -133,13 +148,15 @@ bool flash_is_busy(void)
   }
 }
 
-int flash_locate_boot_upgrade_slot(unsigned &address)
+enum flash_locate_boot_upgrade_slot_result
+  flash_locate_boot_upgrade_slot(unsigned &address)
 {
   address = fl.partitions[0].u_start;
   return 0;
 }
 
-int flash_locate_data_upgrade_slot(unsigned &address)
+enum flash_locate_data_upgrade_slot_result
+  flash_locate_data_upgrade_slot(unsigned &address)
 {
   address = fl.partitions[1].u_start;
   return 0;
@@ -240,7 +257,7 @@ void dnload(int partitions, const char images[2][MAX_IMAGE_SIZE],
   for (int i = 0; i < repeats; i++) {
     for (int p = 0; p < 2; p++) {
       if (partitions & (1 << p)) {
-        const unsigned marker = (p << 15);
+        const unsigned marker = DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
         for (int i = 0; i < block_count; i++) {
           debug_printf("dnload block %d 0x%04X (%d bytes)\n",
                        i, marker | i, block_size);

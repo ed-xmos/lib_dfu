@@ -1,4 +1,7 @@
 // Copyright (c) 2020, XMOS Ltd, All rights reserved
+//
+// Based on USB DFU specification
+//
 #ifndef __dfu_suffix_h__
 #define __dfu_suffix_h__
 
@@ -9,30 +12,29 @@
 
 #pragma pack(push, 1)
 
+/**
+ * DFU file suffix
+ */
 struct dfu_suffix {
-  // Checksum of file excluding suffix (specification does include the suffix).
-  uint32_t crc;
+  
+  uint32_t crc; /**< Checksum of file excluding suffix (note that this is
+                     different from specification which includes the suffix) */
+  
+  uint8_t suffix_length; /**< The length of this DFU suffix including CRC */
 
-  // The length of this DFU suffix including dwCRC.
-  uint8_t suffix_length;
+  uint8_t signature[3]; /**< The unique DFU signature field */
 
-  // The unique DFU signature field.
-  uint8_t signature[3];
+  uint16_t bcd_dfu; /**< DFU specification number, eg 0x0110 */
 
-  // DFU specification number.
-  uint16_t bcd_dfu;
+  uint16_t vendor_id; /**< The vendor ID associated with this file - either
+                           FFFFh or must match device's vendor ID */
 
-  // The vendor ID associated with this file. Either FFFFh or must match
-  // device's vendor ID.
-  uint16_t vendor_id;
+  uint16_t product_id; /**< The product ID associated with this file - either 
+                            FFFh or must match device's product ID */
 
-  // The product ID associated with this file. Either FFFFh or must match
-  // device's product ID.
-  uint16_t product_id;
-
-  // The release number of the device associated with this file. Either FFFFh
-  // or a BCD firmware release or version number.
-  uint16_t bcd_device;
+  uint16_t bcd_device; /**< The release number of the device associated with
+                            this file - either FFFFh or a BCD firmware release
+                            or version number */
 };
 
 #pragma pack(pop)
