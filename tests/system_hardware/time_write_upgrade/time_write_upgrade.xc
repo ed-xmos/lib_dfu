@@ -13,7 +13,7 @@
 #include "xassert.h"
 
 #define DEBUG_UNIT TEST
-#define DEBUG_PRINT_ENABLE_TEST 0
+#define DEBUG_PRINT_ENABLE_TEST 0 // requires xSCOPE
 #include "debug_print.h"
 
 #include "dfu.h"
@@ -47,7 +47,7 @@ static void t_end(void) {
   int end;
   t :> end;
   if (end - start >= timing.threshold) {
-    debug_printf("%d: %d\n", timing.locator, end - start);
+    debug_printf("%d: %d\n", timing.locator, end - start); // requires xSCOPE
     assert(0);
   }
 }
