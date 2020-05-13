@@ -1,6 +1,15 @@
 DFU library change log
 ======================
 
+1.0.3
+-----
+
+  * ADD: Switch to newly added single-spec flash connect function
+
+  * Changes to dependencies:
+
+    - lib_flash_data_partition: 2.0.2 -> 2.0.3
+
 1.0.2
 -----
 
