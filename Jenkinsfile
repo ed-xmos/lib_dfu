@@ -54,10 +54,29 @@ pipeline {
             }
           }
         }
-        stage('Build of hardware system tests') {
+        stage('Flash hardware tests') {
+          agent {
+            label 'x86_64&&brew&&bench'
+          }
+          steps {
+            dir("${REPO}/tests/flash_hardware") {
+              runWaf('.')
+              viewEnv() {
+                runPytest()
+              }
+            }
+          }
+        }
+        stage('System hardware tests') {
+          agent {
+            label 'x86_64&&brew&&bench'
+          }
           steps {
             dir("${REPO}/tests/system_hardware") {
               runWaf('.')
+              viewEnv() {
+                runPytest()
+              }
             }
           }
         }
