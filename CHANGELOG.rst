@@ -6,12 +6,6 @@ DFU library change log
 
   * ADD: Switch to newly added single-spec flash connect function
 
-  * Changes to dependencies:
-
-    - lib_flash_data_partition: 2.0.2 -> 2.0.3
-
-      + ADD: Flash connect function where manufacturer ID checking is optional
-
 1.0.2
 -----
 
