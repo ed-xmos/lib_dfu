@@ -8,7 +8,7 @@ HOME = str(pathlib.Path(__file__).resolve().parent)
 def test_basic_generator():
     os.chdir(HOME)
     cmd = ['bin/dfu_suffix_generator',
-           '0x20B1', '0x0014', 'input.bin', 'output.bin' ]
+           '0x20B1', '0x0014', '0x0102', 'input.bin', 'output.bin' ]
     try:
         output = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:

@@ -11,6 +11,7 @@
 int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
                       unsigned short vendor_id,
                       unsigned short product_id,
+                      unsigned short bcd_device,
                       size_t *suffix_length, char msg[256])
 {
   if (num_bytes < sizeof(struct dfu_suffix)) {
@@ -51,7 +52,7 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
   }
 
   if (suffix.bcd_dfu != DFU_BCD) {
-    sprintf(msg, "BCD DFU field: suffix 0x%04X should be 0x%04X\n",
+    sprintf(msg, "bcdDFU field: suffix 0x%04X should be 0x%04X\n",
                   suffix.bcd_dfu, DFU_BCD);
     return 5;
   }
@@ -68,6 +69,13 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
     sprintf(msg, "product ID mismatch: suffix 0x%04X expected 0x%04X\n",
                   suffix.product_id, product_id);
     return 7;
+  }
+
+  if (suffix.bcd_device != 0xFFFF && bcd_device != 0xFFFF &&
+      suffix.bcd_device != bcd_device) {
+    sprintf(msg, "bcdDevice mismatch: suffix 0x%04X expected 0x%04X\n",
+                  suffix.bcd_device, bcd_device);
+    return 8;
   }
 
   *suffix_length = sizeof(struct dfu_suffix);
