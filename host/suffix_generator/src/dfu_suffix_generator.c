@@ -12,23 +12,26 @@ bool verbose = false;
 
 int main(int argc, char **argv)
 {
-  bool correct_usage = false;
-  unsigned vendor_id, product_id, bcd_device;
+  unsigned vendor_id = 0, product_id = 0, bcd_device = 0;
   const char *in_file = NULL, *out_file = NULL;
 
-  if (argc == 6) {
+  if (argc == 6 || argc == 5) {
     vendor_id = strtoul(argv[1], NULL, 0);
     product_id = strtoul(argv[2], NULL, 0);
+  }
+  if (argc == 5) {
+    bcd_device = 0xFFFF;
+    in_file = argv[3];
+    out_file = argv[4];
+  }
+  if (argc == 6) {
     bcd_device = strtoul(argv[3], NULL, 0);
     in_file = argv[4];
     out_file = argv[5];
-
-    if (vendor_id != 0 && product_id != 0 && bcd_device != 0)
-      correct_usage = true;
   }
-  if (!correct_usage) {
+  if (vendor_id == 0 || product_id == 0 || bcd_device == 0) {
     fprintf(stderr, "\
-usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID BCD_DEVICE BIN_FILE_IN DFU_FILE_OUT\n\
+usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FILE_OUT\n\
 \n\
        VENDOR_ID, PRODUCT_ID and BCD_DEVICE are non-zero 16bit values\n\
        decimal or hexadecimal format\n\
