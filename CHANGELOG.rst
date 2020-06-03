@@ -1,10 +1,15 @@
 DFU library change log
 ======================
 
+1.0.4
+-----
+
+  * CHANGED: Include bcdDevice in suffix
+
 1.0.3
 -----
 
-  * ADD: Switch to newly added single-spec flash connect function
+  * ADDED: Switch to newly added single-spec flash connect function
 
 1.0.2
 -----
