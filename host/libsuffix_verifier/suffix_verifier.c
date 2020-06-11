@@ -44,6 +44,7 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
   }
   crc = crc_finish(crc);
 
+  // convert from hard little endian order after deserialisation
   suffix.crc = le32toh(suffix.crc);
   suffix.bcd_dfu = le16toh(suffix.bcd_dfu);
   suffix.vendor_id = le16toh(suffix.vendor_id);

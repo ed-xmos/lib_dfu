@@ -83,6 +83,7 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
 
   crc = crc_finish(crc);
 
+  // hard little endian order for serialisation
   struct dfu_suffix suffix = {
     .crc = htole32(crc),
     .suffix_length = sizeof(struct dfu_suffix),
