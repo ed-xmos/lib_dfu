@@ -1,6 +1,11 @@
 DFU library change log
 ======================
 
+1.0.5
+-----
+
+  * Placeholder
+
 1.0.4
 -----
 
