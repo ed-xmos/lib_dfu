@@ -5,6 +5,19 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
+
+// byte order portability
+#ifdef _WIN32
+#define le16toh(x) (x) // Windows little endian only
+#define le32toh(x) (x)
+#elif __APPLE__
+#include <libkern/OSByteOrder.h>
+#define le16toh(x) OSSwapLittleToHostInt16(x)
+#define le32toh(x) OSSwapLittleToHostInt32(x)
+#else
+#include <endian.h>
+#endif
+
 #include "dfu_suffix.h"
 #include "crc.h"
 
@@ -30,6 +43,12 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
     crc_step(&crc, file[i]);
   }
   crc = crc_finish(crc);
+
+  suffix.crc = le32toh(suffix.crc);
+  suffix.bcd_dfu = le16toh(suffix.bcd_dfu);
+  suffix.vendor_id = le16toh(suffix.vendor_id);
+  suffix.product_id = le16toh(suffix.product_id);
+  suffix.bcd_device = le16toh(suffix.bcd_device);
 
   if (suffix.crc != crc) {
     sprintf(msg, "checksum mismatch: suffix 0x%08X computed 0x%08X\n",
