@@ -4,7 +4,7 @@ DFU library change log
 1.0.5
 -----
 
-  * Placeholder
+  * FIXED: Suffix generator and verifier byte-order portability
 
 1.0.4
 -----

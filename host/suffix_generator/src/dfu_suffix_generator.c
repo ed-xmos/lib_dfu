@@ -4,9 +4,22 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <string.h>
+
+// byte order portability
+#ifdef _WIN32
+#define htole16(x) (x) // Windows little endian only
+#define htole32(x) (x)
+#elif __APPLE__
+#include <libkern/OSByteOrder.h>
+#define htole16(x) OSSwapHostToLittleInt16(x)
+#define htole32(x) OSSwapHostToLittleInt32(x)
+#else
+#include <endian.h>
+#endif
+
 #include "dfu_suffix.h"
 #include "crc.h"
-#include <string.h>
 
 bool verbose = false;
 
@@ -56,11 +69,11 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
   }
 
   while ((read = fread(buf, 1, sizeof(buf), in_stream)) != 0) {
-          
+
     for (int i = 0; i < read; i++) {
       crc_step(&crc, buf[i]);
     }
-  
+
     if (fwrite(buf, 1, read, out_stream) != read) {
       fprintf(stderr, "error: I/O write and read mismatch\n");
       exit(1);
@@ -70,19 +83,22 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
 
   crc = crc_finish(crc);
 
+  // hard little endian order for serialisation
   struct dfu_suffix suffix = {
-    .crc = crc,
+    .crc = htole32(crc),
     .suffix_length = sizeof(struct dfu_suffix),
     .signature = DFU_SIGNATURE,
-    .bcd_dfu = DFU_BCD,
-    .vendor_id = vendor_id,
-    .product_id = product_id,
-    .bcd_device = bcd_device
+    .bcd_dfu = htole16(DFU_BCD),
+    .vendor_id = htole16(vendor_id),
+    .product_id = htole16(product_id),
+    .bcd_device = htole16(bcd_device)
   };
+
   char reversed[sizeof(struct dfu_suffix)];
   for (int i = 0; i < sizeof(reversed); i++) {
     reversed[i] = ((char*)&suffix)[sizeof(reversed) - 1 - i];
   }
+
   if (fwrite(reversed, sizeof(reversed), 1, out_stream) != 1) {
     fprintf(stderr, "error: I/O write of suffix invalid return value\n");
     exit(1);
