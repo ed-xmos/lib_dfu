@@ -5,6 +5,8 @@ DFU library change log
 -----
 
   * FIXED: Suffix generator and verifier byte-order portability
+  * FIXED: Build suffix generator in release mode to reduce number of
+    dynamically linked libraries
 
 1.0.4
 -----
