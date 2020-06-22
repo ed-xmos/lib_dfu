@@ -1,6 +1,11 @@
 DFU library change log
 ======================
 
+1.0.6
+-----
+
+  * ADDED: DELETE-ME - Version bump placeholder for develop branch
+
 1.0.5
 -----
 
