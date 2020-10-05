@@ -4,7 +4,7 @@ DFU library change log
 1.0.6
 -----
 
-  * ADDED: DELETE-ME - Version bump placeholder for develop branch
+  * CHANGED: Pin Python package versions
 
 1.0.5
 -----
