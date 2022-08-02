@@ -1,11 +1,6 @@
 DFU library change log
 ======================
 
-1.2.0
------
-
-  * CHANGED: Handle new SPI spec format of tools 15.2.0
-
 1.1.0
 -----
 
