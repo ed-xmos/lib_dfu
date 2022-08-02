@@ -10,6 +10,7 @@
 #include <stdbool.h>
 
 #include "dfu_types.h"
+#include "data_partition_layout.h"
 
 /**
  * Perform sanity checks of flash device about to be used for firmware upgrade
@@ -25,7 +26,7 @@
  *
  * \return Whether specification is suitable for use by this library
  */
-bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1]);
+bool dfu_is_flash_suitable(const fl_QuadDeviceSpec0 spec[1]);
 
 /**
  * Invoke scanning of data partition to locate address of boot upgrade and data

@@ -488,7 +488,7 @@ int dfu_locate_upgrade_slots(void)
   return 0;
 }
 
-bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
+bool dfu_is_flash_suitable(const fl_QuadDeviceSpec0 spec[1])
 {
   if (spec[0].pageSize > DFU_PAGE_SIZE_MAX_BYTES)
     return false;
