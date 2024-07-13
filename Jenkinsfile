@@ -3,7 +3,7 @@ getApproval()
 
 pipeline {
   agent {
-    label 'x86_64&&linux'  // xdoc doesn't work on Catalina
+    label 'x86_64&&linux'
   }
   environment {
     REPO = 'lib_dfu'
