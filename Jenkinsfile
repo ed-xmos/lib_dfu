@@ -1,9 +1,9 @@
-@Library('xmos_jenkins_shared_library@v0.18.0') _
+@Library('xmos_jenkins_shared_library@v0.32.0') _
 getApproval()
 
 pipeline {
   agent {
-    label 'x86_64&&macOS && !macOS_10_15'  // xdoc doesn't work on Catalina
+    label 'x86_64&&linux'
   }
   environment {
     REPO = 'lib_dfu'
