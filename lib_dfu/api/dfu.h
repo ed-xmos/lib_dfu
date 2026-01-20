@@ -12,6 +12,11 @@
 #include "dfu_types.h"
 
 /**
+ * \defgroup lib_dfu_api API
+ * \{
+ */
+
+/**
  * Perform sanity checks of flash device about to be used for firmware upgrade
  *
  * Caller chooses when to call this. Comprises a set of assertions to verify
@@ -126,5 +131,7 @@ void dfu_clrstatus(void);
  * \return Error details
  */
 int dfu_get_error_info(void);
+
+/** \} */
 
 #endif

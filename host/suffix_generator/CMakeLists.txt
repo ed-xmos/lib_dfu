@@ -6,7 +6,7 @@ set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Only Release mode is allowed" FORC
 set (DEFINES _GNU_SOURCE HOST_APP)
 
 set (INCLUDE_DIRS 
-        "../../lib_dfu/api"
+        "../api"
 )
 
 set (SOURCE_FILES

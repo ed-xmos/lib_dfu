@@ -64,9 +64,9 @@ enum dfu_status {
  * Return value of GETSTATUS request
  */
 struct dfu_getstatus {
-  enum dfu_status status;
-  enum dfu_state state;
-  unsigned poll_timeout_msec;
+  enum dfu_status status; /**< DFU Status code */
+  enum dfu_state state; /**< DFU Current state */
+  unsigned poll_timeout_msec; /**< Poll timeout in milliseconds */
 };
 
 #endif

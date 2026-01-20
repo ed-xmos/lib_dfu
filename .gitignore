@@ -1,13 +1,11 @@
 .*.swp
 .venv
-Pipfile.lock
 
-# satisfy parsing in XMOS source check based on regular expressions
-# (normal parsing is based on shell wildcards)
-**/.venv*/
-**/build/*
-**/CMakeFiles/*
-CMakeFiles
-CMakeCache.txt
-cmake_install.cmake
-__pycache__
+.venv*/
+build/
+_build/
+
+obj/
+bin/
+lib/
+

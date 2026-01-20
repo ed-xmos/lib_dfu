@@ -1,9 +1,10 @@
 // Copyright 2019-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
-#ifndef DFU_FLASH_UNIT_TEST
+
 #include <safestring.h>
 #include <quadflash.h>
 #include <quadflashlib.h>
+
 #include "quadflash_extra.h"
 #include "dfu_types.h"
 #include "dfu_flash.h"
@@ -160,5 +161,3 @@ int flash_get_size(void)
 {
   return fl_getFlashSize();
 }
-
-#endif

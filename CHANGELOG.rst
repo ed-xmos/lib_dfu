@@ -1,5 +1,10 @@
-DFU library change log
-======================
+lib_dfu change log
+==================
+
+UNRELEASED
+----------
+
+  * ADDED: Support for XCommon-CMake build system
 
 1.1.0
 -----
@@ -11,6 +16,10 @@ DFU library change log
 
   * CHANGED: Pin Python package versions
   * REMOVED: not necessary cpanfile
+
+  * Changes to dependencies:
+
+    - lib_flash_data_partition: 2.0.3 -> 2.2.0
 
 1.0.5
 -----
@@ -29,6 +38,10 @@ DFU library change log
 
   * ADDED: Switch to newly added single-spec flash connect function
 
+  * Changes to dependencies:
+
+    - lib_flash_data_partition: 2.0.0 -> 2.0.3
+
 1.0.2
 -----
 
@@ -43,6 +56,10 @@ DFU library change log
 -----
 
   * First release
+
+  * Changes to dependencies:
+
+    - lib_flash_data_partition: 0.0.1 -> 2.0.0
 
 0.0.1
 -----

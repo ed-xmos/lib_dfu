@@ -8,7 +8,7 @@
 
 #include <stdint.h>
 
-#define DFU_SIGNATURE {0x44, 0x46, 0x55}
+#define DFU_SIGNATURE {'D', 'F', 'U'}
 #define DFU_BCD 0x0110
 
 #pragma pack(push, 1)

@@ -35,7 +35,7 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
   }
 
   struct dfu_suffix suffix;
-  for (int i = 0; i < sizeof(struct dfu_suffix); i++) {
+  for (size_t i = 0; i < sizeof(struct dfu_suffix); i++) {
     ((unsigned char*)&suffix)[i] = file[num_bytes - 1 - i];
   }
 
