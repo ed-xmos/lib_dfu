@@ -4,9 +4,9 @@ Pipfile.lock
 
 # satisfy parsing in XMOS source check based on regular expressions
 # (normal parsing is based on shell wildcards)
-*/.venv*
-*/build/*
-*/CMakeFiles/*
+**/.venv*/
+**/build/*
+**/CMakeFiles/*
 CMakeFiles
 CMakeCache.txt
 cmake_install.cmake
