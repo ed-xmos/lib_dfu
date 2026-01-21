@@ -27,9 +27,9 @@
 struct buffer_converter {
   int wp; /**< Write pointer */
   int rp; /**< Read pointer */
-  int fullness;
-  int capacity;
-  char storage[BUFFER_CONVERTER_QUEUE_SIZE_BYTES];
+  int fullness; /**< Current byte count */
+  int capacity; /**< Capacity in bytes */
+  char storage[BUFFER_CONVERTER_QUEUE_SIZE_BYTES]; /**< Temporary storage */
 };
 
 /**
@@ -71,7 +71,7 @@ int buffer_converter_pull(REFERENCE_PARAM(struct buffer_converter, obj),
  *
  * \param obj                  Initialised buffer converter
  * \param data                 Destination to put page in
- * \param data_size_bytes      Page size in bytes
+ * \param data_size_max_bytes  Page size in bytes
  *
  * \return                     Valid bytes read, so excluding any padding
  */

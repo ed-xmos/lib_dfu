@@ -17,9 +17,9 @@
 # pip-install this one as editable using this repository's setup.py file.  The
 # same modules should appear in the setup.py list as given below.
 
-flake8==7.0.0
-pytest==8.2.2
-pytest-xdist==3.6.1
+flake8==7.3.0
+pytest==9.0.2
+pytest-xdist==3.8.0
 
 # Development dependencies
 #
@@ -33,3 +33,7 @@ pytest-xdist==3.6.1
 # If this repository uses the setup functionality (e.g., script entry points)
 # of its own setup.py file, then this list must include an entry for that
 # setup.py fi
+
+-e git+ssh://git@github.com/xmos/test_support.git@v2.0.0#egg=test_support
+-e git+ssh://git@github.com/xmos/hardware_test_tools.git@604a1f90a01b5f17ac27205ef1243f41dbb762e7#egg=hardware_test_tools
+-e git+ssh://git@github0.xmos.com/xmos-int/xtagctl.git@v3.0.0#egg=xtagctl

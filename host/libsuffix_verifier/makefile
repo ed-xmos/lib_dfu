@@ -1,5 +1,5 @@
 # Copyright (c) 2020, XMOS Ltd, All rights reserved
-CFLAGS = -g -O2 -Wall -I ../../lib_dfu/api
+CFLAGS = -g -O2 -Wall -I ../api
 LIBRARY = lib/libsuffix_verifier.a
 MKDIR ?= mkdir
 AR ?= ar
@@ -14,7 +14,7 @@ dirs:
 ${LIBRARY}: $(addprefix obj/,${OBJS})
 	${AR} ru $@ $^
 
-obj/%.o: %.c
+obj/%.o: src/%.c
 	${CC} -c ${CFLAGS} $^ -o $@
 
 clean:
