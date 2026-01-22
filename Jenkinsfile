@@ -19,7 +19,7 @@ pipeline {
         )
         string(
             name: 'INFR_APPS_VERSION',
-            defaultValue: 'v3.2.1',
+            defaultValue: 'v3.3.0',
             description: 'The infr_apps version'
         )
         choice(
@@ -101,12 +101,14 @@ pipeline {
                   
                 stage('Build host app') {
                     steps {
-                        dir("${REPO_NAME}/host/suffix_generator") {
-                            sh "cmake ."
-                            sh "make"
-                            archiveArtifacts artifacts: "bin/dfu_suffix_generator", fingerprint: true
+                        dir(REPO_NAME) {
+                            dir("host") {
+                                sh "cmake -B build"
+                                sh "cmake --build build"
+                            }
+                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
                         }
-                        // NOTE: lib_suffix_verifier is built during testing.
                     }
                 }
                 
@@ -133,9 +135,14 @@ pipeline {
                             withTools(params.TOOLS_VERSION) {
                                 createVenv(reqFile: "requirements.txt")
                                 withVenv {
+                                    // Host tests
+                                    dir("host") {
+                                        sh "cmake -B build"
+                                        sh "cmake --build build"
+                                    }
                                     // xcoreBuild(archiveBins: false)
-                                    // // Use the TEST_LEVEL parameter to control the test coverage
-                                    // runPytest("--level=${params.TEST_LEVEL}")
+                                    // Use the TEST_LEVEL parameter to control the test coverage
+                                    runPytest("--level=${params.TEST_LEVEL} -k host")
                                 }
                             }
                         }

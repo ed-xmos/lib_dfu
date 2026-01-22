@@ -3,13 +3,14 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdbool.h>
+
 #include "crc.h"
 
 bool verbose = false;
 
 int main(void)
 {
-  const char example[] = {
+  const unsigned char example[] = {
     0x3F, 0x33, 0x31, 0xBB, 0xDF, 0xB6, 0xD4, 0xDC,
     0x99, 0x46, 0x2B, 0x74, 0xC4, 0xD0, 0x61, 0xD4,
     0xEA, 0xAB, 0x6B, 0x9B, 0xA5, 0x65, 0x50, 0x44,
@@ -24,10 +25,10 @@ int main(void)
   unsigned crc, final;
 
   crc = crc_init();
-  for (int i = 0; i < sizeof(example); i++) {
+  for (size_t i = 0; i < sizeof(example); i++) {
     crc_step(&crc, example[i]);
   }
-  for (int i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 4; i++) {
     crc_step(&crc, 0); // checksum zeroed out
   }
   final = crc_finish(crc);
@@ -35,10 +36,10 @@ int main(void)
   assert(final == expected);
 
   crc = crc_init();
-  for (int i = 0; i < sizeof(example); i++) {
+  for (size_t i = 0; i < sizeof(example); i++) {
     crc_step(&crc, example[i]);
   }
-  for (int i = 0; i < 4; i++) {
+  for (size_t i = 0; i < 4; i++) {
     crc_step(&crc, (final >> (8 * i)) & 0xFF);
   }
   assert(crc_finish(crc) == 0);

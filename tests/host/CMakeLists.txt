@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.7)
+
+project(host)
+
+# Only crc_algorithm test is a custom build, other use suffix_generator binary directly
+add_subdirectory(suffix_generator/crc_algorithm)
+
+add_subdirectory(suffix_verifier/basic_verifier)
+add_subdirectory(suffix_verifier/error_conditions)
+add_subdirectory(suffix_verifier/ignore_id)
