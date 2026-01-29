@@ -1,18 +1,23 @@
 Host tests to run on UNIX platforms
 
-Manual Pytest wrappers that return 0 on success and non-zero if test failed
+First build host apps
 
-Build is using a top level makefile that traverses test subdirectories and
-builds each test
+  cd lib_dfu/host
+  cmake -B build
+  cmake --build build
 
-To run all tests in virtual environment I might do:
+The move to test folder and build tests
 
-  make clean all
-  ../../.venv/bin/pytest -s
+  cd lib_dfu/tests/hosts
+  cmake -B build
+  cmake --build build
 
-I've also added a __main__ trigger, so I can invoke the test script outside of
-virtual environment:
+Run tests
 
-  make clean all
-  find . -name test_\*.py | while read f ; do \
-    ( cd `dirname $f` ; python `basename $f` ) || break ; done
+  cd lib_dfu/tests
+  pytest -k host
+
+Alternatively directly from hosts folder
+
+  cd lib_dfu/tests/host
+  pytest

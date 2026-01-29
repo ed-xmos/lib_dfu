@@ -26,12 +26,12 @@ bool verbose = false;
 
 int main(int argc, char **argv)
 {
-  unsigned vendor_id = 0, product_id = 0, bcd_device = 0;
+  uint16_t vendor_id = 0, product_id = 0, bcd_device = 0;
   const char *in_file = NULL, *out_file = NULL;
 
   if (argc == 6 || argc == 5) {
-    vendor_id = strtoul(argv[1], NULL, 0);
-    product_id = strtoul(argv[2], NULL, 0);
+    vendor_id = (uint16_t)strtoul(argv[1], NULL, 0);
+    product_id = (uint16_t)strtoul(argv[2], NULL, 0);
   }
   if (argc == 5) {
     bcd_device = 0xFFFF;
@@ -39,7 +39,7 @@ int main(int argc, char **argv)
     out_file = argv[4];
   }
   if (argc == 6) {
-    bcd_device = strtoul(argv[3], NULL, 0);
+    bcd_device = (uint16_t)strtoul(argv[3], NULL, 0);
     in_file = argv[4];
     out_file = argv[5];
   }
@@ -55,7 +55,7 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
   }
 
   unsigned crc = crc_init();
-  char buf[1024];
+  unsigned char buf[1024];
   FILE * in_stream = fopen(in_file, "rb");
   FILE * out_stream = fopen(out_file, "wb");
   size_t read = 0;
@@ -71,7 +71,7 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
 
   while ((read = fread(buf, 1, sizeof(buf), in_stream)) != 0) {
 
-    for (int i = 0; i < read; i++) {
+    for (size_t i = 0; i < read; i++) {
       crc_step(&crc, buf[i]);
     }
 
@@ -96,7 +96,7 @@ usage: dfu_suffix_generator VENDOR_ID PRODUCT_ID [BCD_DEVICE] BIN_FILE_IN DFU_FI
   };
 
   char reversed[sizeof(struct dfu_suffix)];
-  for (int i = 0; i < sizeof(reversed); i++) {
+  for (size_t i = 0; i < sizeof(reversed); i++) {
     reversed[i] = ((char*)&suffix)[sizeof(reversed) - 1 - i];
   }
 

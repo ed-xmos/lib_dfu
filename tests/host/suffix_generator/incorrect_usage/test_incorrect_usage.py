@@ -1,19 +1,22 @@
 # Copyright 2020-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-import subprocess, os
+import os
+import subprocess
 import pathlib
 
 HOME = str(pathlib.Path(__file__).resolve().parent)
 
+
 def scenario(*argv):
-    cmd = ['bin/dfu_suffix_generator'] + list(argv)
+    cmd = ['../../../../host/suffix_generator/bin/dfu_suffix_generator'] + list(argv)
     print('- %s' % ' '.join(argv))
     try:
-        output = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
+        _ = subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError:
         return
     else:
         raise Exception('unexpected success: %s' % ' '.join(argv))
+
 
 def test_incorrect_usage():
     os.chdir(HOME)
@@ -34,7 +37,3 @@ def test_incorrect_usage():
     scenario('0x20B1', '0x0014', 'flow', 'input.bin', 'output.bin')
 
     print('PASS')
-
-if __name__ == "__main__":
-    print('test_incorrect_usage')
-    test_incorrect_usage()

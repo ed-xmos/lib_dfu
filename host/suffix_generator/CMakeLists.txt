@@ -14,10 +14,16 @@ set (SOURCE_FILES
         src/crc.c
 )
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_CURRENT_LIST_DIR}/bin)
 
 set (SUFFIX_GEN dfu_suffix_generator)
 add_executable(${SUFFIX_GEN} ${SOURCE_FILES})
 target_link_libraries(${SUFFIX_GEN} )
 target_include_directories(${SUFFIX_GEN} PRIVATE ${INCLUDE_DIRS})
 
+target_compile_options(${SUFFIX_GEN} PUBLIC -g -O2 -Wall -Wextra -Wpedantic
+                            -Wconversion
+                            -Wdiv-by-zero
+                            -Wfloat-equal
+                            -Wsign-compare
+                            -Wshadow)

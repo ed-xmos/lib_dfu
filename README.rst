@@ -16,19 +16,26 @@ lib_dfu: Device Firmware Update (DFU) Library
 Summary
 *******
 
-Device firmware upgrade
+The Device Firmware Update (DFU) library provides functionality to
+facilitate firmware updates over almost any transport physical layer. It includes
+support for handling DFU packets, managing firmware images, and ensuring
+the integrity of the update process.
 
 ********
 Features
 ********
 
 - One upgrade slot
+- Support USB DFU spec v1.1
+- Support for custom transport layers
+- Flash memory management
 
 ************
 Known issues
 ************
 
-- None
+- USB example reports several warnings such as "port "XS1_PORT_1F" on tile[0] is not connected to any pins in this package.",
+  this is normal on small packages that do not have all the pins brought out.
 
 ****************
 Development repo

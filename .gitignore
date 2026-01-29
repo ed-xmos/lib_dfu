@@ -9,3 +9,6 @@ obj/
 bin/
 lib/
 
+__pycache__
+*.pyc
+output.bin

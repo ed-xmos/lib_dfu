@@ -1,12 +1,14 @@
 # Copyright 2019-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-import subprocess, os
+import os
+import subprocess
+
 
 def test_basic_verifier():
     home = os.path.dirname(os.path.abspath(__file__))
     try:
-        cmd = [os.path.join(home, os.path.join('bin', 'basic_verifier'))]
-        output = subprocess.check_call(cmd)
+        cmd = [os.path.join(home, 'bin/basic_verifier')]
+        _ = subprocess.check_call(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Test failed
                \ncmd: %s
@@ -14,7 +16,3 @@ def test_basic_verifier():
                \nreturn_code: %d'''\
                % (' '.join(e.cmd), e.output, e.returncode)
         raise Exception(msg)
-
-if __name__ == "__main__":
-    print('test_basic_verifier')
-    test_basic_verifier()

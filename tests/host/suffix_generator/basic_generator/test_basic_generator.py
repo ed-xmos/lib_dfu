@@ -1,17 +1,19 @@
 # Copyright 2020-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-import subprocess, os
+import os
+import subprocess
 import filecmp
 import pathlib
 
 HOME = str(pathlib.Path(__file__).resolve().parent)
 
+
 def test_basic_generator():
     os.chdir(HOME)
-    cmd = ['bin/dfu_suffix_generator',
-           '0x20B1', '0x0014', '0x0102', 'input.bin', 'output.bin' ]
+    cmd = ['../../../../host/suffix_generator/bin/dfu_suffix_generator',
+           '0x20B1', '0x0014', '0x0102', 'input.bin', 'output.bin']
     try:
-        output = subprocess.check_output(cmd)
+        _ = subprocess.check_output(cmd)
     except subprocess.CalledProcessError as e:
         msg = '''Error! Test failed
                 \ncmd: %s
@@ -21,10 +23,6 @@ def test_basic_generator():
     if not filecmp.cmp(os.path.join(HOME, 'output.bin'),
                        os.path.join(HOME, 'golden.bin')):
         raise Exception('''Error! Test failed
-              \ncommand line: %s'''\
-              % ' '.join(cmd))
+                        \ncommand line: %s'''
+                        % ' '.join(cmd))
     print('PASS')
-
-if __name__ == "__main__":
-    print('test_basic_generator')
-    test_basic_generator()

@@ -13,7 +13,6 @@ set(LIB_XC_SRCS src/dfu_buffer_converter.xc src/dfu.xc)
 
 if (DFU_FLASH_UNIT_TEST)
     message(STATUS "Building DFU with flash unit test stubs")
-    set(LIB_XC_SRCS src flash/test/)
     list(APPEND LIB_XC_SRCS flash/test/dfu_flash_stubs.xc)
 else()
     if (NO_DATA_PARTITION)
