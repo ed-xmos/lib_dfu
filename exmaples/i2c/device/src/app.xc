@@ -11,7 +11,7 @@
 void app(server interface control i_control)
 {
   unsigned num_commands;
-  int i;
+  unsigned i;
 
   printf("started\n");
 #ifdef ERRONEOUS_DEVICE
