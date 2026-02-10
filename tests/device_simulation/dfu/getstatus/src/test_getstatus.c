@@ -8,5 +8,5 @@
 void test_getstatus(void)
 {
   struct dfu_getstatus ret = dfu_getstatus();
-  TEST_ASSERT_EQUAL(DFU_OK, ret.status);
+  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
 }

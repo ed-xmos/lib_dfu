@@ -40,18 +40,18 @@ void write_begin(int upgrade_address)
   fl_disconnect();
 
   state = dfu_getstate();
-  assert(state == APP_IDLE);
+  assert(state == STATE_APP_IDLE);
 
   dfu_detach();
   state = dfu_getstate();
-  assert(state == APP_DETACH);
+  assert(state == STATE_APP_DETACH);
 
   // ret = fl_connectToOneDevice(ports, spec);
   // assert(ret == 0);
 
   dfu_bus_reset();
   state = dfu_getstate();
-  assert(state == DFU_IDLE);
+  assert(state == STATE_DFU_IDLE);
 }
 
 FILE * movable write(FILE * movable bin_file, size_t block_size,
@@ -76,22 +76,22 @@ FILE * movable write(FILE * movable bin_file, size_t block_size,
 
     do {
       ret = dfu_getstatus();
-      assert(ret.status == DFU_OK);
+      assert(ret.status == ERR_OK);
       delay_microseconds(1);
-    } while (ret.state == DFU_DNBUSY);
+    } while (ret.state == STATE_DFU_DNBUSY);
 
-    assert(ret.state == DFU_DNLOAD_IDLE);
+    assert(ret.state == STATE_DFU_DNLOAD_IDLE);
 
     block_count++;
   }
 
   dfu_dnload(0, 0, block);
   state = dfu_getstate();
-  assert(state == DFU_MANIFEST_SYNC);
+  assert(state == STATE_DFU_MANIFEST_SYNC);
 
   ret = dfu_getstatus();
-  assert(ret.state == DFU_IDLE);
-  assert(ret.status == DFU_OK);
+  assert(ret.state == STATE_DFU_IDLE);
+  assert(ret.status == ERR_OK);
 
   upgrade_size = block_count * block_size;
 

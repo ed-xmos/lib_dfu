@@ -11,8 +11,7 @@ set(APP_INCLUDES src)
 set(APP_COMPILER_FLAGS
   -O2
   -g
-  -lquadflash
-  -fcmdline-buffer-bytes=256 # TODO do we need this?
+  -fcmdline-buffer-bytes=256
   -report
   -Wall
   -Wextra

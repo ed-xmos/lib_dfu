@@ -159,7 +159,7 @@ static enum dfu_status
 
   do {
     ret = dfu_getstatus();
-    if (ret.status != DFU_OK)
+    if (ret.status != ERR_OK)
       return ret.status;
 
     delay_microseconds(1);
@@ -167,7 +167,7 @@ static enum dfu_status
 
   assert(ret.state == DFU_DNLOAD_IDLE);
 
-  return DFU_OK;
+  return ERR_OK;
 }
 
 void dnload_zero(void)
@@ -182,12 +182,12 @@ void dnload_zero(void)
 
   do {
     ret = dfu_getstatus();
-    assert(ret.status == DFU_OK);
+    assert(ret.status == ERR_OK);
     delay_microseconds(1);
   } while (ret.state == DFU_MANIFEST);
 
   assert(ret.state == DFU_IDLE);
-  assert(ret.status == DFU_OK);
+  assert(ret.status == ERR_OK);
 }
 
 void verify(void)
@@ -227,15 +227,15 @@ void dnload(int partitions, int block_size, int block_count)
   assert(ret == 0);
 
   state = dfu_getstate();
-  assert(state == APP_IDLE);
+  assert(state == STATE_APP_IDLE);
 
   dfu_detach();
   state = dfu_getstate();
-  assert(state == APP_DETACH);
+  assert(state == STATE_APP_DETACH);
 
   dfu_bus_reset();
   state = dfu_getstate();
-  assert(state == DFU_IDLE);
+  assert(state == STATE_DFU_IDLE);
 
   for (int p = 0; p < 2; p++) {
     if (partitions & (1 << p)) {
@@ -245,7 +245,7 @@ void dnload(int partitions, int block_size, int block_count)
                      i, marker | i, block_size);
 
         status = single_dnload_block(marker | i, block_size, block);
-        if (status != DFU_OK) {
+        if (status != ERR_OK) {
           assert(status == ERR_ADDRESS);
           dfu_clrstatus();
           state = dfu_getstate();
@@ -254,7 +254,7 @@ void dnload(int partitions, int block_size, int block_count)
         }
       }
       state = dfu_getstate();
-      if (state == DFU_DNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
+      if (state == STATE_DFU_DNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
         debug_printf("dnload zero\n");
         dnload_zero();
       }

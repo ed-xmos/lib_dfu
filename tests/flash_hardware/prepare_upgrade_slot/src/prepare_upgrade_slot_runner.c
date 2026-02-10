@@ -21,6 +21,7 @@
 extern void setUp(void);
 extern void tearDown(void);
 extern void test_dfu_image_analysis(void);
+extern void test_dfu_flash_is_suitable(void);
 extern void test_dfu_flash_prepare_slot_reports_OK(void);
 extern void test_dfu_flash_write_reports_OK(void);
 extern void test_dfu_flash_verify_reports_OK(void);
@@ -114,10 +115,11 @@ int main(int argc, char * argv[])
 
   /* Unity runner */
   UnityBegin("src/test_prepare_upgrade_slot.c");
-  run_test(test_dfu_image_analysis, "test_dfu_image_analysis", 86);
-  run_test(test_dfu_flash_prepare_slot_reports_OK, "test_dfu_flash_prepare_slot_reports_OK", 100);
-  run_test(test_dfu_flash_write_reports_OK, "test_dfu_flash_write_reports_OK", 122);
-  run_test(test_dfu_flash_verify_reports_OK, "test_dfu_flash_verify_reports_OK", 137);
+  run_test(test_dfu_image_analysis, "test_dfu_image_analysis", 92);
+  run_test(test_dfu_flash_is_suitable, "test_dfu_flash_is_suitable", 99);
+  run_test(test_dfu_flash_prepare_slot_reports_OK, "test_dfu_flash_prepare_slot_reports_OK", 107);
+  run_test(test_dfu_flash_write_reports_OK, "test_dfu_flash_write_reports_OK", 133);
+  run_test(test_dfu_flash_verify_reports_OK, "test_dfu_flash_verify_reports_OK", 149);
 
   fclose(upgrade_file);
   return UnityEnd(); 

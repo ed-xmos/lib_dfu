@@ -1,0 +1,341 @@
+// Copyright 2019-2026 XMOS LIMITED.
+// This Software is subject to the terms of the XMOS Public Licence: Version 1.
+
+#include <platform.h>
+#include <print.h>
+#include <stdio.h>
+#include <string.h>
+#include <unity.h>
+#include <xclib.h>
+#include <xs1.h>
+
+#define _Bool int
+#include <stdbool.h>
+
+#define DEBUG_UNIT TEST
+#define DEBUG_PRINT_ENABLE_TEST 1
+#include "debug_print.h"
+#include "dfu.h"
+#include "dfu_flash.h"
+
+
+// See lib.xc for crc32 implementation
+void crc32_c(unsigned *checksum, unsigned data, unsigned poly);
+
+#define MAX_IMAGE_SIZE 20480
+
+struct {
+  int state_erasing;
+  unsigned erase_size;
+  int state_writing;
+  int flash_open;
+  int address;
+  struct {
+    int base;
+    int f_start;
+    int f_size;
+    int u_start;
+    int u_size;
+    char u_contents[MAX_IMAGE_SIZE];
+  } partitions;
+  int busy_countdown;
+  char page_erased[8192];    // use 8bit char instead of 32bit bool
+  char page_verified[8192];  // 32bit would make data region offset overrun
+} fl;
+
+const char *labels = "boot";
+
+enum flash_status flash_cmd_init() {
+  fl.flash_open = 1;
+  return DFU_FLASH_OK;
+}
+
+enum flash_status flash_cmd_deinit() {
+  fl.flash_open = 0;
+  return DFU_FLASH_OK;
+}
+
+int32_t flash_is_connected(void) {
+  return fl.flash_open;
+}
+
+int32_t flash_get_page_size(void) { return 256; }
+
+int32_t flash_get_sector_size(void) { return 4096; }
+
+int32_t flash_get_size(void) {
+  return 2 * 1024 * 1024;  // 2MB flash
+}
+
+bool flash_is_suitable(void) { return true; }
+
+
+struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], int32_t length){
+  (void)buf;
+  (void)length;
+
+  struct flash_data_status result = { DFU_FLASH_BAD_PARAM, 0 };
+  return result;
+}
+
+enum flash_status flash_erase_sector_async(int32_t erase_size) {
+  (void)erase_size;
+
+  if (!fl.state_erasing) {
+    TEST_ASSERT_FALSE(fl.state_writing);
+    fl.state_erasing = 1;
+    /* Overriding erase size during test */
+    fl.erase_size = MAX_IMAGE_SIZE;
+    fl.address = fl.partitions.u_start;
+
+  } else {
+    if (fl.address >= fl.partitions.u_start + fl.partitions.u_size) {
+      fl.state_erasing = 0;
+      return DFU_FLASH_OK;
+    }
+  }
+  debug_printf("flash_erase_sector_async 0x%X\n", fl.address);
+  
+  TEST_ASSERT_EQUAL(0, fl.busy_countdown);
+
+  for (int i = 0; i < (4096 / 256); i++) {
+    int page_address = fl.address + 256 * i;
+    int page_index = fl.address / 256 + i;
+
+    fl.page_erased[page_index] = (char)true;
+
+    if (page_address >= fl.partitions.u_start &&
+        page_address < fl.partitions.u_start + fl.partitions.u_size) {
+
+      int contents_offset = fl.address - fl.partitions.u_start + 256 * i;
+      debug_printf("erase %s upgrade offset 0x%X (flash page %d)\n",
+                    labels, contents_offset, page_index);
+
+      memset(&fl.partitions.u_contents[contents_offset], 0xFF, 256);
+    }
+  }
+  fl.busy_countdown = 0;
+
+  if (fl.state_erasing) {
+    fl.address += 4096;
+  }
+
+  return DFU_FLASH_BUSY;
+}
+
+enum flash_status flash_write_page(const uint8_t page[], int32_t length) {
+  debug_printf("flash_write_page_async\n");
+  if (length != 256) {
+    return DFU_FLASH_BAD_PARAM;
+  }
+  if (!fl.state_writing) {
+    TEST_ASSERT_FALSE(fl.state_erasing);
+    fl.state_writing = 1;
+    fl.address = fl.partitions.u_start;
+  }
+
+  TEST_ASSERT_EQUAL(0, fl.busy_countdown);
+
+  if (!fl.page_erased[fl.address / 256]) {
+    debug_printf("page not erased 0x%X\n", fl.address);
+    return DFU_FLASH_ERASE_ERROR;
+  }
+
+  if (fl.address >= fl.partitions.u_start && fl.address < fl.partitions.u_start + fl.partitions.u_size) {
+    int contents_offset = fl.address - fl.partitions.u_start;
+    debug_printf("write %s upgrade offset 0x%X (flash page %d) %02X\n", labels, contents_offset, fl.address / 256,
+                 page[0]);
+
+    memcpy(&fl.partitions.u_contents[contents_offset], page, 256);
+  }
+
+  debug_printf("flash_verify_page 0x%X\n", fl.address);
+  fl.page_verified[fl.address / 256] = (char)true;
+
+  fl.busy_countdown = 0;
+
+  if (fl.state_writing) {
+    fl.address += 256;
+  }
+  return DFU_FLASH_OK;
+}
+enum flash_status flash_finalise_write() {
+  fl.address = 0;
+  fl.state_writing = 0;
+  return DFU_FLASH_OK;
+}
+
+struct flash_data_status flash_start_read() {
+  fl.address = 0;
+  struct flash_data_status result = { DFU_FLASH_OK, 0 };
+  return result;
+}
+
+enum flash_status flash_read_page(uint8_t *data, int32_t length) {
+  (void) data;
+  (void) length;
+
+  return DFU_FLASH_OK; }
+
+bool flash_is_busy(void) {
+  if (fl.busy_countdown > 0) {
+    debug_printf("busy countdown %d\n", fl.busy_countdown);
+    fl.busy_countdown--;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void layout_flash(int block_count, int block_size, int tail_size) {
+  debug_printf("image blocks %d x %d bytes + %d bytes tail\n", block_count, block_size, tail_size);
+
+  fl.state_erasing = 0;
+  fl.erase_size = 0;
+  fl.state_writing = 0;
+  fl.address = 0;
+  fl.partitions.base = 0;
+  fl.flash_open = 0;
+
+  fl.partitions.f_start = fl.partitions.base + 4096;
+  fl.partitions.f_size = 256;
+  fl.partitions.u_start = fl.partitions.f_start + 4096;
+  fl.partitions.u_size = block_count * block_size + tail_size;
+  memset(fl.partitions.u_contents, 0, MAX_IMAGE_SIZE);
+
+  debug_printf("%s partition: factory 0x%X (%d), upgrade 0x%X (%d)\n", labels, fl.partitions.f_start,
+               fl.partitions.f_size, fl.partitions.u_start, fl.partitions.u_size);
+
+  fl.busy_countdown = 0;
+
+  memset(fl.page_erased, 0, sizeof(fl.page_erased));
+  memset(fl.page_verified, 0, sizeof(fl.page_verified));
+}
+
+void make_test_data(uint8_t seq[], int32_t length) {
+  // memset(seq, 33, (size_t)length);
+  for (int32_t i = 0; i < length; i++) {
+    unsigned x;
+    crc32_c(&x, (unsigned)-1, 0xEB31D82EU);
+    seq[i] = (uint8_t)x;
+  }
+}
+
+void single_dnload_block(int block_num, size_t block_size, const uint8_t block[]) {
+  struct dfu_getstatus ret;
+  enum dfu_state state;
+
+  dfu_dnload(block_num, block_size, block);
+  state = dfu_getstate();
+  TEST_ASSERT_EQUAL(STATE_DFU_DNLOAD_SYNC, state);
+
+  do {
+    ret = dfu_getstatus();
+    TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+    delay_microseconds(1);
+  } while (ret.state == STATE_DFU_DNBUSY);
+
+  TEST_ASSERT_EQUAL(STATE_DFU_DNLOAD_IDLE, ret.state);
+}
+
+void dnload_zero(void) {
+  struct dfu_getstatus ret;
+  enum dfu_state state;
+  uint8_t block[DFU_TRANSFER_SIZE_BYTES];
+
+  dfu_dnload(0, 0, block);
+  state = dfu_getstate();
+  TEST_ASSERT_EQUAL(STATE_DFU_MANIFEST_SYNC, state);
+
+  do {
+    ret = dfu_getstatus();
+    TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+    delay_microseconds(1);
+  } while (ret.state == STATE_DFU_MANIFEST);
+
+  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, ret.state);
+  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+}
+
+void detach() {
+  enum dfu_state state;
+
+  state = dfu_getstate();
+  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+
+  dfu_detach();
+  state = dfu_getstate();
+  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
+
+  dfu_bus_reset();
+  state = dfu_getstate();
+  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+}
+
+void dnload(const uint8_t images[MAX_IMAGE_SIZE], int block_size, int block_count, int tail_size, int repeats) {
+  for (int r = 0; r < repeats; r++) {
+    const int marker = 0;  // Was, DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
+    for (int i = 0; i < block_count; i++) {
+      debug_printf("dnload block %d 0x%04X (%d bytes)\n", i, marker | (unsigned)i, block_size);
+
+      single_dnload_block((marker | i), (size_t)block_size, &images[i * block_size]);
+    }
+    if (tail_size > 0) {
+      debug_printf("dnload block %d 0x%04X (tail %d bytes)\n", block_count, marker | block_count, tail_size);
+
+      single_dnload_block((marker | block_count), (size_t)tail_size, &images[block_count * block_size]);
+    }
+    TEST_ASSERT_TRUE(fl.flash_open);
+    debug_printf("dnload zero\n");
+    dnload_zero();
+
+    /* Sanity checks */
+    TEST_ASSERT_FALSE(fl.state_erasing);
+    TEST_ASSERT_FALSE(fl.state_writing);
+    TEST_ASSERT_FALSE(fl.flash_open);
+    
+    if (r != (repeats - 1)) {
+      memset(fl.page_erased, 0, sizeof(fl.page_erased));
+      memset(fl.page_verified, 0, sizeof(fl.page_verified));
+    }
+  }
+}
+
+void verify(const uint8_t images[MAX_IMAGE_SIZE]) {
+  debug_printf("verify\n");
+
+  int cmp = memcmp(fl.partitions.u_contents, images, (size_t)fl.partitions.u_size);
+  TEST_ASSERT_EQUAL(0, cmp);
+
+  /* Page-by-page verification */
+  for (int i = 0; i < fl.partitions.u_size; i += 256) {
+    int address = fl.partitions.u_start + i;
+    if (!fl.page_verified[address / 256]) {
+      debug_printf("page not verified 0x%X\n", address);
+    }
+    TEST_ASSERT_TRUE(fl.page_verified[address / 256]);
+  }
+}
+
+uint8_t images[MAX_IMAGE_SIZE];
+
+void test_dnload(void) {
+  int block_size = 0;
+  int block_count = 0;
+  int tail_size = 0;
+  int repeats = 0;
+
+  block_size = 64;  // bytes
+  block_count = 64; // blocks
+  tail_size = 63;   // bytes, ideally less than block_size
+  repeats = 2;
+
+  layout_flash(block_count, block_size, tail_size);
+
+  make_test_data(images, fl.partitions.u_size);
+
+  detach();
+  dnload((const uint8_t *)images, block_size, block_count, tail_size, repeats);
+
+  verify((const uint8_t *)images);
+}

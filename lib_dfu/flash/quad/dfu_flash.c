@@ -1,27 +1,23 @@
 // Copyright 2019-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-// WIP NOTICE:  The code below has been commented out to allow successful compilation.
-//              It requires further work to reinstate the functionality.
-
 #include "dfu_flash.h"
 
 #include <quadflashlib.h>
-#include <safestring.h>
+#include <stdint.h>
 
 #include "dfu.h"
 
 struct flash_session {
-  int device_open;
+  int32_t device_open;
   fl_BootImageInfo factory_image;
   fl_BootImageInfo upgrade_image;
 
-  int upgrade_image_valid;
+  int32_t upgrade_image_valid;
 };
 
 static struct flash_session session;
 
-/* Returns non-zero for error */
 enum flash_status flash_cmd_init(void) {
   fl_BootImageInfo image;
 
@@ -55,16 +51,39 @@ enum flash_status flash_cmd_init(void) {
 }
 
 enum flash_status flash_cmd_deinit(void) {
-  if (!session.device_open) {
-    return DFU_FLASH_OK;
+  if (session.device_open) {
+    flash_cmd_disable_ports();
+    session.device_open = 0;
   }
-
-  flash_cmd_disable_ports();
-  session.device_open = 0;
   return DFU_FLASH_OK;
 }
 
-enum flash_status flash_erase_sector_async(int erase_size) {
+int32_t flash_is_connected(void) {
+  return session.device_open;
+}
+
+struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], int32_t length)
+{
+  struct flash_data_status result = { DFU_FLASH_BAD_PARAM, 0 };
+
+  // Only use fl_getPageSize() if flash is open/connected, otherwise return bad param as we can't validate the buffer size without flash connection
+  if (buf == NULL || length != (session.device_open ? (int32_t)fl_getPageSize() : DFU_FLASH_PAGE_SIZE_BYTES)) {
+    return result;
+  }
+
+  fl_BootImageInfo image_info;
+  int ret = fl_getImageInfo(&image_info, buf);
+  if (ret != 0) {
+    result.status = DFU_FLASH_READ_NO_IMAGE;
+    return result;
+  } else {
+    result.status = DFU_FLASH_OK;
+    result.data = (int32_t)image_info.size;
+    return result;
+  }
+}
+
+enum flash_status flash_erase_sector_async(int32_t erase_size) {
 
   int ret = 0;
    if (erase_size <= 0) {
@@ -86,8 +105,8 @@ enum flash_status flash_erase_sector_async(int erase_size) {
   }
 }
 
-enum flash_status flash_write_page(const unsigned char *page, int length) {
-  if (page == NULL || length != (int)fl_getPageSize()) {
+enum flash_status flash_write_page(const uint8_t page[], int32_t length) {
+  if (page == NULL || length != (int32_t)fl_getPageSize()) {
     return DFU_FLASH_BAD_PARAM;
 
   } else if (session.upgrade_image_valid) {
@@ -114,22 +133,28 @@ enum flash_status flash_finalise_write() {
   return DFU_FLASH_OK;
 }
 
-enum flash_status flash_start_read() {
+struct flash_data_status flash_start_read() {
+  struct flash_data_status result = { DFU_FLASH_READ_ERROR, 0 };
+
   if (!session.upgrade_image_valid) {
-    return DFU_FLASH_READ_NO_IMAGE;
+    result.status = DFU_FLASH_READ_NO_IMAGE;
+    return result;
 
   } else {
     int read = fl_startImageRead(&session.upgrade_image);
     if (read != 0) {
-      return DFU_FLASH_READ_ERROR;
+      result.status = DFU_FLASH_READ_ERROR;
+      return result;
     } else {
-      return DFU_FLASH_OK;
+      result.status = DFU_FLASH_OK;
+      result.data = (int32_t)session.upgrade_image.size;
+      return result;
     }
   }
 }
 
-enum flash_status flash_read_page(unsigned char *data, int length) {
-  if (data == NULL || length != (int)fl_getPageSize()) {
+enum flash_status flash_read_page(uint8_t data[], int32_t length) {
+  if (data == NULL || length != (int32_t)fl_getPageSize()) {
     return DFU_FLASH_BAD_PARAM;
 
   } else if (!session.upgrade_image_valid) {
@@ -144,59 +169,17 @@ enum flash_status flash_read_page(unsigned char *data, int length) {
 
 bool flash_is_busy(void) { return (fl_getBusyStatus() != 0); }
 
-int flash_get_page_size(void) { return (int)fl_getPageSize(); }
+int32_t flash_get_page_size(void) { return (int32_t)fl_getPageSize(); }
 
-int flash_get_sector_size(void) { return (int)fl_getSectorSize(0); }
+int32_t flash_get_sector_size(void) { return (int32_t)fl_getSectorSize(0); }
 
-int flash_get_size(void) { return (int)fl_getFlashSize(); }
+int32_t flash_get_size(void) { return (int32_t)fl_getFlashSize(); }
 
-#include "dfu_flash_result.h"
-
-// TEMP - "extra"
-// int fl_getSectorEndAddress(int sectorNum);
-// void fl_int_eraseSector(unsigned char cmd, unsigned int sectorAddress);
-// int fl_getSectorContaining(unsigned address);
-
-enum flash_locate_boot_upgrade_slot_result flash_locate_boot_upgrade_slot(unsigned *address) {
-  (void)address;
-  return FLASH_LOCATE_BOOT_UPGRADE_SLOT_SUCCESS;
-}
-
-enum flash_locate_data_upgrade_slot_result flash_locate_data_upgrade_slot(unsigned *address) {
-  (void)address;
-  return FLASH_LOCATE_DATA_UPGRADE_SLOT_SUCCESS;
-}
-
-bool flash_is_first_whole_page_in_sector(unsigned address) {
-  unsigned page_size = fl_getPageSize();
-
-  if (address < page_size) {
-    return true;
+bool flash_is_suitable(void)
+{
+  if (flash_get_page_size() > DFU_FLASH_PAGE_SIZE_BYTES) {
+    return false;
   }
 
-  return false;  // TODO Fix
-}
-
-bool flash_is_sector_erased(unsigned address) {
-  (void)address;
   return true;
-}
-
-enum flash_set_write_disable_result flash_set_write_disable(void) { return FLASH_SET_WRITE_DISABLE_ERROR; }
-
-bool flash_verify_page(unsigned address, const char page[]) {
-  (void)address;
-  unsigned int page_size = fl_getPageSize();
-  unsigned char verify[DFU_FLASH_PAGE_SIZE_BYTES];
-
-  fl_readImagePage(verify);
-  return safememcmp(verify, (const unsigned char *)page, page_size) == 0;
-}
-
-// No data partition support
-int flash_get_data_partition_base(void) { return -1; }
-
-void flash_cmd_read_page(unsigned char *data) {
-  *(unsigned int *)data = 1;
-  return;
 }

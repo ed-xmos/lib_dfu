@@ -1,7 +1,8 @@
 // Copyright 2019-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
-#ifndef __dfu_types_h__
-#define __dfu_types_h__
+
+#ifndef DFU_TYPES_H
+#define DFU_TYPES_H
 
 /**
  * Divide 16bit block number space in half. Top bit cleared is for boot
@@ -19,27 +20,45 @@
 #define DFU_BLOCK_NUM_DATA_IMAGE_MARKER 0x8000
 
 /**
+ * DFU request types
+ */
+enum dfu_request {
+  // USB spec DFU commands
+  DFU_DETACH = 0,
+  DFU_DNLOAD = 1,
+  DFU_UPLOAD = 2,     // TODO - add support
+  DFU_GETSTATUS = 3,
+  DFU_CLRSTATUS = 4,
+  DFU_GETSTATE = 5,
+  DFU_ABORT = 6,      // TODO - add support
+  // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
+  XMOS_REBOOT = 7,          // For host requesting device reboot
+  XMOS_GET_ERROR_INFO = 8,  // TODO - check the usage of this
+  XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+};
+
+/**
  * DFU interface state machine
  */
 enum dfu_state {
-  APP_IDLE,
-  APP_DETACH,
-  DFU_IDLE,
-  DFU_DNLOAD_SYNC,
-  DFU_DNBUSY,
-  DFU_DNLOAD_IDLE,
-  DFU_MANIFEST_SYNC,
-  DFU_MANIFEST,
-  DFU_MANIFEST_WAIT_RESET,
-  DFU_UPLOAD_IDLE,
-  DFU_ERROR
+  STATE_APP_IDLE,
+  STATE_APP_DETACH,
+  STATE_DFU_IDLE,
+  STATE_DFU_DNLOAD_SYNC,
+  STATE_DFU_DNBUSY,
+  STATE_DFU_DNLOAD_IDLE,
+  STATE_DFU_MANIFEST_SYNC,
+  STATE_DFU_MANIFEST,
+  STATE_DFU_MANIFEST_WAIT_RESET,
+  STATE_DFU_UPLOAD_IDLE,
+  STATE_DFU_ERROR
 };
 
 /**
  * DFU device status code
  */
 enum dfu_status {
-  DFU_OK,
+  ERR_OK,
   ERR_TARGET,
   ERR_FILE,
   ERR_WRITE,
@@ -64,6 +83,14 @@ struct dfu_getstatus {
   enum dfu_status status; /**< DFU Status code */
   enum dfu_state state; /**< DFU Current state */
   unsigned poll_timeout_msec; /**< Poll timeout in milliseconds */
+};
+
+/** API function return values */
+enum dfu_api_status {
+  DFU_API_SUCCESS = 0,
+  DFU_API_ERROR = 1,
+  DFU_API_DATA_LENGTH_ERROR = 2,
+  DFU_API_BAD_PARAM = 3
 };
 
 #endif

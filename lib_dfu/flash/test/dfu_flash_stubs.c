@@ -3,26 +3,46 @@
 
 #include <assert.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <xassert.h>
 
 #include "dfu.h"
 #include "dfu_flash.h"
 
-/* TODO - do we need 
-enum flash_status flash_cmd_init(void)
-and
-enum flash_status flash_cmd_deinit(void)
-??
-*/
+static int32_t device_open;
 
-enum flash_status flash_erase_sector_async(int erase_size) {
+enum flash_status flash_cmd_init(void) {
+  device_open = 1;
+  return DFU_FLASH_OK;
+}
+
+enum flash_status flash_cmd_deinit(void) {
+  if (device_open) {
+    device_open = 0;
+  }
+  return DFU_FLASH_OK;
+}
+
+int32_t flash_is_connected(void) {
+  return device_open;
+}
+
+struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], int32_t length){
+  (void)buf;
+  (void)length;
+
+  struct flash_data_status result = { DFU_FLASH_BAD_PARAM, 0 };
+  return result;
+}
+
+enum flash_status flash_erase_sector_async(int32_t erase_size) {
   (void)erase_size;
 
   assert(0);
   return DFU_FLASH_ERASE_ERROR;
 }
 
-enum flash_status flash_write_page(const unsigned char *page, int length) {
+enum flash_status flash_write_page(const uint8_t *page, int32_t length) {
   UNUSED(page);
   UNUSED(length);
   assert(0);
@@ -34,83 +54,45 @@ enum flash_status flash_finalise_write() {
   return DFU_FLASH_WRITE_ERROR;
 }
 
-enum flash_status flash_read_page(unsigned char *data, int length) {
+enum flash_status flash_read_page(uint8_t *data, int32_t length) {
   UNUSED(data);
   UNUSED(length);
   assert(0);
   return DFU_FLASH_READ_ERROR;
 }
 
-enum flash_status flash_start_read() {
+struct flash_data_status flash_start_read() {
   assert(0);
-  return DFU_FLASH_READ_ERROR;
+  struct flash_data_status result = { DFU_FLASH_READ_ERROR, 0 };
+  return result;
 }
 
-int flash_is_busy(void) {
+bool flash_is_busy(void) {
   assert(0);
   return false;
 }
 
-int flash_get_page_size(void) {
+int32_t flash_get_page_size(void) {
   assert(0);
   return -1;
 }
 
-int flash_get_data_partition_base(void) {
+int32_t flash_get_data_partition_base(void) {
   assert(0);
   return -1;
 }
 
-int flash_get_sector_size(void) {
+int32_t flash_get_sector_size(void) {
   assert(0);
   return -1;
 }
 
-int flash_get_size(void) {
+int32_t flash_get_size(void) {
   assert(0);
   return -1;
 }
 
-/* DEPRECATED */
-#include "dfu_flash_result.h"
-
-enum flash_locate_boot_upgrade_slot_result flash_locate_boot_upgrade_slot(unsigned *address) {
-  UNUSED(address);
-
-  assert(0);
-  return FLASH_LOCATE_BOOT_UPGRADE_SLOT_GET_FACTORY_IMAGE_FAILED;
-}
-
-enum flash_locate_data_upgrade_slot_result flash_locate_data_upgrade_slot(unsigned *address) {
-  UNUSED(address);
-
-  assert(0);
-  return FLASH_LOCATE_DATA_UPGRADE_SLOT_GET_FACTORY_DATA_IMAGE_NO_CHECKSUM_FAILED;
-}
-
-int flash_is_first_whole_page_in_sector(unsigned address) {
-  (void)address;
-
-  assert(0);
-  return false;
-}
-
-int flash_is_sector_erased(unsigned address) {
-  (void)address;
-
-  assert(0);
-  return false;
-}
-
-enum flash_set_write_disable_result flash_set_write_disable(void) {
-  assert(0);
-  return FLASH_SET_WRITE_DISABLE_ERROR;
-}
-
-bool flash_verify_page(unsigned address, const char page[]) {
-  (void)address;
-  UNUSED(page);
-
-  assert(0);
-  return false;
+bool flash_is_suitable(void)
+{
+  return true;
 }

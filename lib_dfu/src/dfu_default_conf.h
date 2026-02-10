@@ -29,11 +29,14 @@
 #define DFU_TRANSFER_SIZE_BYTES 64
 #endif
 
+/* TODO - DEPRECATE */
 /** Number of bytes in a flash page for the target device */
 #ifndef DFU_FLASH_PAGE_SIZE_BYTES
 #define DFU_FLASH_PAGE_SIZE_BYTES 256
 #endif
+/* TODO - DEPRECATE */
 
+/* TODO - DEPRECATE - OR move to variable */
 /** Number of DFU packets per flash page */
 #ifndef NUM_DFU_PAGES_PER_FLASH_PAGE
 #define NUM_DFU_PAGES_PER_FLASH_PAGE (DFU_FLASH_PAGE_SIZE_BYTES / DFU_TRANSFER_SIZE_BYTES)
@@ -41,6 +44,7 @@
 #error "DFU_TRANSFER_SIZE_BYTES must not be greater than DFU_FLASH_PAGE_SIZE_BYTES"
 #endif
 #endif
+/* TODO - DEPRECATE - OR move to variable */
 
 /* TODO - can we use the DFU image size from download or block 0? 
  * And remove this or convert it to a ceiling value, sensible max rather than actual erase size */

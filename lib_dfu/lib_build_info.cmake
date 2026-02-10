@@ -7,10 +7,22 @@ set(NO_DATA_PARTITION ON)
 
 set(LIB_DEPENDENT_MODULES   "lib_xassert(4.3.2)" "lib_logging(3.4.0)")
 
-set(LIB_INCLUDES            api src)
+set(LIB_INCLUDES            api src src/modules)
 
-set(LIB_C_SRCS              src/dfu_flash_base.c src/dfu_flashlib_user.c)
-set(LIB_XC_SRCS             src/dfu_buffer_converter.xc src/dfu.xc)
+set(LIB_C_SRCS              src/dfu_flashlib_user.c src/modules/fifo.c)
+set(LIB_XC_SRCS             src/dfu.xc src/dfu_commands.xc)
+
+# -mcmodel=large? 
+set(LIB_COMPILER_FLAGS      -Os
+                            -g
+                            -report
+                            -Wall
+                            -Wextra
+                            -Wshadow
+                            -Wconversion
+                            -Wdiv-by-zero
+                            -Wfloat-equal
+                            -Wsign-compare)
 
 if (DFU_FLASH_UNIT_TEST)
     message(STATUS "Building DFU with flash unit test stubs")
@@ -25,9 +37,13 @@ else()
     endif()
 endif()
 
-# -mcmodel=large? 
-set(LIB_COMPILER_FLAGS      -Os -g -report -Wall -Wextra)
-
 set(LIB_OPTIONAL_HEADERS    dfu_conf.h)
 
 XMOS_REGISTER_MODULE()
+
+# Post xcommon-cmake module step to link quadflash library for non-unit test builds
+if (NOT DFU_FLASH_UNIT_TEST)
+    foreach(target ${APP_BUILD_TARGETS})
+        target_link_options(${target} PRIVATE -lquadflash)
+    endforeach()
+endif()
