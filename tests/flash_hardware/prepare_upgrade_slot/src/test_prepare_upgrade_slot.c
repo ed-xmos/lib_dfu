@@ -12,6 +12,9 @@
 #include "dfu.h"
 #include "dfu_flash.h"
 
+// The minimum time expected for a sector erase operation, used to validate that the test is actually erasing the flash
+#define SECTOR_ERASE_TIME_MIN_MS  10
+
 /* Main args */
 uint8_t* upgrade_mem = NULL;
 uint32_t erase_timing_threshold_ms = 0;
@@ -33,19 +36,19 @@ int write(hwtimer_t runtime, uint8_t* mem, int length) {
   uint32_t max_runtime = start_runtime + (60UL * XS1_TIMER_HZ);  // 60s
   uint32_t running;
   enum flash_status wr_status = DFU_FLASH_OK;
-  int read_total = 0;
+  int total = 0;
 
   uint8_t *page = mem;
   int page_size = flash_get_page_size();
   do {
     wr_status = flash_write_page(page, page_size);
     page += page_size;
-    read_total += page_size;
+    total += page_size;
 
     running = hwtimer_get_time(runtime);
-  } while ((wr_status == DFU_FLASH_OK) && (read_total < length) && !hwtimer_time_after(running, max_runtime));
+  } while ((wr_status == DFU_FLASH_OK) && (total < length) && !hwtimer_time_after(running, max_runtime));
 
-  printf("Read total %d\n", read_total);
+  printf("Write total %d\n", total);
   printf("Write time: %0.3fs\n", (float)(running - start_runtime) / (float)XS1_TIMER_HZ);  // Typically ~80ms seconds
   TEST_ASSERT_LESS_THAN_UINT32((write_timing_threshold_ms * XS1_TIMER_KHZ), (running - start_runtime));
   return wr_status;
@@ -96,6 +99,7 @@ void test_dfu_image_analysis(void) {
 void test_dfu_flash_prepare_slot_reports_OK(void) {
   int status = flash_cmd_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
+  TEST_ASSERT_NOT_EQUAL(0, upgrade_size);
   
   uint32_t start_runtime = hwtimer_get_time(prepare_timer);
   uint32_t max_runtime = start_runtime + (60UL * XS1_TIMER_HZ);  // 60s
@@ -103,14 +107,17 @@ void test_dfu_flash_prepare_slot_reports_OK(void) {
   int erase = DFU_FLASH_BUSY;
 
   do {
-    erase = flash_erase_sector_async(0);
+    erase = flash_erase_sector_async(upgrade_size);
     hwtimer_delay(prepare_timer, 10UL * XS1_TIMER_KHZ);  // 10ms
 
     running = hwtimer_get_time(prepare_timer);
   } while (erase == DFU_FLASH_BUSY && !hwtimer_time_after(running, max_runtime));
 
   printf("Erase time: %0.2fs\n", (float)(running - start_runtime) / XS1_TIMER_HZ);  // Typically ~7 seconds
-  TEST_ASSERT_GREATER_THAN_UINT32((4000 * XS1_TIMER_KHZ), (running - start_runtime));
+  int sector_size = flash_get_sector_size();
+  TEST_ASSERT_TRUE(sector_size > 0);
+  int sectors_round_up = (upgrade_size + sector_size - 1) / sector_size;
+  TEST_ASSERT_GREATER_THAN_UINT32(((uint32_t)sectors_round_up * SECTOR_ERASE_TIME_MIN_MS * XS1_TIMER_KHZ), (running - start_runtime));
   TEST_ASSERT_LESS_THAN_UINT32((erase_timing_threshold_ms * XS1_TIMER_KHZ), (running - start_runtime));
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, erase);
 }

@@ -21,19 +21,6 @@ struct flash_session {
 
 static struct flash_session session;
 
-enum flash_status flash_cmd_enable_ports() __attribute__((weak));
-enum flash_status flash_cmd_enable_ports() { return DFU_FLASH_OPEN_ERROR; }
-
-enum flash_status flash_cmd_disable_ports() __attribute__((weak));
-enum flash_status flash_cmd_disable_ports() { return DFU_FLASH_OPEN_ERROR; }
-
-// TODO move to central location
-void DFUCustomFlashEnable() __attribute__((weak));
-void DFUCustomFlashEnable() {}
-
-void DFUCustomFlashDisable() __attribute__((weak));
-void DFUCustomFlashDisable() {}
-
 /* Returns non-zero for error */
 enum flash_status flash_cmd_init(void) {
   fl_BootImageInfo image;
@@ -77,15 +64,17 @@ enum flash_status flash_cmd_deinit(void) {
   return DFU_FLASH_OK;
 }
 
-// int flash_cmd_start_write_image()
-enum flash_status flash_erase_sector_async(unsigned address) {
-  (void)address;
+enum flash_status flash_erase_sector_async(int erase_size) {
 
   int ret = 0;
+   if (erase_size <= 0) {
+    return DFU_FLASH_BAD_PARAM;
+  }
+
   if (session.upgrade_image_valid) {
-    ret = fl_startImageReplace(&session.upgrade_image, FLASH_MAX_UPGRADE_SIZE);
+    ret = fl_startImageReplace(&session.upgrade_image, (unsigned)erase_size);
   } else {
-    ret = fl_startImageAdd(&session.factory_image, FLASH_MAX_UPGRADE_SIZE, 0);
+    ret = fl_startImageAdd(&session.factory_image, (unsigned)erase_size, 0);
   }
   if (ret < 0) {
     return DFU_FLASH_ERASE_ERROR;
@@ -156,6 +145,8 @@ enum flash_status flash_read_page(unsigned char *data, int length) {
 bool flash_is_busy(void) { return (fl_getBusyStatus() != 0); }
 
 int flash_get_page_size(void) { return (int)fl_getPageSize(); }
+
+int flash_get_sector_size(void) { return (int)fl_getSectorSize(0); }
 
 int flash_get_size(void) { return (int)fl_getFlashSize(); }
 
