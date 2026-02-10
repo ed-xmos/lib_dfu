@@ -10,5 +10,6 @@ bin/
 lib/
 
 __pycache__
+.pytest_cache/
 *.pyc
 output.bin

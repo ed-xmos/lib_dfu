@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.21)
 
 project(suffix_verifier C)
 
@@ -21,11 +21,15 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/lib)
 
 add_library(suffix_verifier STATIC ${SOURCE_FILES})
 
-target_compile_options(suffix_verifier PUBLIC -g -O2 -Wall -Wextra -Wpedantic
-                            -Wconversion
-                            -Wdiv-by-zero
-                            -Wfloat-equal
-                            -Wsign-compare
-                            -Wshadow)
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        target_compile_options(suffix_verifier PUBLIC /O2 /W4)
+else()
+        target_compile_options(suffix_verifier PUBLIC -g -O2 -Wall -Wextra -Wpedantic
+                                -Wconversion
+                                -Wdiv-by-zero
+                                -Wfloat-equal
+                                -Wsign-compare
+                                -Wshadow)
+endif()
 
 target_include_directories(suffix_verifier PUBLIC ${INCLUDE_DIRS})

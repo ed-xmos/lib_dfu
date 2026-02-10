@@ -177,7 +177,7 @@ void dnload_zero(void)
 {
   struct dfu_getstatus ret;
   enum dfu_state state;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES];
+  char block[DFU_TRANSFER_SIZE_BYTES];
 
   dfu_dnload(0, 0, block);
   state = dfu_getstate();
@@ -224,7 +224,7 @@ void dnload(int partitions, int block_size, int block_count)
 {
   enum dfu_state state;
   enum dfu_status status;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES] = {0};
+  char block[DFU_TRANSFER_SIZE_BYTES] = {0};
 
   int ret = dfu_locate_upgrade_slots();
   assert(ret == 0);

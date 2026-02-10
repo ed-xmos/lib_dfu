@@ -1,0 +1,113 @@
+
+@startuml
+actor       host #44bbf1
+participant device #B8e720
+participant DFU #99da07
+participant "flash API" #1399D8
+database    flash #FFDD88
+queue       dfu_page_buffer #FFAA33
+participant Config #FF8888
+
+DFU -> DFU : appIDLE
+
+' Initialization sequence
+host -> device ++ : DFU_DETACH
+device -> DFU ++ : DFUDeviceRequests()
+DFU -> Config : SetFlag()
+return
+return DFU_DETACH response
+device -> device : reboot()
+
+' Reboot in DFU mode
+device -> DFU ++ : DFUReportResetState()
+DFU -> Config : GetFlag()
+DFU -> DFU : dfuIDLE
+return
+
+host-> device ++ : DFU_GETSTATUS
+device -> DFU ++ : GetStatus()
+DFU -> DFU : OK
+return OK response
+return DFU_GETSTATUS response
+
+' Host sends DNLOAD request
+host -> device ++ : DFU_DNLOAD (zero-block, data)
+device -> DFU ++ : DFU_Dnload(block_num, data)
+DFU -> DFU : dfuDNLOAD_SYNC
+DFU -> "flash API" : flash_cmd_reset_subpage_index()
+DFU -> "flash API" ++ : flash_cmd_erase_all()
+group If upgrade image is valid
+    "flash API" -> flash ++ : fl_deleteImage()
+    flash -> flash : erase sector 
+    return
+end
+return
+DFU -> "flash API" ++ : flash_cmd_start_write_image()
+"flash API" -> flash ++ : fl_startImageAdd()
+return
+return
+DFU -> DFU : save(packet)
+return
+return
+
+' Get Status and wait for erase/write completion
+loop While Flash update not complete
+    host-> device ++ : DFU_GETSTATUS
+    device -> DFU ++ : DFU_GetStatus()
+    alt dfuDNLOAD_SYNC - Flash erase busy
+        DFU -> DFU ++ : transition_dfu_download_state()
+            loop within bwPollTimeout
+                DFU -> "flash API" ++ : flash_cmd_start_write_image()
+                "flash API" -> flash ++ : fl_startImageAdd()
+                flash -> flash : erase sector 
+                return
+                return
+            end
+        return dfuDNLOAD_BUSY
+    else dfuDNLOAD_IDLE - Flash erase complete - start write
+        DFU -> DFU ++ : transition_dfu_download_state()
+        DFU -> DFU : restore(packet0)
+        DFU -> "flash API" ++ : flash_cmd_write_page_data()
+        "flash API" -> dfu_page_buffer : buffer(packet)
+        return
+        return dfuDNLOAD_IDLE
+    else dfuDNLOAD_SYNC - Flash write busy
+        DFU -> DFU ++ : transition_dfu_download_state()
+        return dfuDNLOAD_BUSY
+    else dfuDNLOAD_IDLE - Flash write complete
+        DFU -> DFU ++ : transition_dfu_download_state()
+        return dfuDNLOAD_IDLE
+    end
+    DFU -> DFU : OK
+    return OK response
+    return DFU_GETSTATUS response
+
+    group When Flash erase completed
+        ' Host sends DNLOAD request
+        host -> device ++ : DFU_DNLOAD (non-zero-block, data)
+        device -> DFU ++ : DFU_Dnload(block_num, data)
+        DFU -> DFU : dfuDNLOAD_SYNC
+        DFU -> "flash API" : flash_cmd_reset_subpage_index()
+        DFU -> "flash API" ++ : flash_cmd_write_page_data()
+        ' "flash API" -> flash ++ : fl_writeImagePage()
+        ' flash -> flash : write page 'n' to flash 
+        "flash API" -> dfu_page_buffer : buffer(packet)
+        group When page buffer full
+            "flash API" -> dfu_page_buffer : pull_buffer(packet)
+            "flash API" -> flash ++ : fl_writeImagePage()
+            flash -> flash : write page0 of sector to flash
+            return
+        end
+        ' return
+        return
+        DFU -> DFU : save(packet)
+        return
+        return
+    end
+
+host -> device: MANIFEST and other stuff
+
+end
+
+
+@enduml

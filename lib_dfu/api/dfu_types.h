@@ -3,9 +3,6 @@
 #ifndef __dfu_types_h__
 #define __dfu_types_h__
 
-#define DFU_BLOCK_SIZE_MAX_BYTES 512
-#define DFU_PAGE_SIZE_MAX_BYTES 256
-
 /**
  * Divide 16bit block number space in half. Top bit cleared is for boot
  * partition. Top bit set (the below marker value) is for data partition.

@@ -95,7 +95,7 @@ int main(unsigned argc, char * unsafe argv[argc])
 {
   struct dfu_getstatus getstatus;
   enum dfu_state state;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES];
+  char block[DFU_TRANSFER_SIZE_BYTES];
   int partition = -1;
   unsigned expected = ~0;
   int ret;

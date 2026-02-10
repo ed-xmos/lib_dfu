@@ -19,7 +19,7 @@ pipeline {
         )
         string(
             name: 'INFR_APPS_VERSION',
-            defaultValue: 'v3.3.0',
+            defaultValue: 'v3.2.1',
             description: 'The infr_apps version'
         )
         choice(
@@ -36,18 +36,6 @@ pipeline {
 
     stages {
         // This is a prompt of what testing needs porting from old Jenkinsfile
-        //     stage('Tests') {
-        //       parallel {
-        //         stage('Device simulation tests') {
-        //           steps {
-        //             dir("${REPO}/tests/device_simulation") {
-        //               runWaf('.')
-        //               viewEnv() {
-        //                 runPytest()
-        //               }
-        //             }
-        //           }
-        //         }
         //         stage('Build of hardware system tests') {
         //           steps {
         //             dir("${REPO}/tests/system_hardware") {
@@ -55,19 +43,6 @@ pipeline {
         //             }
         //           }
         //         }
-        //         stage('Host tests') {
-        //           steps {
-        //             dir("${REPO}/tests/host") {
-        //               sh 'make'
-        //               viewEnv() {
-        //                 runPytest()
-        //               }
-        //             }
-        //           }
-        //         }
-        //       }
-        //     }
-        //   }
 
         stage('🏗️ Build and test') {
             agent {
@@ -135,14 +110,15 @@ pipeline {
                             withTools(params.TOOLS_VERSION) {
                                 createVenv(reqFile: "requirements.txt")
                                 withVenv {
+                                    dir("dummy") {
+                                        xcoreBuild(archiveBins: false)
+                                    }
                                     // Host tests
                                     dir("host") {
                                         sh "cmake -B build"
                                         sh "cmake --build build"
+                                        runPytest("--level=${params.TEST_LEVEL}")
                                     }
-                                    // xcoreBuild(archiveBins: false)
-                                    // Use the TEST_LEVEL parameter to control the test coverage
-                                    runPytest("--level=${params.TEST_LEVEL} -k host")
                                 }
                             }
                         }
@@ -155,6 +131,50 @@ pipeline {
                 }
             }
         } // stage 'Build and test'
+
+        stage('🔧 Hardware Tests') {
+            agent {
+                label 'sw-hw-xcai-exp0 || sw-hw-xcai-exp1 || sw-hw-xcai-exp2 || sw-hw-xcai-exp3'
+            }
+
+            stages {
+                stage('Checkout') {
+                    steps {
+
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME){
+                            checkoutScmShallow()
+                        }
+                    }
+                }
+                stage('Prepare upgrade slot test') {
+                    steps {
+                        dir ("${REPO_NAME}/tests") {
+                            withTools(params.TOOLS_VERSION) {
+                                createVenv(reqFile: "requirements.txt")
+                                withVenv {
+                                    dir("dummy") {
+                                        xcoreBuild(archiveBins: false)
+                                    }
+                                    dir("flash_hardware/prepare_upgrade_slot") {
+                                        withXTAG(["XCORE-AI-EXPLORER"]) {
+                                            xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            post {
+                cleanup {
+                    xcoreCleanSandbox()
+                }
+            }
+        } // stage "Test on hardware"
         
         stage('🚀 Release') {
             when {

@@ -6,9 +6,9 @@ First build host apps
   cmake -B build
   cmake --build build
 
-The move to test folder and build tests
+Then move to test folder and build tests
 
-  cd lib_dfu/tests/hosts
+  cd lib_dfu/tests/host
   cmake -B build
   cmake --build build
 

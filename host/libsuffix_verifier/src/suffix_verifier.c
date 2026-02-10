@@ -29,7 +29,7 @@ int verify_dfu_suffix(const unsigned char *file, size_t num_bytes,
                       size_t *suffix_length, char msg[256])
 {
   if (num_bytes < sizeof(struct dfu_suffix)) {
-    sprintf(msg, "file is too small (need at least suffix length %lu)\n",
+    sprintf(msg, "file is too small (need at least suffix length %zu)\n",
                   sizeof(struct dfu_suffix));
     return 1;
   }

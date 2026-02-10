@@ -1,0 +1,97 @@
+
+@startuml
+actor       host #44bbf1
+participant device #B8e720
+participant dfu_commands #99da07
+participant DFU #99da07
+participant flash_API #1399D8
+database    flash #FFDD88
+queue       buffer_converter #FFAA33
+
+DFU -> DFU : appIDLE
+
+' Initialisation phase
+host -> device ++ : DFU_DETACH
+device -> dfu_commands ++ :  dfu_handle_write_command(DFU_DETACH)
+dfu_commands --> DFU ++ : dfu_detach()
+DFU -> DFU : appDETACH
+return
+dfu_commands -> dfu_commands: timer_init()
+return
+return
+
+group Deprecated by bmAttributes (bitWillDetach == 1)
+' Bus reset
+host -> device ++ : DFU_CMD_BUS_RESET
+device -> dfu_commands ++ : dfu_handle_write_command(DFU_CMD_BUS_RESET)
+dfu_commands -> DFU ++ : dfu_bus_reset()
+DFU -> DFU : dfuIDLE
+return
+dfu_commands -> dfu_commands: timer_deinit()
+dfu_commands -> dfu_commands: flash_connect()
+return
+return
+end
+
+host-> device ++ : DFU_GETSTATUS
+device -> dfu_commands ++ : dfu_handle_read_command(DFU_GETSTATUS)
+dfu_commands -> DFU ++ : dfu_getstatus()
+DFU -> DFU : OK
+return
+return OK response
+return DFU_GETSTATUS response
+
+loop While Flash update not complete
+    ' Host sends DNLOAD request
+    host -> device ++ : DFU_DNLOAD (zero-block, data)
+    device -> dfu_commands ++ : dfu_handle_write_command(DFU_DNLOAD)
+    dfu_commands -> DFU ++ : dfu_dnload(block_num, data)
+    DFU -> DFU ++ : request_with_arguments(DFU_DNLOAD)
+    DFU -> DFU : dnload_block()
+    alt handle zero-page
+    DFU -> buffer_converter : buffer_converter_reset(data)
+    DFU -> buffer_converter : buffer_converter_push(data)
+    else handle data-page, if filling page
+    DFU -> buffer_converter : buffer_converter_push(data)
+    else handle data-page, if filled buffer
+    DFU -> buffer_converter : buffer_converter_push(data)
+    DFU -> buffer_converter : buffer_converter_pull(page)
+    else handle ned of download
+    DFU -> buffer_converter : buffer_converter_pull_padded(page)
+    end
+    return
+    DFU -> DFU : dfuDNLOAD_SYNC
+    return
+    return
+    return
+
+    host-> device ++ : DFU_GETSTATUS
+    device -> dfu_commands ++ : dfu_handle_read_command(DFU_GETSTATUS)
+    dfu_commands -> DFU ++ : getstatus_from_dnload()
+    alt if first page in sector
+        DFU -> flash_API : flash_erase_sector_async(address)
+    else sector erase done or other pages in sector
+        DFU -> flash_API : flash_write_page_async(address, page)
+    else page write done
+        DFU -> flash_API : flash_verify_page()
+        DFU -> buffer_converter : buffer_converter_pull(page)
+    end
+    DFU -> DFU : OK
+    alt STATE: if flash is busy
+        DFU -> DFU : dfuDNLOAD_BUSY
+    else flash is ready
+        DFU -> DFU : dfuDNLOAD_IDLE
+    else flash download complete
+        DFU -> DFU : dfuMANIFEST
+    else flash download complete
+        DFU -> DFU : dfuMANIFEST
+    else flash update complete
+        DFU -> DFU : dfuIDLE
+    end
+    return dfuSTATE
+    return OK response
+    return DFU_GETSTATUS response
+end
+
+
+@enduml

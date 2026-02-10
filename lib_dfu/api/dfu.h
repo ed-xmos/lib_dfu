@@ -9,6 +9,7 @@
 #define _Bool int
 #include <stdbool.h>
 
+#include "dfu_default_conf.h"
 #include "dfu_types.h"
 
 /**
@@ -96,7 +97,7 @@ void dfu_timeout_detach(void);
  * \param block              Block contents
  */
 void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
-                const char block[DFU_BLOCK_SIZE_MAX_BYTES]);
+                const char block[DFU_TRANSFER_SIZE_BYTES]);
 
 /**
  * DFU GETSTATUS request

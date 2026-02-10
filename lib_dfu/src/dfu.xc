@@ -9,6 +9,7 @@
 #define DEBUG_UNIT DFU
 #define DEBUG_PRINT_ENABLE_DFU 0
 #include "debug_print.h"
+#include "xassert.h"
 
 #include "dfu_buffer_converter.h"
 #include "dfu_flash.h"
@@ -29,7 +30,7 @@ static struct {
 
 static struct {
   int next_page_address;
-  char page[DFU_PAGE_SIZE_MAX_BYTES];
+  char page[DFU_FLASH_PAGE_SIZE_BYTES];
   bool page_ready;
   enum dnload_sub_state {
     DNLOAD_SYNC,
@@ -156,12 +157,12 @@ static void sub_transition_dnload(enum dnload_sub_state new)
   dnload.sub_state = new;
 }
 
-static bool is_address_in_an_upgrade_slot(int address)
+static bool is_address_in_an_upgrade_slot(unsigned address)
 {
-  if (address >= upgrade_slots.boot && address < flash_get_data_partition_base())
+  if (address >= upgrade_slots.boot && address < (unsigned)flash_get_data_partition_base())
     return true;
 
-  if (address >= upgrade_slots.data && address < flash_get_size())
+  if (address >= upgrade_slots.data && address < (unsigned)flash_get_size())
     return true;
 
   return false;
@@ -190,7 +191,8 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
           sub_transition_dnload(DNLOAD_WRITING_PAGE);
 
-          if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
+          // TODO - fix flash
+          if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != 0)
             return ERR_WRITE;
         }
       }
@@ -209,7 +211,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
         sub_transition_dnload(DNLOAD_WRITING_PAGE);
 
-        if (flash_write_page_async(dnload.next_page_address, dnload.page) != 0)
+        if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != 0)
           return ERR_WRITE;
       }
       break;
@@ -283,10 +285,12 @@ static int dnload_block(const char write_block[], int block_num,
 }
 
 static void request_with_arguments(enum dfu_request request,
-                                   const char (&?write_block)[DFU_BLOCK_SIZE_MAX_BYTES],
-                                   char (&?read_block)[DFU_BLOCK_SIZE_MAX_BYTES],
+                                   const char (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
+                                   char (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
                                    int block_size_bytes, int write_block_num)
 {
+  UNUSED(read_block);
+
 #if DEBUG_PRINT_ENABLE_DFU
   debug_printf("DFU: %s", request_str(request));
   if (request == DFU_DNLOAD)
@@ -294,7 +298,7 @@ static void request_with_arguments(enum dfu_request request,
   else
     debug_printf("\n");
 #endif
-  enum dfu_status status;
+  enum dfu_status rqst_status;
   int ret;
 
   switch (state) {
@@ -329,9 +333,9 @@ static void request_with_arguments(enum dfu_request request,
     case DFU_DNLOAD_SYNC:
       if (request == DFU_GETSTATUS) {
         bool busy = false;
-        status = getstatus_from_dnload(busy);
-        if (status != DFU_OK) {
-          error_condition(status, 0);
+        rqst_status = getstatus_from_dnload(busy);
+        if (rqst_status != DFU_OK) {
+          error_condition(rqst_status, 0);
         }
         else {
           if (busy) {
@@ -348,9 +352,9 @@ static void request_with_arguments(enum dfu_request request,
     case DFU_MANIFEST_SYNC:
       if (request == DFU_GETSTATUS) {
         bool busy = false;
-        status = getstatus_from_dnload(busy);
-        if (status != DFU_OK) {
-          error_condition(status, 0);
+        rqst_status = getstatus_from_dnload(busy);
+        if (rqst_status != DFU_OK) {
+          error_condition(rqst_status, 0);
         }
         else {
           if (busy) {
@@ -467,7 +471,7 @@ void dfu_timeout_detach(void)
 }
 
 void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
-                const char block[DFU_BLOCK_SIZE_MAX_BYTES])
+                const char block[DFU_TRANSFER_SIZE_BYTES])
 {
   request_with_arguments(DFU_DNLOAD, block, null, block_size_bytes, block_num);
 }
@@ -490,7 +494,7 @@ int dfu_locate_upgrade_slots(void)
 
 bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
 {
-  if (spec[0].pageSize > DFU_PAGE_SIZE_MAX_BYTES)
+  if (spec[0].pageSize > DFU_FLASH_PAGE_SIZE_BYTES)
     return false;
 
   if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)

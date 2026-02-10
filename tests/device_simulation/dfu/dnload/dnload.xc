@@ -220,7 +220,7 @@ void dnload_zero(void)
 {
   struct dfu_getstatus ret;
   enum dfu_state state;
-  char block[DFU_BLOCK_SIZE_MAX_BYTES];
+  char block[DFU_TRANSFER_SIZE_BYTES];
 
   dfu_dnload(0, 0, block);
   state = dfu_getstate();
