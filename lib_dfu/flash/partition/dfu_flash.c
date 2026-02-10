@@ -10,6 +10,11 @@
 #include "dfu_flash.h"
 #include "dfu_flash_result.h"
 
+
+// WIP NOTICE:  The code is no longer supported, and here for historical reasons.
+//              It requires further work to reinstate the functionality.
+
+
 enum flash_locate_boot_upgrade_slot_result
   flash_locate_boot_upgrade_slot(unsigned &address)
 {

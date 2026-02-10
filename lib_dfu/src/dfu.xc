@@ -182,7 +182,8 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
           sub_transition_dnload(DNLOAD_ERASING_SECTOR);
 
-          if (flash_erase_sector_async(dnload.next_page_address) != 0)
+          enum flash_status result = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
+          if (result != DFU_FLASH_OK && result != DFU_FLASH_BUSY)
             return ERR_ERASE;
         }
         else {
@@ -192,7 +193,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
           sub_transition_dnload(DNLOAD_WRITING_PAGE);
 
           // TODO - fix flash
-          if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != 0)
+          if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != DFU_FLASH_OK)
             return ERR_WRITE;
         }
       }
@@ -211,7 +212,7 @@ static enum dfu_status getstatus_from_dnload(bool &busy)
 
         sub_transition_dnload(DNLOAD_WRITING_PAGE);
 
-        if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != 0)
+        if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != DFU_FLASH_OK)
           return ERR_WRITE;
       }
       break;

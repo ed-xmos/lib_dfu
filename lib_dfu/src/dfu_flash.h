@@ -62,12 +62,13 @@ enum flash_status flash_cmd_deinit(void);
  * \note This function initiates a sector erase operation and returns immediately. The caller should repeatedly call
  * this function until it reports OK or ERROR to check when the erase operation has completed.
  *
- * \param address Address in the sector to erase
+ * \param erase_size Amount of flash memory to erase, will be converted to sector count internally.
  * \retval DFU_FLASH_OK if erase completed successfully
+ * \retval DFU_FLASH_BAD_PARAM if parameters are invalid (eg erase_size is 0)
  * \retval DFU_FLASH_BUSY if erase is currently in progress
  * \retval DFU_FLASH_ERASE_ERROR if erase failed
  */
-enum flash_status flash_erase_sector_async(unsigned address);
+enum flash_status flash_erase_sector_async(int erase_size);
 
 /** Write a page to flash
  * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
@@ -124,6 +125,11 @@ bool flash_is_busy(void);
  * \return page size in bytes
  */
 int flash_get_page_size(void);
+
+/** Get the size of a flash sector in bytes
+ * \return sector size in bytes
+ */
+int flash_get_sector_size(void);
 
 /** Get the total size of the flash in bytes
  * \return flash size in bytes
