@@ -1,5 +1,6 @@
 // Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
+
 #include <xs1.h>
 #include <platform.h>
 #include <stdio.h>
@@ -10,15 +11,12 @@
 #define _Bool int
 #include <stdbool.h>
 
-#define XASSERT_ENABLE_DEBUG 1
-#define XASSERT_ENABLE_LINE_NUMBERS 1
-#include "xassert.h"
-
-#define DEBUG_UNIT TEST
-#define DEBUG_PRINT_ENABLE_TEST 0
-#include "debug_print.h"
+#include <unity.h>
 
 #include "dfu.h"
+
+
+/* TODO - update this to use SDFP flash checks */
 
 fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   { 0, 256, 8192, 3, 8, 0x9F, 0, 3, 0x9D4015, 0x20, 4096, 0x06, 0x04,
@@ -27,18 +25,15 @@ fl_QuadDeviceSpec spec[] = { // IS25LQ016B
   }
 };
 
-int main(void)
+void test_is_flash_suitable(void)
 {
   bool ret;
 
   ret = dfu_is_flash_suitable(spec);
-  assert(ret);
+  TEST_ASSERT_TRUE(ret);
 
   spec[0].pageSize = 512;
 
   ret = dfu_is_flash_suitable(spec);
-  assert(!ret);
-
-  printstr("PASS\n");
-  return 0;
+  TEST_ASSERT_FALSE(ret);
 }

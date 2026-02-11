@@ -1,38 +1,32 @@
 // Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
-#include <print.h>
 
-#define XASSERT_ENABLE_DEBUG 1
-#define XASSERT_ENABLE_LINE_NUMBERS 1
-#include "xassert.h"
+#include <unity.h>
 
 #include "dfu.h"
 
 #define DFU_DETACH 0 // extracted from library implementation
 
-int main(void)
+void test_get_error_info(void)
 {
   enum dfu_state state;
 
   state = dfu_getstate();
-  assert(state == APP_IDLE);
+  TEST_ASSERT_EQUAL(APP_IDLE, state);
 
   dfu_detach();
   state = dfu_getstate();
-  assert(state == APP_DETACH);
+  TEST_ASSERT_EQUAL(APP_DETACH, state);
 
   dfu_bus_reset();
   state = dfu_getstate();
-  assert(state == DFU_IDLE);
+  TEST_ASSERT_EQUAL(DFU_IDLE, state);
 
   // another detach is unexpected here
   dfu_detach();
   state = dfu_getstate();
-  assert(state == DFU_ERROR);
+  TEST_ASSERT_EQUAL(DFU_ERROR, state);
 
   int extra = dfu_get_error_info();
-  assert(extra == DFU_DETACH);
-
-  printstr("PASS\n");
-  return 0;
+  TEST_ASSERT_EQUAL(DFU_DETACH, extra); // TODO - check this...
 }
