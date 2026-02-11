@@ -5,13 +5,10 @@
 #include <stdio.h>
 #include <print.h>
 #include <string.h>
+#include <unity.h>
 
 #define _Bool int
 #include <stdbool.h>
-
-#define XASSERT_ENABLE_DEBUG 1
-#define XASSERT_ENABLE_LINE_NUMBERS 1
-#include "xassert.h"
 
 #define DEBUG_UNIT TEST
 #define DEBUG_PRINT_ENABLE_TEST 0

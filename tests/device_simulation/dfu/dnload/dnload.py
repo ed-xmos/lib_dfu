@@ -1,8 +1,11 @@
 # Copyright 2019-2026 XMOS LIMITED.
 # This Software is subject to the terms of the XMOS Public Licence: Version 1.
-import subprocess, os
 
-def test_dnload():
+import os
+import subprocess
+
+
+def dnload():
     home = os.path.dirname(os.path.abspath(__file__))
     test_instances = [
         (32, 1, 0), (32, 1, 1), (32, 3, 0), (32, 8, 0), (32, 9, 0), (32, 9, 31),
@@ -28,6 +31,7 @@ def test_dnload():
                            % (str(e.cmd), e.output, e.returncode)
                     raise Exception(msg)
 
+
 if __name__ == "__main__":
     print('test_dnload')
-    test_dnload()
+    dnload()
