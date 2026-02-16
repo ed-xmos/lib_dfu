@@ -19,6 +19,15 @@
  */
 #define DFU_BLOCK_NUM_DATA_IMAGE_MARKER 0x8000
 
+#define DFU_GET_STATE_PAYLOAD_SIZE_BYTES 1
+#define DFU_GET_STATUS_PAYLOAD_SIZE_BYTES 6
+
+#define DFU_GETSTATE_INDEX 0
+#define DFU_GETSTATUS_STATUS_INDEX 0
+#define DFU_GETSTATUS_POLL_TIMEOUT_INDEX 1
+#define DFU_GETSTATUS_POLL_TIMEOUT_BYTES 3
+#define DFU_GETSTATUS_STATE_INDEX 4
+
 /**
  * DFU request types
  */
@@ -26,21 +35,16 @@ enum dfu_request {
   // USB spec DFU commands
   DFU_DETACH = 0,
   DFU_DNLOAD = 1,
-  DFU_UPLOAD = 2,     // TODO - add support
+  DFU_UPLOAD = 2,
   DFU_GETSTATUS = 3,
   DFU_CLRSTATUS = 4,
   DFU_GETSTATE = 5,
-  DFU_ABORT = 6,      // TODO - add support
+  DFU_ABORT = 6,
+
   // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
-  XMOS_REBOOT = 7,          // For host requesting device reboot
-  XMOS_GET_ERROR_INFO = 8,  // TODO - check the usage of this
   XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
 
-  XMOS_DFU_RESETDEVICE = 0xf0,  // TODO - support these
   XMOS_DFU_REVERTFACTORY = 0xf1,
-  XMOS_DFU_RESETINTODFU = 0xf2,
-  XMOS_DFU_RESETFROMDFU = 0xf3,
-  XMOS_DFU_SELECTIMAGE = 0xf4
 };
 
 /**

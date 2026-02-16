@@ -1,8 +1,6 @@
 // Copyright 2017-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
-#include "dfu_commands.h"
-
 #include <stddef.h>
 #include <string.h>
 
@@ -12,13 +10,7 @@
 
 #include "dfu.h"
 #include "dfu_types.h"
-
-/* TODO - move to conf header */
-/* DFU functional descriptor wDetachTimeOut field (milliseconds)
- * Time for device to wait for bus reset after DETACH request before reverting to idle state */
-#ifndef DFU_DETACH_TIME_OUT_MS
-#define DFU_DETACH_TIME_OUT_MS 250
-#endif
+#include "dfu_state_machine.h"
 
 
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
@@ -26,74 +18,84 @@ struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, con
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
   switch (cmd) {
     case DFU_DETACH:
-      dfu_detach();
-      // state.timeout.enable = 1;
-      // state.timeout.delta = DFU_DETACH_TIME_OUT_MS * XS1_TIMER_KHZ; // milliseconds to timer ticks
+      response = request(DFU_DETACH);
       break;
 
     case XMOS_BUS_RESET:
-      if (dfu_getstate() == STATE_APP_DETACH) {
-        // state.timeout.enable = false;
-        dfu_bus_reset();
-      }
-      else {
-        debug_printf("Unexpected bus reset DFU request\n");
-        response.status = DFU_API_ERROR;
-        return response;
-      }
+      dfu_bus_reset();
+      response.status = DFU_API_SUCCESS;
+      // TODO sort out return value here, for USB
       break;
 
     case DFU_DNLOAD:
-      dfu_dnload(value, payload_len, payload);
+      if (payload == NULL && payload_len > 0) {
+        break;
+      } else if (payload_len > DFU_TRANSFER_SIZE_BYTES) {
+        break;
+      }
+      response = request_with_arguments(DFU_DNLOAD, payload, NULL, payload_len, value);
       break;
 
     case DFU_CLRSTATUS:
-      dfu_clrstatus();
+      response = request(DFU_CLRSTATUS);
       break;
 
-    case XMOS_REBOOT:
-      response.value = 1;
+    case DFU_ABORT:
+      response = request(DFU_ABORT);
       break;
+
+      case XMOS_DFU_REVERTFACTORY:
+        // TODO - add support for this command
+        break;
 
     default:
       debug_printf("Unrecognised write command: %d\n", cmd);
       response.status = DFU_API_ERROR;
-      return response;
+      break;
   }
-  response.status = DFU_API_SUCCESS;
   return response;
 }
 
 struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
-  (void)payload_len; // TODO - check length
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
 
   switch (cmd) {
     case DFU_GETSTATE:
+      if (payload == NULL || payload_len != DFU_GET_STATE_PAYLOAD_SIZE_BYTES) {
+        break;
+      }
       enum dfu_state state = dfu_getstate();
-      memcpy(payload, &state, sizeof(enum dfu_state));
+      payload[DFU_GETSTATE_INDEX] = (uint8_t)state;
+      response.status = DFU_API_SUCCESS;
+      response.return_data_len = DFU_GET_STATE_PAYLOAD_SIZE_BYTES;
       break;
 
     case DFU_GETSTATUS:
+      if (payload == NULL || payload_len != DFU_GET_STATUS_PAYLOAD_SIZE_BYTES) {
+        break;
+      }
       struct dfu_getstatus ret = dfu_getstatus();
-      memcpy(payload, &ret, sizeof(struct dfu_getstatus));
-      break;
-
-    case XMOS_GET_ERROR_INFO:
-      int error_info = dfu_get_error_info();
-      memcpy(payload, &error_info, sizeof(int));
+      memset(payload, 0, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+      payload[DFU_GETSTATUS_STATUS_INDEX] = ret.status;
+      memcpy(&payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX], &ret.poll_timeout_msec, DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
+      payload[DFU_GETSTATUS_STATE_INDEX] = ret.state;
+      
+      response.status = DFU_API_SUCCESS;
+      response.return_data_len = DFU_GET_STATUS_PAYLOAD_SIZE_BYTES;
       break;
 
     case DFU_UPLOAD:
-      response.value = dfu_upload(payload_len, payload);
+      if (payload == NULL || payload_len > DFU_TRANSFER_SIZE_BYTES) {
+        break;
+      }
+      response = request_with_arguments(DFU_UPLOAD, null, payload, payload_len, null);
       break;
 
     default:
       debug_printf("Unrecognised read command: %d\n", cmd);
       response.status = DFU_API_ERROR;
-      return response;
+      break;
   }
-  response.status = DFU_API_SUCCESS;
   return response;
 }

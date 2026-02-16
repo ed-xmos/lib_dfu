@@ -12,8 +12,6 @@
 #include "xud_device.h"
 #include "dfu_interface.h"
 
-// TODO - refactor to remove "DFU_mode_active" param.
-
 /** Check if DFU mode is active
  * Returns 1 if DFU mode is active, 0 if DFU mode is not active.
  */

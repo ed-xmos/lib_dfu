@@ -64,7 +64,8 @@ void test_dnload_start(void) {
   TEST_ASSERT_EQUAL_INT(0, flash_open);
 
   int block_num = 0;
-  dfu_dnload(block_num, sizeof(block), block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, sizeof(block));
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
   state = dfu_getstate();
   TEST_ASSERT_EQUAL_INT(STATE_DFU_DOWNLOAD_SYNC, state);

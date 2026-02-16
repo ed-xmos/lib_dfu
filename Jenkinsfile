@@ -74,7 +74,7 @@ pipeline {
                 //     }
                 // }
                   
-                stage('Build host app') {
+                stage('Build Linux host app') {
                     steps {
                         dir(REPO_NAME) {
                             dir("host") {
@@ -83,6 +83,7 @@ pipeline {
                             }
                             archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
                             archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                         }
                     }
                 }
@@ -145,6 +146,114 @@ pipeline {
             }
         } // stage 'Build and test'
 
+        stage('Build host apps') {
+            parallel {
+                stage('Build Mac x86 host app') {
+                    agent {
+                        label 'x86_64 && macOS'
+                    }
+                    steps {
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME) {
+                            checkoutScmShallow()
+                            dir("host/xmosdfu") {
+                                sh 'cmake -B build'
+                                sh 'make -C build'
+                                sh 'mkdir -p OSX/x86'
+                                sh 'mv bin/xmosdfu OSX/x86/xmosdfu'
+                                archiveArtifacts artifacts: "OSX/x86/xmosdfu", fingerprint: true
+                            }
+                        }
+                    }
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                }  // Build Mac x86 host app
+
+                stage('Build Mac arm host app') {
+                    agent {
+                        label 'arm64 && macOS'
+                    }
+                    steps {
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME) {
+                            checkoutScmShallow()
+                            dir("host/xmosdfu") {
+                                sh 'cmake -B build'
+                                sh 'make -C build'
+                                sh 'mkdir -p OSX/arm64'
+                                sh 'mv bin/xmosdfu OSX/arm64/xmosdfu'
+                                archiveArtifacts artifacts: "OSX/arm64/xmosdfu", fingerprint: true
+                                dir("OSX/arm64") {
+                                    stash includes: 'xmosdfu', name: 'macos_xmosdfu'
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                }  // Build Mac arm host app
+
+                stage('Build Pi host app') {
+                agent {
+                    label 'pi'
+                }
+                steps {
+                    println "Stage running on ${env.NODE_NAME}"
+
+                    dir(REPO_NAME) {
+                        checkoutScmShallow()
+                        dir("host/xmosdfu") {
+                            sh 'cmake -B build'
+                            sh 'make -C build'
+                            sh 'mkdir -p RPi'
+                            sh 'mv bin/xmosdfu RPi/xmosdfu'
+                            archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
+                        }
+                    }
+                }
+                post {
+                    cleanup {
+                        xcoreCleanSandbox()
+                    }
+                }
+                }  // Build Pi host app
+
+                stage('Build Windows host app') {
+                    agent {
+                        label 'x86_64 && windows && usb_audio'
+                    }
+                    steps {
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME) {
+                            checkoutScmShallow()
+                            withVS() {
+                                dir("host/xmosdfu") {
+                                    bat "cmake -B build -G Ninja"
+                                    bat "ninja -C build"
+                                    bat 'mkdir win64 && cp bin/xmosdfu.exe win64/'
+                                    archiveArtifacts artifacts: "win64/xmosdfu.exe", fingerprint: true
+                                }
+                            } // withVS()
+                        }
+                    }
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                }  // Build Windows host app
+            }
+        }  // Build host apps
+
         stage('🔧 Hardware Tests') {
             agent {
                 label 'sw-hw-xcai-exp0 || sw-hw-xcai-exp1 || sw-hw-xcai-exp2 || sw-hw-xcai-exp3'
@@ -171,6 +280,11 @@ pipeline {
                                         xcoreBuild(archiveBins: false)
                                     }
                                     dir("flash_hardware/prepare_upgrade_slot") {
+                                        withXTAG(["XCORE-AI-EXPLORER"]) {
+                                            xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                        }
+                                    }
+                                    dir("system_hardware/write_upgrade_boot_only") {
                                         withXTAG(["XCORE-AI-EXPLORER"]) {
                                             xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
                                         }

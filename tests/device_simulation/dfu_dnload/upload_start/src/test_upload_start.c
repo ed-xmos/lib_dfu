@@ -61,8 +61,8 @@ void test_upload_start(void) {
 
   TEST_ASSERT_EQUAL_INT(0, flash_open);
 
-  int block_num = dfu_upload(sizeof(block), block);
-  TEST_ASSERT_EQUAL_INT(0, block_num);
+  int read_size = dfu_upload(sizeof(block), block);
+  TEST_ASSERT_EQUAL_INT(DFU_TRANSFER_SIZE_BYTES, read_size);
 
   state = dfu_getstate();
   TEST_ASSERT_EQUAL_INT(STATE_DFU_UPLOAD_IDLE, state);
