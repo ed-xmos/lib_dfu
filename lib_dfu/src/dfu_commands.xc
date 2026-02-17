@@ -21,14 +21,13 @@
 #endif
 
 
-int32_t dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[],
-                                 size_t payload_len,
-                                 struct dfu_write_command_state &state)
+struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
   switch (cmd) {
     case DFU_DETACH:
       dfu_detach();
-      // state.timeout.enable = true;
+      // state.timeout.enable = 1;
       // state.timeout.delta = DFU_DETACH_TIME_OUT_MS * XS1_TIMER_KHZ; // milliseconds to timer ticks
       break;
 
@@ -39,7 +38,8 @@ int32_t dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t paylo
       }
       else {
         debug_printf("Unexpected bus reset DFU request\n");
-        return DFU_API_ERROR;
+        response.status = DFU_API_ERROR;
+        return response;
       }
       break;
 
@@ -52,19 +52,22 @@ int32_t dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t paylo
       break;
 
     case XMOS_REBOOT:
-      state.needs_reboot = true;
+      response.value = 1;
       break;
 
     default:
       debug_printf("Unrecognised write command: %d\n", cmd);
-      return DFU_API_ERROR;
+      response.status = DFU_API_ERROR;
+      return response;
   }
-  return DFU_API_SUCCESS;
+  response.status = DFU_API_SUCCESS;
+  return response;
 }
 
-int32_t dfu_handle_read_command(int32_t cmd, int32_t &value, uint8_t payload[], size_t payload_len)
+struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
   (void)payload_len; // TODO - check length
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
 
   switch (cmd) {
     case DFU_GETSTATE:
@@ -83,12 +86,14 @@ int32_t dfu_handle_read_command(int32_t cmd, int32_t &value, uint8_t payload[], 
       break;
 
     case DFU_UPLOAD:
-      value = dfu_upload(payload_len, payload);
+      response.value = dfu_upload(payload_len, payload);
       break;
 
     default:
       debug_printf("Unrecognised read command: %d\n", cmd);
-      return DFU_API_ERROR;
+      response.status = DFU_API_ERROR;
+      return response;
   }
-  return DFU_API_SUCCESS;
+  response.status = DFU_API_SUCCESS;
+  return response;
 }

@@ -26,15 +26,20 @@ def pytest_configure(config):
     level = config.getoption("--level")
     adapter_id = config.getoption("--adapter-id")
 
-    if adapter_id:
-        # This is required for the prepare_upgrade_slot tests
-        subprocess.run(["xflash", "--adapter-id", adapter_id, "--factory", "../../dummy/bin/hello_world.xe"], check=True)
-    else:
-        # This is required for the prepare_upgrade_slot tests
-        subprocess.run(["xflash", "--factory", "../../dummy/bin/hello_world.xe"], check=True)
+    if Path("../../dummy/bin/hello_world.xe").exists():
+        if adapter_id:
+            # This is required for the prepare_upgrade_slot tests
+            subprocess.run(["xflash", "--adapter-id", adapter_id, "--factory", "../../dummy/bin/hello_world.xe"], check=True)
+        else:
+            # This is required for the prepare_upgrade_slot tests
+            subprocess.run(["xflash", "--factory", "../../dummy/bin/hello_world.xe"], check=True)
 
-    subprocess.run(["xflash", "--factory-version", "15.3", "--upgrade", "1", "../../dummy/bin/hello_world.xe",
-                    "-o", "../../dummy/bin/hello_world.bin"], check=True)
+        subprocess.run(["xflash", "--factory-version", "15.3", "--upgrade", "1", "../../dummy/bin/hello_world.xe",
+                        "-o", "../../dummy/bin/hello_world.bin"], check=True)
+
+    else:
+        raise FileNotFoundError("Required file '../../dummy/bin/hello_world.xe' not found, please build the dummy "
+                                "binaries before running the tests.")
 
 
 def pytest_collect_file(parent, file_path: Path):

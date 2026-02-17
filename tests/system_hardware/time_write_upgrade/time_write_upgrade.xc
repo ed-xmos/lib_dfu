@@ -114,11 +114,11 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
       t_start(7);
       ret = dfu_getstatus();
       t_end();
-      assert(ret.status == ERR_OK);
+      assert(ret.status == DFU_OK);
       delay_milliseconds(ret.poll_timeout_msec);
-    } while (ret.state == DFU_DNBUSY);
+    } while (ret.state == STATE_DFU_DNBUSY);
 
-    assert(ret.state == DFU_DNLOAD_IDLE);
+    assert(ret.state == STATE_DFU_DNLOAD_IDLE);
 
     block_count++;
   }
@@ -134,9 +134,10 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
     t_start(9);
     ret = dfu_getstatus();
     t_end();
-    assert(ret.status == ERR_OK);
+    assert(ret.status == DFU_OK);
+    // Short delay for testing purposes.
     delay_microseconds(ret.poll_timeout_msec);
-  } while (ret.state == STATE_DFU_DNBUSY);
+  } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
 
   return move(bin_file);
 }

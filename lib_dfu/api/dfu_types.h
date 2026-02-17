@@ -35,6 +35,12 @@ enum dfu_request {
   XMOS_REBOOT = 7,          // For host requesting device reboot
   XMOS_GET_ERROR_INFO = 8,  // TODO - check the usage of this
   XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+
+  XMOS_DFU_RESETDEVICE = 0xf0,  // TODO - support these
+  XMOS_DFU_REVERTFACTORY = 0xf1,
+  XMOS_DFU_RESETINTODFU = 0xf2,
+  XMOS_DFU_RESETFROMDFU = 0xf3,
+  XMOS_DFU_SELECTIMAGE = 0xf4
 };
 
 /**
@@ -44,9 +50,9 @@ enum dfu_state {
   STATE_APP_IDLE,
   STATE_APP_DETACH,
   STATE_DFU_IDLE,
-  STATE_DFU_DNLOAD_SYNC,
-  STATE_DFU_DNBUSY,
-  STATE_DFU_DNLOAD_IDLE,
+  STATE_DFU_DOWNLOAD_SYNC,
+  STATE_DFU_DOWNLOAD_BUSY,
+  STATE_DFU_DOWNLOAD_IDLE,
   STATE_DFU_MANIFEST_SYNC,
   STATE_DFU_MANIFEST,
   STATE_DFU_MANIFEST_WAIT_RESET,
@@ -58,22 +64,22 @@ enum dfu_state {
  * DFU device status code
  */
 enum dfu_status {
-  ERR_OK,
-  ERR_TARGET,
-  ERR_FILE,
-  ERR_WRITE,
-  ERR_ERASE,
-  ERR_CHECK_ERASED,
-  ERR_PROG,
-  ERR_VERIFY,
-  ERR_ADDRESS,
-  ERR_NOTDONE,
-  ERR_FIRMWARE,
-  ERR_VENDOR,
-  ERR_USBR,
-  ERR_POR,
-  ERR_UNKNOWN,
-  ERR_STALLED_PKT
+  DFU_OK,
+  DFU_errTARGET,
+  DFU_errFILE,
+  DFU_errWRITE,
+  DFU_errERASE,
+  DFU_errCHECK_ERASED,
+  DFU_errPROG,
+  DFU_errVERIFY,
+  DFU_errADDRESS,
+  DFU_errNOTDONE,
+  DFU_errFIRMWARE,
+  DFU_errVENDOR,
+  DFU_errUSBR,
+  DFU_errPOR,
+  DFU_errUNKNOWN,
+  DFU_errSTALLED_PKT
 };
 
 /**
@@ -85,12 +91,14 @@ struct dfu_getstatus {
   unsigned poll_timeout_msec; /**< Poll timeout in milliseconds */
 };
 
-/** API function return values */
-enum dfu_api_status {
-  DFU_API_SUCCESS = 0,
-  DFU_API_ERROR = 1,
-  DFU_API_DATA_LENGTH_ERROR = 2,
-  DFU_API_BAD_PARAM = 3
-};
+/* TODO - lib_xua types, remove in time */
+#define _DFU_TRANSFER_SIZE_BYTES (64)   // bMaxPacketSize0 in DFU device descriptor
+#define _DFU_TRANSFER_SIZE_WORDS (_DFU_TRANSFER_SIZE_BYTES/4)
+#define _FLASH_PAGE_SIZE_BYTES    (256)
+#define _NUM_DFU_PAGES_PER_FLASH_PAGE (_FLASH_PAGE_SIZE_BYTES/_DFU_TRANSFER_SIZE_BYTES)
+
+#if (_FLASH_PAGE_SIZE_BYTES % _DFU_TRANSFER_SIZE_BYTES)
+#error _FLASH_PAGE_SIZE_BYTES should be a multiple of _DFU_TRANSFER_SIZE_BYTES
+#endif
 
 #endif

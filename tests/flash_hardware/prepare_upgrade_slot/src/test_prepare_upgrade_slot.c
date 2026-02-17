@@ -26,7 +26,7 @@ static hwtimer_t prepare_timer;
 void setUp() { prepare_timer = hwtimer_alloc(); }
 
 void tearDown() {
-  flash_cmd_deinit();
+  flash_deinit();
   hwtimer_free(prepare_timer);
 }
 
@@ -99,14 +99,14 @@ void test_dfu_image_analysis(void) {
 }
 
 void test_dfu_flash_is_suitable(void) {
-  int status = flash_cmd_init();
+  int status = flash_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
   
   TEST_ASSERT_TRUE(flash_is_suitable());
 }
 
 void test_dfu_flash_prepare_slot_reports_OK(void) {
-  int status = flash_cmd_init();
+  int status = flash_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
   TEST_ASSERT_NOT_EQUAL(0, upgrade_size);
   
@@ -135,7 +135,7 @@ void test_dfu_flash_write_reports_OK(void) {
   TEST_ASSERT_NOT_NULL(upgrade_mem);
   TEST_ASSERT_NOT_EQUAL(0, upgrade_size);
 
-  int status = flash_cmd_init();
+  int status = flash_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
 
   int wr_status = write(prepare_timer, upgrade_mem, upgrade_size);
@@ -151,7 +151,7 @@ void test_dfu_flash_verify_reports_OK(void) {
   TEST_ASSERT_NOT_NULL(upgrade_mem);
   TEST_ASSERT_NOT_EQUAL(0, upgrade_size);
 
-  int status = flash_cmd_init();
+  int status = flash_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
 
   struct flash_data_status prep_status = flash_start_read();

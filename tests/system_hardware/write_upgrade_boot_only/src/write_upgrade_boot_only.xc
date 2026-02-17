@@ -76,11 +76,11 @@ FILE * movable write(FILE * movable bin_file, size_t block_size,
 
     do {
       ret = dfu_getstatus();
-      assert(ret.status == ERR_OK);
+      assert(ret.status == DFU_OK);
       delay_microseconds(1);
-    } while (ret.state == STATE_DFU_DNBUSY);
+    } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
 
-    assert(ret.state == STATE_DFU_DNLOAD_IDLE);
+    assert(ret.state == STATE_DFU_DOWNLOAD_IDLE);
 
     block_count++;
   }
@@ -91,7 +91,7 @@ FILE * movable write(FILE * movable bin_file, size_t block_size,
 
   ret = dfu_getstatus();
   assert(ret.state == STATE_DFU_IDLE);
-  assert(ret.status == ERR_OK);
+  assert(ret.status == DFU_OK);
 
   upgrade_size = block_count * block_size;
 

@@ -9,9 +9,6 @@
 #include <xclib.h>
 #include <xs1.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #define DEBUG_UNIT TEST
 #define DEBUG_PRINT_ENABLE_TEST 1
 #include "debug_print.h"
@@ -45,37 +42,18 @@ struct {
 
 const char *labels = "boot";
 
-enum flash_status flash_cmd_init() {
+enum flash_status flash_init() {
   fl.flash_open = 1;
   return DFU_FLASH_OK;
 }
 
-enum flash_status flash_cmd_deinit() {
+enum flash_status flash_deinit() {
   fl.flash_open = 0;
   return DFU_FLASH_OK;
 }
 
 int32_t flash_is_connected(void) {
   return fl.flash_open;
-}
-
-int32_t flash_get_page_size(void) { return 256; }
-
-int32_t flash_get_sector_size(void) { return 4096; }
-
-int32_t flash_get_size(void) {
-  return 2 * 1024 * 1024;  // 2MB flash
-}
-
-bool flash_is_suitable(void) { return true; }
-
-
-struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], int32_t length){
-  (void)buf;
-  (void)length;
-
-  struct flash_data_status result = { DFU_FLASH_BAD_PARAM, 0 };
-  return result;
 }
 
 enum flash_status flash_erase_sector_async(int32_t erase_size) {
@@ -102,7 +80,7 @@ enum flash_status flash_erase_sector_async(int32_t erase_size) {
     int page_address = fl.address + 256 * i;
     int page_index = fl.address / 256 + i;
 
-    fl.page_erased[page_index] = (char)true;
+    fl.page_erased[page_index] = 1;
 
     if (page_address >= fl.partitions.u_start &&
         page_address < fl.partitions.u_start + fl.partitions.u_size) {
@@ -149,8 +127,9 @@ enum flash_status flash_write_page(const uint8_t page[], int32_t length) {
     memcpy(&fl.partitions.u_contents[contents_offset], page, 256);
   }
 
+  // Flash library write performs verification for us.
   debug_printf("flash_verify_page 0x%X\n", fl.address);
-  fl.page_verified[fl.address / 256] = (char)true;
+  fl.page_verified[fl.address / 256] = 1;
 
   fl.busy_countdown = 0;
 
@@ -165,25 +144,13 @@ enum flash_status flash_finalise_write() {
   return DFU_FLASH_OK;
 }
 
-struct flash_data_status flash_start_read() {
-  fl.address = 0;
-  struct flash_data_status result = { DFU_FLASH_OK, 0 };
-  return result;
-}
-
-enum flash_status flash_read_page(uint8_t *data, int32_t length) {
-  (void) data;
-  (void) length;
-
-  return DFU_FLASH_OK; }
-
-bool flash_is_busy(void) {
+int32_t flash_is_busy(void) {
   if (fl.busy_countdown > 0) {
     debug_printf("busy countdown %d\n", fl.busy_countdown);
     fl.busy_countdown--;
-    return true;
+    return 1;
   } else {
-    return false;
+    return 0;
   }
 }
 
@@ -227,15 +194,15 @@ void single_dnload_block(int block_num, size_t block_size, const uint8_t block[]
 
   dfu_dnload(block_num, block_size, block);
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_DNLOAD_SYNC, state);
+  TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_SYNC, state);
 
   do {
     ret = dfu_getstatus();
-    TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+    TEST_ASSERT_EQUAL(DFU_OK, ret.status);
     delay_microseconds(1);
-  } while (ret.state == STATE_DFU_DNBUSY);
+  } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
 
-  TEST_ASSERT_EQUAL(STATE_DFU_DNLOAD_IDLE, ret.state);
+  TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_IDLE, ret.state);
 }
 
 void dnload_zero(void) {
@@ -249,12 +216,12 @@ void dnload_zero(void) {
 
   do {
     ret = dfu_getstatus();
-    TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+    TEST_ASSERT_EQUAL(DFU_OK, ret.status);
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_MANIFEST);
 
   TEST_ASSERT_EQUAL(STATE_DFU_IDLE, ret.state);
-  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+  TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 }
 
 void detach() {

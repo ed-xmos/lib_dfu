@@ -7,9 +7,6 @@
 #include <string.h>
 #include <unity.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #define DEBUG_UNIT TEST
 #define DEBUG_PRINT_ENABLE_TEST 0
 #include "debug_print.h"
@@ -54,10 +51,10 @@ int flash_get_size(void)
   return 2097152;
 }
 
-bool flash_is_first_whole_page_in_sector(unsigned address)
+int32_t flash_is_first_whole_page_in_sector(unsigned address)
 {
   if (address < 256)
-    return true;
+    return 1;
 
   debug_printf("is %d first whole page in sector: %d\n", address,
                (address - 256) / 4096 != address / 4096);
@@ -71,13 +68,13 @@ enum flash_erase_sector_async_result
   debug_printf("flash_erase_sector_async 0x%X\n", address);
 
   assert(fl.busy_countdown == 0);
-  fl.sector_erased[address / 4096] = (char)true;
+  fl.sector_erased[address / 4096] = 1;
   fl.busy_countdown = 5;
 
   return 0;
 }
 
-bool flash_is_sector_erased(unsigned address)
+int32_t flash_is_sector_erased(unsigned address)
 {
   return fl.sector_erased[address / 4096];
 }
@@ -89,27 +86,21 @@ enum flash_write_page_async_result
 
   assert(fl.busy_countdown == 0);
   assert(fl.sector_erased[address / 4096]);
-  fl.page_written[address / 256] = (char)true;
+  fl.page_written[address / 256] = 1;
   fl.busy_countdown = 1;
 
   return 0;
 }
 
-bool flash_verify_page(unsigned address, const char page[])
-{
-  debug_printf("flash_verify_page 0x%X\n", address);
-  return true; // always report success, test verification is performed later
-}
-
-bool flash_is_busy(void)
+int32_t flash_is_busy(void)
 {
   if (fl.busy_countdown > 0) {
     debug_printf("busy countdown %d\n", fl.busy_countdown);
     fl.busy_countdown--;
-    return true;
+    return 1;
   }
   else {
-    return false;
+    return 0;
   }
 }
 
@@ -155,19 +146,19 @@ static enum dfu_status
 
   dfu_dnload(block_num, block_size, block);
   state = dfu_getstate();
-  assert(state == DFU_DNLOAD_SYNC);
+  assert(state == STATE_DFU_DNLOAD_SYNC);
 
   do {
     ret = dfu_getstatus();
-    if (ret.status != ERR_OK)
+    if (ret.status != DFU_OK)
       return ret.status;
 
     delay_microseconds(1);
-  } while (ret.state == DFU_DNBUSY);
+  } while (ret.state == STATE_DFU_DNBUSY);
 
-  assert(ret.state == DFU_DNLOAD_IDLE);
+  assert(ret.state == STATE_DFU_DNLOAD_IDLE);
 
-  return ERR_OK;
+  return DFU_OK;
 }
 
 void dnload_zero(void)
@@ -178,16 +169,16 @@ void dnload_zero(void)
 
   dfu_dnload(0, 0, block);
   state = dfu_getstate();
-  assert(state == DFU_MANIFEST_SYNC);
+  assert(state == STATE_DFU_MANIFEST_SYNC);
 
   do {
     ret = dfu_getstatus();
-    assert(ret.status == ERR_OK);
+    assert(ret.status == DFU_OK);
     delay_microseconds(1);
-  } while (ret.state == DFU_MANIFEST);
+  } while (ret.state == STATE_DFU_MANIFEST);
 
-  assert(ret.state == DFU_IDLE);
-  assert(ret.status == ERR_OK);
+  assert(ret.state == STATE_DFU_IDLE);
+  assert(ret.status == DFU_OK);
 }
 
 void verify(void)
@@ -245,16 +236,16 @@ void dnload(int partitions, int block_size, int block_count)
                      i, marker | i, block_size);
 
         status = single_dnload_block(marker | i, block_size, block);
-        if (status != ERR_OK) {
-          assert(status == ERR_ADDRESS);
+        if (status != DFU_OK) {
+          assert(status == DFU_errADDRESS);
           dfu_clrstatus();
           state = dfu_getstate();
-          assert(state == DFU_IDLE);
+          assert(state == STATE_DFU_IDLE);
           break;
         }
       }
       state = dfu_getstate();
-      if (state == STATE_DFU_DNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
+      if (state == STATE_DFU_DOWNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
         debug_printf("dnload zero\n");
         dnload_zero();
       }

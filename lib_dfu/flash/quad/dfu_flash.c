@@ -7,6 +7,7 @@
 #include <stdint.h>
 
 #include "dfu.h"
+#if defined (DFU_ENABLE) && (DFU_ENABLE == 1)
 
 struct flash_session {
   int32_t device_open;
@@ -18,11 +19,11 @@ struct flash_session {
 
 static struct flash_session session;
 
-enum flash_status flash_cmd_init(void) {
+enum flash_status flash_init(void) {
   fl_BootImageInfo image;
 
   if (!session.device_open) {
-    if (flash_cmd_enable_ports() == DFU_FLASH_OK) {
+    if (flash_enable_ports() == DFU_FLASH_OK) {
       session.device_open = 1;
     }
   }
@@ -50,9 +51,9 @@ enum flash_status flash_cmd_init(void) {
   return DFU_FLASH_OK;
 }
 
-enum flash_status flash_cmd_deinit(void) {
+enum flash_status flash_deinit(void) {
   if (session.device_open) {
-    flash_cmd_disable_ports();
+    flash_disable_ports();
     session.device_open = 0;
   }
   return DFU_FLASH_OK;
@@ -167,7 +168,7 @@ enum flash_status flash_read_page(uint8_t data[], int32_t length) {
   return DFU_FLASH_OK;
 }
 
-bool flash_is_busy(void) { return (fl_getBusyStatus() != 0); }
+int32_t flash_is_busy(void) { return (fl_getBusyStatus() != 0); }
 
 int32_t flash_get_page_size(void) { return (int32_t)fl_getPageSize(); }
 
@@ -175,11 +176,13 @@ int32_t flash_get_sector_size(void) { return (int32_t)fl_getSectorSize(0); }
 
 int32_t flash_get_size(void) { return (int32_t)fl_getFlashSize(); }
 
-bool flash_is_suitable(void)
+int32_t flash_is_suitable(void)
 {
   if (flash_get_page_size() > DFU_FLASH_PAGE_SIZE_BYTES) {
-    return false;
+    return 0;
   }
 
-  return true;
+  return 1;
 }
+
+#endif
