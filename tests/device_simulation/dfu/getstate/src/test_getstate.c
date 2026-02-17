@@ -10,5 +10,5 @@ void test_getstate(void)
   enum dfu_state state;
 
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(APP_IDLE, state);
+  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
 }

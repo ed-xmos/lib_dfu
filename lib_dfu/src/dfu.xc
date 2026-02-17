@@ -2,6 +2,8 @@
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #include <xs1.h>
 #include <print.h>
+#include <string.h>
+#include <stdint.h>
 
 #define _Bool int
 #include <stdbool.h>
@@ -11,42 +13,26 @@
 #include "debug_print.h"
 #include "xassert.h"
 
-#include "dfu_buffer_converter.h"
 #include "dfu_flash.h"
-#include "dfu_flash_result.h"
 #include "dfu.h"
+#include "fifo.h"
+
+// TODOs
+// Find place to insert flash_cmd_init() and flash_cmd_deinit()
 
 #define POLL_TIMEOUT_MSEC 1
 
-static enum dfu_state state = APP_IDLE;
-static enum dfu_status status = DFU_OK;
-static int error_info = 0;
+static enum dfu_state state = STATE_APP_IDLE;
+static enum dfu_status status = ERR_OK;
+static int32_t error_info = 0;
 
-static struct buffer_converter converter;
+static struct fifo dfu_fifo;
+static uint8_t dfu_fifo_storage[DFU_FLASH_PAGE_SIZE_BYTES];
 
-static struct {
-  unsigned boot, data;
-} upgrade_slots = {0, 0};
-
-static struct {
-  int next_page_address;
-  char page[DFU_FLASH_PAGE_SIZE_BYTES];
-  bool page_ready;
-  enum dnload_sub_state {
-    DNLOAD_SYNC,
-    DNLOAD_ERASING_SECTOR,
-    DNLOAD_WRITING_PAGE
-  } sub_state;
-} dnload = {0, {}, false, DNLOAD_SYNC};
-
-enum dfu_request {
-  DFU_DETACH,
-  DFU_DNLOAD,
-  DFU_UPLOAD,
-  DFU_GETSTATUS,
-  DFU_CLRSTATUS,
-  DFU_GETSTATE,
-  DFU_ABORT
+enum dnload_sub_state {
+  DNLOAD_SYNC,
+  DNLOAD_ERASING,
+  DNLOAD_WRITING
 };
 
 #if DEBUG_PRINT_ENABLE_DFU
@@ -61,6 +47,9 @@ static const char * unsafe request_str(enum dfu_request r)
       case DFU_CLRSTATUS:             return "CLRSTATUS";
       case DFU_GETSTATE:              return "GETSTATE";
       case DFU_ABORT:                 return "ABORT";
+      case XMOS_REBOOT:               return "XMOS_REBOOT";
+      case XMOS_GET_ERROR_INFO:       return "XMOS_GET_ERROR_INFO";
+      case XMOS_BUS_RESET:            return "XMOS_BUS_RESET";
       default:                        return "?";
     }
   }
@@ -70,18 +59,18 @@ static const char * unsafe state_str(enum dfu_state s)
 {
   unsafe {
     switch (s) {
-      case APP_IDLE:                  return "appIDLE";
-      case APP_DETACH:                return "appDETACH";
-      case DFU_IDLE:                  return "dfuIDLE";
-      case DFU_DNLOAD_SYNC:           return "dfuDNLOAD-SYNC";
-      case DFU_DNBUSY:                return "dfuDNBUSY";
-      case DFU_DNLOAD_IDLE:           return "dfuDNLOAD-IDLE";
-      case DFU_MANIFEST_SYNC:         return "dfuMANIFEST-SYNC";
-      case DFU_MANIFEST:              return "dfuMANIFEST";
-      case DFU_MANIFEST_WAIT_RESET:   return "dfuMANIFEST-WAIT-RESET";
-      case DFU_UPLOAD_IDLE:           return "dfuUPLOAD-IDLE";
-      case DFU_ERROR:                 return "dfuERROR";
-      default:                        return "?";
+      case STATE_APP_IDLE:                  return "appIDLE";
+      case STATE_APP_DETACH:                return "appDETACH";
+      case STATE_DFU_IDLE:                  return "dfuIDLE";
+      case STATE_DFU_DNLOAD_SYNC:           return "dfuDNLOAD-SYNC";
+      case STATE_DFU_DNBUSY:                return "dfuDNBUSY";
+      case STATE_DFU_DNLOAD_IDLE:           return "dfuDNLOAD-IDLE";
+      case STATE_DFU_MANIFEST_SYNC:         return "dfuMANIFEST-SYNC";
+      case STATE_DFU_MANIFEST:              return "dfuMANIFEST";
+      case STATE_DFU_MANIFEST_WAIT_RESET:   return "dfuMANIFEST-WAIT-RESET";
+      case STATE_DFU_UPLOAD_IDLE:           return "dfuUPLOAD-IDLE";
+      case STATE_DFU_ERROR:                 return "dfuERROR";
+      default:                              return "?";
     }
   }
 }
@@ -90,10 +79,10 @@ static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
 {
   unsafe {
     switch (s) {
-      case DNLOAD_SYNC:               return "SYNC";
-      case DNLOAD_ERASING_SECTOR:     return "ERASING_SECTOR";
-      case DNLOAD_WRITING_PAGE:       return "WRITING_PAGE";
-      default:                        return "?";
+      case DNLOAD_SYNC:                     return "SYNC";
+      case DNLOAD_ERASING:                  return "ERASING";
+      case DNLOAD_WRITING:                  return "WRITING";
+      default:                              return "?";
     }
   }
 }
@@ -102,7 +91,7 @@ static const char * unsafe status_str(enum dfu_status s)
 {
   unsafe {
     switch (s) {
-      case DFU_OK:                    return "OK";
+      case ERR_OK:                    return "OK";
       case ERR_TARGET:                return "errTARGET";
       case ERR_FILE:                  return "errFILE";
       case ERR_WRITE:                 return "errWRITE";
@@ -129,245 +118,241 @@ static void normal_transition(enum dfu_state new)
   unsafe {
     debug_printf("DFU: %s -> %s\n", state_str(state), state_str(new));
   }
-  status = DFU_OK;
+  status = ERR_OK;
   state = new;
 }
 
-static void error_condition(enum dfu_status code, int extra)
+static void error_condition(enum dfu_status code, int32_t extra)
 {
-  if (dnload.page_ready)
-    dnload.page_ready = false;
-
   unsafe {
     debug_printf("DFU: %s -> DFU_ERROR (%s %d)\n",
                  state_str(state), status_str(code), extra);
   }
   status = code;
-  state = DFU_ERROR;
+  state = STATE_DFU_ERROR;
   error_info = extra;
 }
 
-static void sub_transition_dnload(enum dnload_sub_state new)
+static void sub_transition_dnload(enum dnload_sub_state new, enum dnload_sub_state &sub_state_arg)
 {
   unsafe {
     debug_printf("DFU DNLOAD: %s -> %s\n",
-                 dnload_sub_state_str(dnload.sub_state),
+                 dnload_sub_state_str(sub_state_arg),
                  dnload_sub_state_str(new));
   }
-  dnload.sub_state = new;
+  sub_state_arg = new;
 }
 
-static bool is_address_in_an_upgrade_slot(unsigned address)
+static int32_t dfufifo_full(void)
 {
-  if (address >= upgrade_slots.boot && address < (unsigned)flash_get_data_partition_base())
-    return true;
-
-  if (address >= upgrade_slots.data && address < (unsigned)flash_get_size())
-    return true;
-
-  return false;
+  // TODO - check whether fifo_is_full is sensible check, if fifo size and transfer size are not multiples of each 
+  // other there could be some edge cases where this doesn't work as expected
+  return fifo_is_full(dfu_fifo);
 }
 
-
-static enum dfu_status getstatus_from_dnload(bool &busy)
+static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_arg)
 {
-  busy = true;
-
-  switch (dnload.sub_state) {
+  int32_t page_size_bytes = flash_get_page_size();
+  uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
+  
+  switch (sub_state_arg) {
     case DNLOAD_SYNC:
-      if (dnload.page_ready) {
-        if (flash_is_first_whole_page_in_sector(dnload.next_page_address)) {
-          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
-            return ERR_ADDRESS;
+      // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
+      enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
+      if (erase_status != DFU_FLASH_OK && erase_status != DFU_FLASH_BUSY) {
+        return ERR_ERASE;
+      }
 
-          sub_transition_dnload(DNLOAD_ERASING_SECTOR);
+      sub_transition_dnload(DNLOAD_ERASING, sub_state_arg);
 
-          enum flash_status result = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
-          if (result != DFU_FLASH_OK && result != DFU_FLASH_BUSY)
-            return ERR_ERASE;
-        }
-        else {
-          if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
-            return ERR_ADDRESS;
+      break;
 
-          sub_transition_dnload(DNLOAD_WRITING_PAGE);
+    case DNLOAD_ERASING:
+      // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
+      enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
 
-          // TODO - fix flash
-          if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != DFU_FLASH_OK)
+      if (erase_status == DFU_FLASH_OK) {
+        // sector erase completed, move on to page write
+        sub_transition_dnload(DNLOAD_WRITING, sub_state_arg);
+
+        if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
+          if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
             return ERR_WRITE;
+          }
         }
-      }
-      else {
-        busy = false;
+
+      } else if (erase_status == DFU_FLASH_BUSY) {
+        // still erasing, remain in this state and wait for next poll
+      } else {
+        return ERR_ERASE;
       }
       break;
 
-    case DNLOAD_ERASING_SECTOR:
-      if (!flash_is_busy()) {
-        if (!flash_is_sector_erased(dnload.next_page_address))
-          return ERR_CHECK_ERASED;
-
-        if (!is_address_in_an_upgrade_slot(dnload.next_page_address))
-          return ERR_ADDRESS;
-
-        sub_transition_dnload(DNLOAD_WRITING_PAGE);
-
-        if (flash_write_page(dnload.page, DFU_FLASH_PAGE_SIZE_BYTES) != DFU_FLASH_OK)
+    case DNLOAD_WRITING:
+      if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
+        if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
           return ERR_WRITE;
-      }
-      break;
-
-    case DNLOAD_WRITING_PAGE:
-      if (!flash_is_busy()) {
-        if (!flash_verify_page(dnload.next_page_address, dnload.page))
-          return ERR_VERIFY;
-
-        const int page_size_bytes = flash_get_page_size();
-
-        sub_transition_dnload(DNLOAD_SYNC);
-
-        dnload.next_page_address += page_size_bytes;
-
-        if (buffer_converter_pull(converter, dnload.page, page_size_bytes) != 0) {
-          dnload.page_ready = false;
-          busy = false;
         }
       }
       break;
+
+      default:
+        return ERR_UNKNOWN;
   }
 
-  return DFU_OK;
+  return ERR_OK;
 }
 
-static int dnload_block(const char write_block[], int block_num,
-                        int block_size_bytes)
+static enum dfu_status getstatus_from_manifest(void)
 {
-  const int page_size_bytes = flash_get_page_size();
+  int32_t page_size_bytes = flash_get_page_size();
+  uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
 
-  // it should be an error for the sub-state machine to go out of sync
-  // eg host omitting a GETSTATUS request
-  if (dnload.sub_state != DNLOAD_SYNC)
-    return 1;
+  if (page_size_bytes > DFU_FLASH_PAGE_SIZE_BYTES) {
+    // sanity check - this should never happen
+    return ERR_UNKNOWN;
+  }
 
-  // there should never be an unprocessed page when DNLOAD request is sent
-  // an unprocessed page is written out first with repeated GETSTATUS requests
-  if (dnload.page_ready)
-    return 2;
+  // drain conversion buffer of partial page, if any
+  int32_t remaining_bytes = fifo_size(dfu_fifo);
+  // TODO - this assumes that fifo is page sized.
+  // If this is not the case, we may need to do multiple dequeues to drain the fifo.
+  if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
+    memset(&page[remaining_bytes], 0xFF, page_size_bytes - remaining_bytes);
+    if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
+      return ERR_WRITE;
+    }
+  }
+  return ERR_OK;
+}
+
+/* Expecting only to be called from DFU_IDLE or DFU_DNLOAD_IDLE, fifo should be ready */
+static int32_t dnload_block(const uint8_t write_block[], int32_t block_num, int32_t block_size_bytes)
+{
+  (void)block_num; // TODO - remove
 
   if (block_size_bytes > 0) {
-    // peek at main state here to determine if this is the first DNLOAD block of
-    // a given operation so we can suitably start things off
-    if (state == DFU_IDLE) {
-      dnload.next_page_address = block_num & DFU_BLOCK_NUM_DATA_IMAGE_MARKER
-                                 ? upgrade_slots.data : upgrade_slots.boot;
-      buffer_converter_reset(converter);
-    }
-
     // non-zero return value from the push function indicates not enough space
     // in the queue of blocks awaiting conversion to pages
     // for some reason there are have been not enough pulls or too many pushes
-    if (buffer_converter_push(converter, write_block, block_size_bytes) != 0)
+    if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) != FIFO_OK) {
       return 3;
-
-    // normal scenario: once we have enough blocks to make one page, commit this
-    // page for the next stage: optional sector erase followed by one or more
-    // page writes
-    if (buffer_converter_pull(converter, dnload.page, page_size_bytes) == 0)
-      dnload.page_ready = true;
-  }
-
-  if (block_size_bytes == 0) {
-    // drain conversion buffer of partial page, if any
-    if (buffer_converter_padded_pull(converter, dnload.page, page_size_bytes) > 0)
-      dnload.page_ready = true;
+    }
   }
 
   return 0;
 }
 
-static void request_with_arguments(enum dfu_request request,
-                                   const char (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
-                                   char (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
-                                   int block_size_bytes, int write_block_num)
+static int32_t upload_block(uint8_t read_block[], int32_t block_size_bytes)
 {
-  UNUSED(read_block);
+  // TODO - fix - add fifo here to buffer data reads. Part of wider upload feature fix.
+  if (block_size_bytes > 0) {
+    if (flash_read_page(read_block, block_size_bytes) != DFU_FLASH_OK) {
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static void request_with_arguments(enum dfu_request request,
+                                   const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
+                                   uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
+                                   int32_t block_size_bytes, int32_t &?block_num)
+{
+  static enum dnload_sub_state sub_state = DNLOAD_SYNC;
+  static int32_t read_block_num = 0;
+  static int32_t read_length = 0;
 
 #if DEBUG_PRINT_ENABLE_DFU
   debug_printf("DFU: %s", request_str(request));
-  if (request == DFU_DNLOAD)
-    debug_printf(" 0x%X %d\n", write_block_num, block_size_bytes);
-  else
+  if (request == DFU_DNLOAD) {
+    debug_printf(" 0x%X %d\n", block_num, block_size_bytes);
+  } else {
     debug_printf("\n");
+  }
 #endif
   enum dfu_status rqst_status;
-  int ret;
+  int32_t ret;
 
   switch (state) {
-    case APP_IDLE:
+    case STATE_APP_IDLE:
       if (request == DFU_DETACH) {
-        normal_transition(APP_DETACH);
+        normal_transition(STATE_APP_DETACH);
       }
       // no other requests expected, stay in appIDLE
       break;
 
-    case APP_DETACH:
+    case STATE_APP_DETACH:
       if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
         // no other requests expected, return to appIDLE
-        normal_transition(APP_IDLE);
+        normal_transition(STATE_APP_IDLE);
+        sub_state = DNLOAD_SYNC;
       }
       break;
 
-    case DFU_IDLE:
+    case STATE_DFU_IDLE:
       if (request == DFU_DNLOAD) {
-        ret = dnload_block(write_block, write_block_num, block_size_bytes);
-        if (ret != 0)
+        if (!flash_is_connected()) {
+          if (flash_cmd_init() != DFU_FLASH_OK) {
+            error_condition(ERR_TARGET, 0);
+            break;
+          }
+        }
+        fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
+        ret = dnload_block(write_block, block_num, block_size_bytes);
+        // TODO - test first page for valid image and return errFILE if not valid
+        if (ret != 0) {
           error_condition(ERR_UNKNOWN, ret);
-        else
-          normal_transition(DFU_DNLOAD_SYNC);
-      }
-      else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+        } else {
+          normal_transition(STATE_DFU_DNLOAD_SYNC);
+        }
+
+      } else if (request == DFU_UPLOAD) {
+        if (!flash_is_connected()) {
+          if (flash_cmd_init() != DFU_FLASH_OK) {
+            error_condition(ERR_TARGET, 0);
+            break;
+          }
+          read_block_num = 0;
+          
+          struct flash_data_status start_status = flash_start_read();
+          if (start_status.status != DFU_FLASH_OK) {
+            error_condition(ERR_FILE, 0);
+
+          } else {
+            read_length = start_status.data;
+            // TODO - for no-clock-stretching we may have to read out-of-band
+            int32_t upload = upload_block(read_block, block_size_bytes);
+            if (upload != 0) {
+              error_condition(ERR_FILE, upload);
+            } else {
+              normal_transition(STATE_DFU_UPLOAD_IDLE);
+            }
+          }
+        } else {
+          // it is an error if flash is aready connected. Something has not cleaned up.
+          error_condition(ERR_TARGET, 0);
+        }
+        
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
         // no other requests expected, defined as error
         error_condition(ERR_STALLED_PKT, request);
       }
       break;
 
-    case DFU_DNLOAD_SYNC:
+    case STATE_DFU_DNLOAD_SYNC:
       if (request == DFU_GETSTATUS) {
-        bool busy = false;
-        rqst_status = getstatus_from_dnload(busy);
-        if (rqst_status != DFU_OK) {
+        rqst_status = getstatus_from_dnload(sub_state);
+        if (rqst_status != ERR_OK) {
           error_condition(rqst_status, 0);
-        }
-        else {
-          if (busy) {
-            normal_transition(DFU_DNBUSY);
-            normal_transition(DFU_DNLOAD_SYNC);
-          }
-          else {
-            normal_transition(DFU_DNLOAD_IDLE);
-          }
-        }
-      }
-      break;
 
-    case DFU_MANIFEST_SYNC:
-      if (request == DFU_GETSTATUS) {
-        bool busy = false;
-        rqst_status = getstatus_from_dnload(busy);
-        if (rqst_status != DFU_OK) {
-          error_condition(rqst_status, 0);
-        }
-        else {
-          if (busy) {
-            normal_transition(DFU_MANIFEST);
-            normal_transition(DFU_MANIFEST_SYNC);
-          }
-          else {
-            normal_transition(DFU_IDLE);
-            // flash could be disconnected now
-            ret = flash_set_write_disable();
-            if (ret != 0)
-              error_condition(ERR_WRITE, ret);
+        } else {
+          if (dfufifo_full()) {
+            normal_transition(STATE_DFU_DNBUSY);
+            normal_transition(STATE_DFU_DNLOAD_SYNC);
+
+          } else {
+            normal_transition(STATE_DFU_DNLOAD_IDLE);
           }
         }
       }
@@ -376,31 +361,78 @@ static void request_with_arguments(enum dfu_request request,
       }
       break;
 
-    case DFU_DNLOAD_IDLE:
-      if (request == DFU_DNLOAD) {
-        if (block_size_bytes == 0) {
-          ret = dnload_block(write_block, 0, 0);
-          if (ret != 0)
-            error_condition(ERR_UNKNOWN, ret);
-          else
-            normal_transition(DFU_MANIFEST_SYNC);
-        }
-        else {
-          ret = dnload_block(write_block, write_block_num, block_size_bytes);
-          if (ret != 0)
-            error_condition(ERR_UNKNOWN, ret);
-          else
-            normal_transition(DFU_DNLOAD_SYNC);
+    case STATE_DFU_MANIFEST_SYNC:
+      if (request == DFU_GETSTATUS) {
+        rqst_status = getstatus_from_manifest();
+        if (rqst_status != ERR_OK) {
+          error_condition(rqst_status, 0);
+
+        } else {
+          if (fifo_is_empty(dfu_fifo)) {
+            flash_finalise_write();
+            normal_transition(STATE_DFU_IDLE);
+            sub_state = DNLOAD_SYNC;
+            flash_cmd_deinit();
+
+          } else {
+            normal_transition(STATE_DFU_MANIFEST);
+            normal_transition(STATE_DFU_MANIFEST_SYNC);
+          }
         }
       }
       else if (request != DFU_GETSTATE) {
-        error_condition(ERR_UNKNOWN, request);
+        error_condition(ERR_STALLED_PKT, request);
       }
       break;
 
-    case DFU_ERROR:
+    case STATE_DFU_DNLOAD_IDLE:
+      if (request == DFU_DNLOAD) {
+        if (block_size_bytes == 0) {
+          ret = dnload_block(write_block, 0, 0);
+          if (ret != 0) {
+            error_condition(ERR_FILE, ret);
+          } else {
+            normal_transition(STATE_DFU_MANIFEST_SYNC);
+          }
+
+        } else {
+          ret = dnload_block(write_block, block_num, block_size_bytes);
+          if (ret != 0) {
+            error_condition(ERR_WRITE, ret);
+          } else {
+            normal_transition(STATE_DFU_DNLOAD_SYNC);
+          }
+        }
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+        error_condition(ERR_STALLED_PKT, request);
+      }
+      break;
+
+    case STATE_DFU_UPLOAD_IDLE:
+      if (request == DFU_UPLOAD) {
+        // TODO - use read_length to terminate read correctly.
+        // TODO - figure out transition to DFU_IDLE
+
+        int32_t upload = upload_block(read_block, block_size_bytes);
+        if (upload != 0) {
+          error_condition(ERR_FILE, upload);
+        } else {
+          block_num = read_block_num;
+          read_block_num += 1;
+          // normal_transition(STATE_DFU_UPLOAD_IDLE);
+        }
+        // flash_cmd_deinit() and DFU_IDLE
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+        // no other requests expected, defined as error
+        error_condition(ERR_STALLED_PKT, request);
+      }
+      break;
+
+    case STATE_DFU_ERROR:
       if (request == DFU_CLRSTATUS) {
-        normal_transition(DFU_IDLE);
+        normal_transition(STATE_DFU_IDLE);
+        // TODO - confirm this is correct
+        sub_state = DNLOAD_SYNC;
       }
       break;
   }
@@ -408,7 +440,7 @@ static void request_with_arguments(enum dfu_request request,
 
 static void request(enum dfu_request request)
 {
-  request_with_arguments(request, null, null, 0, 0);
+  request_with_arguments(request, null, null, 0, null);
 }
 
 enum dfu_state dfu_getstate(void)
@@ -430,12 +462,13 @@ struct dfu_getstatus dfu_getstatus(void)
   // make it look like we've stayed in the busy state (either dfuDNBUSY or
   // dfuMANIFEST) for the duration of poll timeout, while we actually leave
   // immediately (going back to the sync state)
-  if (state == DFU_DNLOAD_SYNC)
-    ret.state = DFU_DNBUSY;
-  else if (state == DFU_MANIFEST_SYNC)
-    ret.state = DFU_MANIFEST;
-  else
+  if (state == STATE_DFU_DNLOAD_SYNC) {
+    ret.state = STATE_DFU_DNBUSY;
+  } else if (state == STATE_DFU_MANIFEST_SYNC) {
+    ret.state = STATE_DFU_MANIFEST;
+  } else {
     ret.poll_timeout_msec = 0;
+  }
 
   return ret;
 }
@@ -452,18 +485,19 @@ void dfu_detach(void)
 
 void dfu_bus_reset(void)
 {
-  if (state == APP_DETACH)
-    normal_transition(DFU_IDLE);
-  else if (state == APP_IDLE)
-    normal_transition(APP_IDLE);
-  else
+  if (state == STATE_APP_DETACH) {
+    normal_transition(STATE_DFU_IDLE);
+  } else if (state == STATE_APP_IDLE) {
+    normal_transition(STATE_APP_IDLE);
+  } else {
     error_condition(ERR_USBR, state);
+  }
 }
 
 void dfu_timeout_detach(void)
 {
-  if (state == APP_DETACH) {
-    normal_transition(APP_IDLE);
+  if (state == STATE_APP_DETACH) {
+    normal_transition(STATE_APP_IDLE);
   }
   else {
     debug_printf("unexpected detach timeout call\n");
@@ -471,38 +505,19 @@ void dfu_timeout_detach(void)
   }
 }
 
-void dfu_dnload(unsigned short block_num, size_t block_size_bytes,
-                const char block[DFU_TRANSFER_SIZE_BYTES])
+void dfu_dnload(int32_t block_num, size_t block_size_bytes, const uint8_t write_block[DFU_TRANSFER_SIZE_BYTES])
 {
-  request_with_arguments(DFU_DNLOAD, block, null, block_size_bytes, block_num);
+  request_with_arguments(DFU_DNLOAD, write_block, null,  block_size_bytes, block_num);
 }
 
-int dfu_get_error_info(void)
+int32_t dfu_upload(size_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES])
+{
+  int32_t block_num = 0;
+  request_with_arguments(DFU_UPLOAD, null, read_block, block_size_bytes, block_num);
+  return block_num;
+}
+
+int32_t dfu_get_error_info(void)
 {
   return error_info;
-}
-
-int dfu_locate_upgrade_slots(void)
-{
-  if (flash_locate_boot_upgrade_slot(upgrade_slots.boot) != 0)
-    return 1;
-
-  if (flash_locate_data_upgrade_slot(upgrade_slots.data) != 0)
-    return 2;
-
-  return 0;
-}
-
-bool dfu_is_flash_suitable(const fl_QuadDeviceSpec spec[1])
-{
-  if (spec[0].pageSize > DFU_FLASH_PAGE_SIZE_BYTES)
-    return false;
-
-  if (spec[0].sectorLayout != SECTOR_LAYOUT_REGULAR)
-    return false;
-
-  if (spec[0].sectorEraseSize != spec[0].sectorSizes.regularSectorSize)
-    return false;
-
-  return true;
 }

@@ -123,6 +123,15 @@ pipeline {
                                     dir("device_simulation/dfu") {
                                         runPytest("--level=${params.TEST_LEVEL}")
                                     }
+                                    dir("device_simulation/fifo") {
+                                        runPytest("--level=${params.TEST_LEVEL}")
+                                    }
+                                    dir("device_simulation/dfu_flash") {
+                                        runPytest("--level=${params.TEST_LEVEL}")
+                                    }
+                                    dir("device_simulation/dfu_dnload") {
+                                        runPytest("--level=${params.TEST_LEVEL}")
+                                    }
                                 }
                             }
                         }

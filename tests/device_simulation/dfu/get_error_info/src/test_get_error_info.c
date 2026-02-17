@@ -5,27 +5,25 @@
 
 #include "dfu.h"
 
-#define DFU_DETACH 0 // extracted from library implementation
-
 void test_get_error_info(void)
 {
   enum dfu_state state;
 
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(APP_IDLE, state);
+  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
 
   dfu_detach();
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(APP_DETACH, state);
+  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
 
   dfu_bus_reset();
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(DFU_IDLE, state);
+  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
 
   // another detach is unexpected here
   dfu_detach();
   state = dfu_getstate();
-  TEST_ASSERT_EQUAL(DFU_ERROR, state);
+  TEST_ASSERT_EQUAL(STATE_DFU_ERROR, state);
 
   int extra = dfu_get_error_info();
   TEST_ASSERT_EQUAL(DFU_DETACH, extra); // TODO - check this...

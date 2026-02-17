@@ -53,6 +53,13 @@ fl_QSPIPorts p_qflash = {PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, CLKBLK_FLASHL
 fl_PortHolderStruct p_flash = {XS1_PORT_1A, PORT_SQI_CS, PORT_SQI_SCLK, XS1_PORT_1D, CLKBLK_FLASHLIB};
 #endif
 
+void DFUCustomFlashEnable() __attribute__((weak));
+void DFUCustomFlashEnable() {}
+
+void DFUCustomFlashDisable() __attribute__((weak));
+void DFUCustomFlashDisable() {}
+
+enum flash_status flash_cmd_enable_ports() __attribute__((weak));
 enum flash_status flash_cmd_enable_ports() {
   int result = 0;
 #if (DFU_QUAD_SPI_FLASH)
@@ -107,6 +114,7 @@ enum flash_status flash_cmd_enable_ports() {
   }
 }
 
+enum flash_status flash_cmd_disable_ports() __attribute__((weak));
 enum flash_status flash_cmd_disable_ports() {
   fl_disconnect();
 

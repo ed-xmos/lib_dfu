@@ -67,7 +67,7 @@ void write_begin(void)
   t_start(1);
   state = dfu_getstate();
   t_end();
-  assert(state == APP_IDLE);
+  assert(state == STATE_APP_IDLE);
 
   t_start(2);
   dfu_detach();
@@ -75,7 +75,7 @@ void write_begin(void)
   t_start(3);
   state = dfu_getstate();
   t_end();
-  assert(state == APP_DETACH);
+  assert(state == STATE_APP_DETACH);
 
   ret = fl_connectToOneDevice(ports, spec);
   assert(ret == 0);
@@ -86,7 +86,7 @@ void write_begin(void)
   t_start(5);
   state = dfu_getstate();
   t_end();
-  assert(state == DFU_IDLE);
+  assert(state == STATE_DFU_IDLE);
 }
 
 FILE * movable write(FILE * movable bin_file, int block_size, int marker)
@@ -114,7 +114,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
       t_start(7);
       ret = dfu_getstatus();
       t_end();
-      assert(ret.status == DFU_OK);
+      assert(ret.status == ERR_OK);
       delay_milliseconds(ret.poll_timeout_msec);
     } while (ret.state == DFU_DNBUSY);
 
@@ -128,15 +128,15 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
   t_end();
   state = dfu_getstate();
   t_end();
-  assert(state == DFU_MANIFEST_SYNC);
+  assert(state == STATE_DFU_MANIFEST_SYNC);
 
   do {
     t_start(9);
     ret = dfu_getstatus();
     t_end();
-    assert(ret.status == DFU_OK);
+    assert(ret.status == ERR_OK);
     delay_microseconds(ret.poll_timeout_msec);
-  } while (ret.state == DFU_DNBUSY);
+  } while (ret.state == STATE_DFU_DNBUSY);
 
   return move(bin_file);
 }

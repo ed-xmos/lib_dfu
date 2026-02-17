@@ -12,7 +12,7 @@
 
 
 // WIP NOTICE:  The code is no longer supported, and here for historical reasons.
-//              It requires further work to reinstate the functionality.
+//              It requires further work to reinstate the functionality to support partitions.
 
 
 enum flash_locate_boot_upgrade_slot_result

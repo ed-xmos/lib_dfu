@@ -22,8 +22,8 @@ return
 
 group Deprecated by bmAttributes (bitWillDetach == 1)
 ' Bus reset
-host -> device ++ : DFU_CMD_BUS_RESET
-device -> dfu_commands ++ : dfu_handle_write_command(DFU_CMD_BUS_RESET)
+host -> device ++ : XMOS_CMD_BUS_RESET
+device -> dfu_commands ++ : dfu_handle_write_command(XMOS_CMD_BUS_RESET)
 dfu_commands -> DFU ++ : dfu_bus_reset()
 DFU -> DFU : dfuIDLE
 return

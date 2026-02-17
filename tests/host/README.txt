@@ -14,10 +14,5 @@ Then move to test folder and build tests
 
 Run tests
 
-  cd lib_dfu/tests
-  pytest -k host
-
-Alternatively directly from hosts folder
-
   cd lib_dfu/tests/host
   pytest

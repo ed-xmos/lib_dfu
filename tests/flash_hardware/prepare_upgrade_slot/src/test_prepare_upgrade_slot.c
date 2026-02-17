@@ -65,10 +65,13 @@ int read(hwtimer_t runtime, uint8_t* mem, int length) {
 
   uint8_t *page = mem;
   uint8_t verify[DFU_FLASH_PAGE_SIZE_BYTES] = {0};
+
   int page_size = flash_get_page_size();
   TEST_ASSERT_EQUAL(DFU_FLASH_PAGE_SIZE_BYTES, page_size);
-  enum flash_status prep_status = flash_start_read();
-  TEST_ASSERT_EQUAL(DFU_FLASH_OK, prep_status);
+  struct flash_data_status prep_status = flash_start_read();
+  TEST_ASSERT_EQUAL(DFU_FLASH_OK, prep_status.status);
+  TEST_ASSERT_EQUAL(length, prep_status.data);
+  
   do {
     rd_status = flash_read_page(verify, page_size);
     match &= (memcmp(page, verify, (unsigned)page_size) == 0);
@@ -90,10 +93,16 @@ int read(hwtimer_t runtime, uint8_t* mem, int length) {
 #include <stdio.h>
 
 void test_dfu_image_analysis(void) {
-  fl_BootImageInfo boot_image_info;
-  int status = fl_getImageInfo(&boot_image_info, upgrade_mem);
-  TEST_ASSERT_EQUAL(0, status);
-  upgrade_size = (int)boot_image_info.size;
+  struct flash_data_status image = flash_get_image_size_from_buffer(upgrade_mem, 256);
+  TEST_ASSERT_EQUAL(DFU_FLASH_OK, image.status);
+  upgrade_size = image.data;
+}
+
+void test_dfu_flash_is_suitable(void) {
+  int status = flash_cmd_init();
+  TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
+  
+  TEST_ASSERT_TRUE(flash_is_suitable());
 }
 
 void test_dfu_flash_prepare_slot_reports_OK(void) {
@@ -145,8 +154,8 @@ void test_dfu_flash_verify_reports_OK(void) {
   int status = flash_cmd_init();
   TEST_ASSERT_EQUAL(DFU_FLASH_OK, status);
 
-  enum flash_status prep_status = flash_start_read();
-  TEST_ASSERT_EQUAL(DFU_FLASH_OK, prep_status);
+  struct flash_data_status prep_status = flash_start_read();
+  TEST_ASSERT_EQUAL(DFU_FLASH_OK, prep_status.status);
 
   int rd_status = read(prepare_timer, upgrade_mem, upgrade_size);
 
