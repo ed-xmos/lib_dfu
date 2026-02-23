@@ -1,12 +1,14 @@
 // Copyright 2012-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include "dfu_flash.h"
+
 #include <platform.h>
 #include <xclib.h>
 #include <xs1.h>
 
 #include "dfu.h"
-#include "dfu_flash.h"
+#if defined (DFU_ENABLE) && (DFU_ENABLE != 0)
 
 #if (DFU_QUAD_SPI_FLASH)
 #include <quadflashlib.h>
@@ -48,9 +50,9 @@ typedef struct {
       clock qspiClkblk;
 } fl_QSPIPorts;
 */
-fl_QSPIPorts p_qflash = {PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, CLKBLK_FLASHLIB};
+static fl_QSPIPorts p_qflash = {PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, CLKBLK_FLASHLIB};
 #else
-fl_PortHolderStruct p_flash = {XS1_PORT_1A, PORT_SQI_CS, PORT_SQI_SCLK, XS1_PORT_1D, CLKBLK_FLASHLIB};
+static fl_PortHolderStruct p_flash = {XS1_PORT_1A, PORT_SQI_CS, PORT_SQI_SCLK, XS1_PORT_1D, CLKBLK_FLASHLIB};
 #endif
 
 void DFUCustomFlashEnable() __attribute__((weak));
@@ -59,8 +61,8 @@ void DFUCustomFlashEnable() {}
 void DFUCustomFlashDisable() __attribute__((weak));
 void DFUCustomFlashDisable() {}
 
-enum flash_status flash_cmd_enable_ports() __attribute__((weak));
-enum flash_status flash_cmd_enable_ports() {
+enum flash_status flash_enable_ports() __attribute__((weak));
+enum flash_status flash_enable_ports() {
   int result = 0;
 #if (DFU_QUAD_SPI_FLASH)
   /* Ports not shared */
@@ -114,8 +116,8 @@ enum flash_status flash_cmd_enable_ports() {
   }
 }
 
-enum flash_status flash_cmd_disable_ports() __attribute__((weak));
-enum flash_status flash_cmd_disable_ports() {
+enum flash_status flash_disable_ports() __attribute__((weak));
+enum flash_status flash_disable_ports() {
   fl_disconnect();
 
 #if (!DFU_QUAD_SPI_FLASH)
@@ -127,3 +129,23 @@ enum flash_status flash_cmd_disable_ports() {
 
   return DFU_FLASH_OK;
 }
+
+#else /* DFU_ENABLE not defined or 0 */
+
+void DFUCustomFlashEnable() __attribute__((weak));
+void DFUCustomFlashEnable() {}
+
+void DFUCustomFlashDisable() __attribute__((weak));
+void DFUCustomFlashDisable() {}
+
+enum flash_status flash_enable_ports() __attribute__((weak));
+enum flash_status flash_enable_ports() {
+  return DFU_FLASH_OK;
+}
+
+enum flash_status flash_disable_ports() __attribute__((weak));
+enum flash_status flash_disable_ports() {
+  return DFU_FLASH_OK;
+}
+
+#endif /* DFU_ENABLE */

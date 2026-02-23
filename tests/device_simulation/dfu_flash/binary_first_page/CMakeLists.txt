@@ -4,14 +4,11 @@ project(test_dfu_flash)
 
 set(APP_HW_TARGET          XK-EVK-XU316)
 
-set(APP_DEPENDENT_MODULES   lib_dfu "lib_unity(2.6.1)")
-
-# This is a simulation focused test, but, we do use verification functions of the quadflash library
-# No flash access is done.
-set(DFU_FLASH_UNIT_TEST OFF)
+include(${CMAKE_CURRENT_LIST_DIR}/../../deps.cmake)
 
 set(COMPILER_FLAGS      -O3
                         -report
+                        -lquadflash
                         -Wall
                         -Wextra
                         -Wshadow
@@ -20,7 +17,7 @@ set(COMPILER_FLAGS      -O3
                         -Wfloat-equal
                         -Wsign-compare)
 
-set(APP_INCLUDES        src)
+set(APP_INCLUDES        ../..)
 
 set(XMOS_SANDBOX_DIR    ${CMAKE_CURRENT_LIST_DIR}/../../../../..)
 

@@ -8,9 +8,6 @@
 #include <quadflash.h>
 #include <stdint.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #include "dfu_default_conf.h"
 #include "dfu_types.h"
 

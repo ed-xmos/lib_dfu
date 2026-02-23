@@ -1,15 +1,17 @@
 // Copyright 2019-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
+#include "dfu_flash.h"
+
 #include <safestring.h>
 #include <quadflash.h>
 #include <quadflashlib.h>
 
-#include "quadflash_extra.h"
 #include "dfu.h"
-#include "dfu_flash.h"
-#include "dfu_flash_result.h"
+#if defined (DFU_ENABLE) && (DFU_ENABLE == 2)
 
+#include "dfu_flash_result.h"
+#include "quadflash_extra.h"
 
 // WIP NOTICE:  The code is no longer supported, and here for historical reasons.
 //              It requires further work to reinstate the functionality to support partitions.
@@ -74,23 +76,23 @@ enum flash_erase_sector_async_result
   return FLASH_ERASE_SECTOR_ASYNC_SUCCESS;
 }
 
-bool flash_is_busy(void)
+int32_t flash_is_busy(void)
 {
   return fl_getBusyStatus() != 0;
 }
 
-bool flash_is_first_whole_page_in_sector(unsigned address)
+int32_t flash_is_first_whole_page_in_sector(unsigned address)
 {
   int page_size = fl_getPageSize();
 
   if (address < page_size)
-    return true;
+    return 1;
 
   return fl_getSectorContaining(address - page_size) !=
          fl_getSectorContaining(address);
 }
 
-bool flash_is_sector_erased(unsigned address)
+int32_t flash_is_sector_erased(unsigned address)
 {
   unsigned page_address = address;
   int page_size = fl_getPageSize();
@@ -99,11 +101,11 @@ bool flash_is_sector_erased(unsigned address)
     fl_readPage(page_address, page);
     for (int i = 0; i < page_size; i++) {
       if (page[i] != 0xFF)
-        return false;
+        return 0;
     }
     page_address += page_size;
   }
-  return true;
+  return 1;
 }
 
 enum flash_set_write_disable_result
@@ -143,7 +145,7 @@ enum flash_write_page_async_result
   return FLASH_WRITE_PAGE_ASYNC_SUCCESS;
 }
 
-bool flash_verify_page(unsigned address, const char page[])
+int32_t flash_verify_page(unsigned address, const char page[])
 {
   int page_size = fl_getPageSize();
   char verify[DFU_FLASH_PAGE_SIZE_BYTES];
@@ -166,3 +168,5 @@ int flash_get_size(void)
 {
   return fl_getFlashSize();
 }
+
+#endif

@@ -7,9 +7,6 @@
 #include <xccompat.h>
 #include <stdint.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 /** Possible Flash API return values */
 enum flash_status {
   DFU_FLASH_BUSY = 1,
@@ -33,13 +30,13 @@ struct flash_data_status {
  * \retval DFU_FLASH_OK on success
  * \retval DFU_FLASH_OPEN_ERROR on failure
  */
-enum flash_status flash_cmd_enable_ports();
+enum flash_status flash_enable_ports();
 
 /** User flash pins de-config and must call fl_disconnect()
  * \retval DFU_FLASH_OK on success
  * \retval DFU_FLASH_OPEN_ERROR on failure
  */
-enum flash_status flash_cmd_disable_ports();
+enum flash_status flash_disable_ports();
 
 /** TBC */
 void DFUCustomFlashEnable();
@@ -51,17 +48,17 @@ void DFUCustomFlashDisable();
  * \retval DFU_FLASH_OK on success
  * \retval DFU_FLASH_OPEN_ERROR on failure to open flash device
  */
-enum flash_status flash_cmd_init(void);
+enum flash_status flash_init(void);
 
 /** De-initialise Flash sub-system
  * \retval DFU_FLASH_OK on success
  * \retval DFU_FLASH_OPEN_ERROR on failure to open flash device
  */
-enum flash_status flash_cmd_deinit(void);
+enum flash_status flash_deinit(void);
 
 /** Is flash connected 
- * \retval true if flash is connected and ready for operations
- * \retval false if flash is not connected or not ready for operations
+ * \retval 1 if flash is connected and ready for operations
+ * \retval 0 if flash is not connected or not ready for operations
  */
 int32_t flash_is_connected(void);
 
@@ -78,7 +75,7 @@ struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], i
 
 /** Erase flash sector asynchronously
  *
- * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
+ * \note Must call flash_init() before this function, and flash_deinit() when done with flash operations.
  *
  * \note This function initiates a sector erase operation and returns immediately. The caller should repeatedly call
  * this function until it reports OK or ERROR to check when the erase operation has completed.
@@ -92,7 +89,7 @@ struct flash_data_status flash_get_image_size_from_buffer(const uint8_t buf[], i
 enum flash_status flash_erase_sector_async(int32_t erase_size);
 
 /** Write a page to flash and verify, synchronous operation
- * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
+ * \note Must call flash_init() before this function, and flash_deinit() when done with flash operations.
  *
  * \param page Buffer containing the page data to write. The size of the page is flash_get_page_size().
  * \param length Length of the data in bytes. Must be equal to flash_get_page_size().
@@ -105,7 +102,7 @@ enum flash_status flash_erase_sector_async(int32_t erase_size);
 enum flash_status flash_write_page(const uint8_t page[], int32_t length);
 
 /** Finalise write operation
- * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
+ * \note Must call flash_init() before this function, and flash_deinit() when done with flash operations.
  *
  * This function should be called after all pages have been written with flash_write_page() to finalise the write
  * operation.
@@ -116,7 +113,7 @@ enum flash_status flash_write_page(const uint8_t page[], int32_t length);
 enum flash_status flash_finalise_write();
 
 /** Prepare to read from flash
- * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
+ * \note Must call flash_init() before this function, and flash_deinit() when done with flash operations.
  * 
  * \retval DFU_FLASH_OK if ready to read, data filed is valid and contains the size of the upgrade image in bytes
  * \retval DFU_FLASH_READ_NO_IMAGE if there is no valid upgrade image to read
@@ -125,7 +122,7 @@ enum flash_status flash_finalise_write();
 struct flash_data_status flash_start_read();
 
 /** Read a page from flash
- * \note Must call flash_cmd_init() before this function, and flash_cmd_deinit() when done with flash operations.
+ * \note Must call flash_init() before this function, and flash_deinit() when done with flash operations.
  *
  * \param data    Buffer to read the page data into. The size of the page is flash_get_page_size().
  * \param length  Length of the data buffer in bytes. Must be equal to flash_get_page_size().
@@ -138,10 +135,10 @@ struct flash_data_status flash_start_read();
 enum flash_status flash_read_page(uint8_t data[], int32_t length);
 
 /** Check if flash is busy with an operation
- * \retval true if flash is busy
- * \retval false if flash is not busy
+ * \retval 1 if flash is busy
+ * \retval 0 if flash is not busy
  */
-bool flash_is_busy(void);
+int32_t flash_is_busy(void);
 
 /** Get the size of a flash page in bytes
  * \return page size in bytes
@@ -168,6 +165,6 @@ int32_t flash_get_size(void);
  *
  * \return Whether specification is suitable for use by this library
  */
-bool flash_is_suitable(void);
+int32_t flash_is_suitable(void);
 
 #endif

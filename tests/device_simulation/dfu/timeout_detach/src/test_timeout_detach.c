@@ -11,15 +11,15 @@ void test_timeout_detach(void)
 
   ret = dfu_getstatus();
   TEST_ASSERT_EQUAL(STATE_APP_IDLE, ret.state);
-  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+  TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 
   dfu_detach();
   ret = dfu_getstatus();
   TEST_ASSERT_EQUAL(STATE_APP_DETACH, ret.state);
-  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+  TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 
   dfu_timeout_detach();
   ret = dfu_getstatus();
   TEST_ASSERT_EQUAL(STATE_APP_IDLE, ret.state);
-  TEST_ASSERT_EQUAL(ERR_OK, ret.status);
+  TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 }

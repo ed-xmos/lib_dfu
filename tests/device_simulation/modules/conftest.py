@@ -16,9 +16,15 @@ def level(request):
     return request.config.getoption("--level")
 
 
-def pytest_configure():
-    subprocess.run(["cmake", "-B", "build"], check=True)
-    subprocess.run(["cmake", "--build", "build"], check=True)
+def pytest_configure(config):
+    path = Path('.')
+    for cmake_file in path.glob('**/CMakeLists.txt'):
+        split = cmake_file.parts
+        # Only interested in CMakeLists.txt that are in a directory directly under the current one
+        if len(split) == 2:
+            sub_folder = split[0]
+            subprocess.run(["cmake", "-B", f"{sub_folder}/build", sub_folder], check=True)
+            subprocess.run(["cmake", "--build", f"{sub_folder}/build"], check=True)
 
 
 def pytest_collect_file(parent, file_path: Path):

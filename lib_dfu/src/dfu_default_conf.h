@@ -5,8 +5,23 @@
 #define DFU_DEFAULT_CONF_H
 
 #ifdef __dfu_conf_h_exists__
-#warning "Custom dfu_conf.h found, default configuration will be overridden"
 #include "dfu_conf.h"
+#endif
+
+/** Main control for the function of the DFU library. 
+ * When enabled, the application must provide "-lquadflash" to link the flash library.
+ * When disabled will include empty stubs for the API functions. These stubs are weak and can be overridden locally.
+ */
+#ifndef DFU_ENABLE
+#define DFU_ENABLE 1
+#endif
+
+/** Main control for the USB functionality of the DFU library. 
+ * When enabled, the DFU library will include USB support. Build with lib_xud or lib_xua.
+ * When disabled, USB support will be excluded. Other transports can be used.
+ */
+#ifndef DFU_USB_EN
+#define DFU_USB_EN 0
 #endif
 
 #ifdef __DOXYGEN__
