@@ -1,10 +1,8 @@
 // Copyright 2020-2021 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
-#include "dfu_commands.h"
-#include "dfu_types.h"
 #include "labels.h"
 
-const char *command_str(enum dfu_command command)
+const char *command_str(int command)
 {
   switch (command) {
     case DFU_CMD_DETACH:            return "DETACH";
@@ -15,7 +13,6 @@ const char *command_str(enum dfu_command command)
     case DFU_CMD_GETSTATUS:         return "GETSTATUS";
     case DFU_CMD_REBOOT:            return "REBOOT";
     case DFU_CMD_GET_ERROR_INFO:    return "GET_ERROR_INFO";
-    case DFU_CMD_OVERRIDE_SPISPEC:  return "OVERRIDE_SPISPEC";
     default: return "?";
   }
 }
@@ -23,17 +20,17 @@ const char *command_str(enum dfu_command command)
 const char *state_str(enum dfu_state state)
 {
   switch (state) {
-    case APP_IDLE:                return "appIDLE";
-    case APP_DETACH:              return "appDETACH";
-    case DFU_IDLE:                return "dfuIDLE";
-    case DFU_DNLOAD_SYNC:         return "dfuDNLOAD-SYNC";
-    case DFU_DNBUSY:              return "dfuDNBUSY";
-    case DFU_DNLOAD_IDLE:         return "dfuDNLOAD-IDLE";
-    case DFU_MANIFEST_SYNC:       return "dfuMANIFEST-SYNC";
-    case DFU_MANIFEST:            return "dfuMANIFEST";
-    case DFU_MANIFEST_WAIT_RESET: return "dfuMANIFEST-WAIT-RESET";
-    case DFU_UPLOAD_IDLE:         return "dfuUPLOAD-IDLE";
-    case DFU_ERROR:               return "dfuERROR";
+    case STATE_APP_IDLE:                return "appIDLE";
+    case STATE_APP_DETACH:              return "appDETACH";
+    case STATE_DFU_IDLE:                return "dfuIDLE";
+    case STATE_DFU_DOWNLOAD_SYNC:       return "dfuDNLOAD-SYNC";
+    case STATE_DFU_DOWNLOAD_BUSY:       return "dfuDNBUSY";
+    case STATE_DFU_DOWNLOAD_IDLE:       return "dfuDNLOAD-IDLE";
+    case STATE_DFU_MANIFEST_SYNC:       return "dfuMANIFEST-SYNC";
+    case STATE_DFU_MANIFEST:            return "dfuMANIFEST";
+    case STATE_DFU_MANIFEST_WAIT_RESET: return "dfuMANIFEST-WAIT-RESET";
+    case STATE_DFU_UPLOAD_IDLE:         return "dfuUPLOAD-IDLE";
+    case STATE_DFU_ERROR:               return "dfuERROR";
     default: return "?";
   }
 }
@@ -42,21 +39,21 @@ const char *status_str(enum dfu_status status)
 {
   switch (status) {
     case DFU_OK:           return "OK";
-    case ERR_TARGET:       return "errTARGET";
-    case ERR_FILE:         return "errFILE";
-    case ERR_WRITE:        return "errWRITE";
-    case ERR_ERASE:        return "errFILE";
-    case ERR_CHECK_ERASED: return "errCHECK_ERASED";
-    case ERR_PROG:         return "errPROG";
-    case ERR_VERIFY:       return "errVERIFY";
-    case ERR_ADDRESS:      return "errADDRESS";
-    case ERR_NOTDONE:      return "errNOTDONE";
-    case ERR_FIRMWARE:     return "errFIRMWARE";
-    case ERR_VENDOR:       return "errVENDOR";
-    case ERR_USBR:         return "errUSBR";
-    case ERR_POR:          return "errPOR";
-    case ERR_UNKNOWN:      return "errUNKNOWN";
-    case ERR_STALLED_PKT:  return "errSTALLEDPKT";
+    case DFU_errTARGET:       return "errTARGET";
+    case DFU_errFILE:         return "errFILE";
+    case DFU_errWRITE:        return "errWRITE";
+    case DFU_errERASE:        return "errFILE";
+    case DFU_errCHECK_ERASED: return "errCHECK_ERASED";
+    case DFU_errPROG:         return "errPROG";
+    case DFU_errVERIFY:       return "errVERIFY";
+    case DFU_errADDRESS:      return "errADDRESS";
+    case DFU_errNOTDONE:      return "errNOTDONE";
+    case DFU_errFIRMWARE:     return "errFIRMWARE";
+    case DFU_errVENDOR:       return "errVENDOR";
+    case DFU_errUSBR:         return "errUSBR";
+    case DFU_errPOR:          return "errPOR";
+    case DFU_errUNKNOWN:      return "errUNKNOWN";
+    case DFU_errSTALLED_PKT:  return "errSTALLEDPKT";
     default: return "?";
   }
 }

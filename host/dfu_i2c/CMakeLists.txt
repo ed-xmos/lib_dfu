@@ -8,13 +8,13 @@ option(I2C "I2C" OFF)
 add_compile_definitions(_GNU_SOURCE HOST_APP)
 
 set (INCLUDE_DIRS 
-        "../../../../lib_device_control/lib_device_control/api"
-        "../../../../lib_device_control/lib_device_control/src"
-        "../../../../lib_device_control/lib_device_control/host"
-        "../../../../lib_dfu/lib_dfu/api"
-        "../../../../lib_dfu/host/libsuffix_verifier"
-        "../../../app_xvf3610/src"
-        "api"
+        "../../../lib_device_control/lib_device_control/api"
+        "../../../lib_device_control/lib_device_control/src"
+        "../../../lib_device_control/lib_device_control/host"
+    "../api"
+        "../../lib_dfu/api"
+        "../../lib_dfu/src"
+        "../libsuffix_verifier/src"
         "src"
 )
 
@@ -25,8 +25,8 @@ set (SOURCE_FILES
         src/operations.c
         src/dfu_utils.c
         src/labels.c
-        ../libsuffix_verifier/crc.c
-        ../../../../lib_dfu/host/libsuffix_verifier/suffix_verifier.c
+        ../libsuffix_verifier/src/crc.c
+        ../libsuffix_verifier/src/suffix_verifier.c
         ../../../../lib_device_control/lib_device_control/host/util.c
 )
 

@@ -10,6 +10,7 @@
 #include <memory.h>
 #include <time.h>
 #endif
+#include <stdint.h>
 
 // byte order portability
 #ifdef _WIN32
@@ -26,7 +27,7 @@
 #include <endian.h>
 #endif
 
-#include "dfu_commands.h"
+#include "dfu_host_commands.h"
 #include "labels.h"
 #include "dfu_utils.h"
 #include "hal.h"
@@ -47,7 +48,7 @@ static int check_state(enum dfu_state expected)
   // convert from hard little endian order after deserialisation
   state = (enum dfu_state)le32toh(state);
 
-  if (state == DFU_ERROR) {
+  if (state == STATE_DFU_ERROR) {
     PRINT_ERROR("Device in dfu ERROR state\n");
 
     struct dfu_getstatus getstatus;
@@ -119,19 +120,19 @@ int detach_and_bus_reset(void)
   if (!quiet)
     printf("detach and bus reset\n");
 
-  if (check_state(APP_IDLE) != 0)
+  if (check_state(STATE_APP_IDLE) != 0)
     return 1;
 
   if (hal_write_command(DFU_CMD_DETACH, NULL, 0) != 0)
     return 2;
 
-  if (check_state(APP_DETACH) != 0)
+  if (check_state(STATE_APP_DETACH) != 0)
     return 3;
 
   if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0)
     return 4;
 
-  if (check_state(DFU_IDLE) != 0)
+  if (check_state(STATE_DFU_IDLE) != 0)
     return 5;
 
   if (!quiet)
@@ -144,17 +145,21 @@ static int dnload_block(const unsigned char *block, int num_block_bytes,
                         unsigned block_count, unsigned short marker)
 {
   struct {
-    struct dfu_dnload_header header;
-    unsigned char block[DFU_BLOCK_SIZE_MAX_BYTES];
-  } payload;
+    uint16_t block_num;
+    uint16_t pad;
+  } header;
+
+  unsigned char payload[sizeof(header) + num_block_bytes];
 
   // note hard little endian order of block number for serialisation
-  size_t payload_bytes = num_block_bytes + sizeof(struct dfu_dnload_header);
-  payload.header.block_num = htole16(marker | block_count);
-  payload.header.pad = 0;
-  memcpy(payload.block, block, num_block_bytes);
+  size_t payload_bytes = num_block_bytes + sizeof(header);
+  header.block_num = htole16(marker | block_count);
+  header.pad = 0;
+  memcpy(payload, &header, sizeof(header));
+  if (num_block_bytes > 0)
+    memcpy(payload + sizeof(header), block, num_block_bytes);
 
-  if (hal_write_command(DFU_CMD_DNLOAD, (unsigned char*)&payload,
+  if (hal_write_command(DFU_CMD_DNLOAD, payload,
                         payload_bytes) != 0) {
     return 1;
   }
@@ -192,9 +197,9 @@ static int download_file(const unsigned char *bytes, size_t length,
         return 2;
 
       sleep_milliseconds(getstatus.poll_timeout_msec);
-    } while (getstatus.state == DFU_DNBUSY);
+    } while (getstatus.state == STATE_DFU_DOWNLOAD_BUSY);
 
-    if (check_state(DFU_DNLOAD_IDLE) != 0)
+    if (check_state(STATE_DFU_DOWNLOAD_IDLE) != 0)
       return 3;
 
     block_count++;
@@ -209,9 +214,9 @@ static int download_file(const unsigned char *bytes, size_t length,
       return 5;
 
     sleep_milliseconds(getstatus.poll_timeout_msec);
-  } while (getstatus.state == DFU_MANIFEST);
+  } while (getstatus.state == STATE_DFU_MANIFEST);
 
-  if (check_state(DFU_IDLE) != 0)
+  if (check_state(STATE_DFU_IDLE) != 0)
     return 6;
 
   return 0;
@@ -253,13 +258,7 @@ int override_spispec(struct inputs inputs)
   if (!quiet)
     printf("override spispec (%d bytes)\n", (int)inputs.spispec.length);
 
-  if (hal_write_command(DFU_CMD_OVERRIDE_SPISPEC,
-                        inputs.spispec.bytes, inputs.spispec.length) != 0) {
-    return 1;
-  }
-
-  if (!quiet)
-    printf("override spispec successful\n");
-
-  return 0;
+  (void)inputs;
+  PRINT_ERROR("override-spispec is not supported by this lib_dfu host build\n");
+  return 1;
 }

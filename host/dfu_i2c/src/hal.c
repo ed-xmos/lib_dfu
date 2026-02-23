@@ -86,7 +86,7 @@ int hal_connect(struct device_id device_id)
 #endif
 }
 
-int hal_read_command(enum dfu_command command,
+int hal_read_command(int command,
                      unsigned char *payload, size_t num_bytes)
 {
   if (!quiet) {
@@ -103,7 +103,7 @@ int hal_read_command(enum dfu_command command,
   return 0;
 }
 
-int hal_write_command(enum dfu_command command,
+int hal_write_command(int command,
                       const unsigned char *payload, size_t num_bytes)
 {
   if (!quiet) {
