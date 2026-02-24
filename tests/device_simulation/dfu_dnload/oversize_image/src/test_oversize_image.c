@@ -138,15 +138,21 @@ void layout_flash(int block_size, int block_count)
   memset(fl.page_written, 0, sizeof(fl.page_written));
 }
 
-static enum dfu_status
-  single_dnload_block(int block_num, size_t block_size, const char block[])
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+static enum dfu_status single_dnload_block(int block_num, size_t block_size, const char block[])
 {
   struct dfu_getstatus ret;
-  enum dfu_state state;
 
   dfu_dnload(block_num, block_size, block);
-  state = dfu_getstate();
-  assert(state == STATE_DFU_DNLOAD_SYNC);
+  get_state_and_check(STATE_DFU_DNLOAD_SYNC);
 
   do {
     ret = dfu_getstatus();
@@ -156,7 +162,7 @@ static enum dfu_status
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_DNBUSY);
 
-  assert(ret.state == STATE_DFU_DNLOAD_IDLE);
+  get_state_and_check(STATE_DFU_DNLOAD_IDLE);
 
   return DFU_OK;
 }
@@ -168,8 +174,7 @@ void dnload_zero(void)
   char block[DFU_TRANSFER_SIZE_BYTES];
 
   dfu_dnload(0, 0, block);
-  state = dfu_getstate();
-  assert(state == STATE_DFU_MANIFEST_SYNC);
+  get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
     ret = dfu_getstatus();
@@ -177,8 +182,7 @@ void dnload_zero(void)
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_MANIFEST);
 
-  assert(ret.state == STATE_DFU_IDLE);
-  assert(ret.status == DFU_OK);
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 void verify(void)
@@ -210,23 +214,19 @@ void verify(void)
 
 void dnload(int partitions, int block_size, int block_count)
 {
-  enum dfu_state state;
   enum dfu_status status;
   char block[DFU_TRANSFER_SIZE_BYTES] = {0};
 
   int ret = dfu_locate_upgrade_slots();
   assert(ret == 0);
 
-  state = dfu_getstate();
-  assert(state == STATE_APP_IDLE);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  assert(state == STATE_APP_DETACH);
+  get_state_and_check(STATE_APP_DETACH);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  assert(state == STATE_DFU_IDLE);
+  get_state_and_check(STATE_DFU_IDLE);
 
   for (int p = 0; p < 2; p++) {
     if (partitions & (1 << p)) {
@@ -239,13 +239,12 @@ void dnload(int partitions, int block_size, int block_count)
         if (status != DFU_OK) {
           assert(status == DFU_errADDRESS);
           dfu_clrstatus();
-          state = dfu_getstate();
-          assert(state == STATE_DFU_IDLE);
+          get_state_and_check(STATE_DFU_IDLE);
           break;
         }
       }
-      state = dfu_getstate();
-      if (state == STATE_DFU_DOWNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
+      get_state_and_check(STATE_DFU_DOWNLOAD_IDLE); // DNLOAD-IDLE state indicates no error
+      if (state == STATE_DFU_DOWNLOAD_IDLE) {
         debug_printf("dnload zero\n");
         dnload_zero();
       }

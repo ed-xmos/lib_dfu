@@ -131,32 +131,32 @@ void layout_flash(int block_count, int block_size, int tail_size) {
   fl.busy_countdown = 0;
 }
 
-void detach() {
-  enum dfu_state state;
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
 
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+void detach() {
   // TODO pass if we are already in DFU_IDLE from previous test.
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
+  get_state_and_check(STATE_APP_DETACH);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 void reboot() {
-  enum dfu_state state;
-
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  get_state_and_check(STATE_APP_IDLE);
 }
 
 void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_count, int tail_size) {
@@ -180,8 +180,7 @@ void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_coun
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_EQUAL(tail_size, response.return_data_len);
   }
-  enum dfu_state state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 
   /* Sanity checks */
   TEST_ASSERT_FALSE(fl.state_reading);

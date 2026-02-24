@@ -43,29 +43,33 @@ enum flash_status flash_read_page(uint8_t* data, int32_t length) {
   return DFU_FLASH_OK;
 }
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
 void test_upload_start(void) {
   struct dfu_getstatus getstatus;
-  enum dfu_state state;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES] = { 0 };
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL_INT(STATE_APP_IDLE, state);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL_INT(STATE_APP_DETACH, state);
+  get_state_and_check(STATE_APP_DETACH);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL_INT(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 
   TEST_ASSERT_EQUAL_INT(0, flash_open);
 
   int read_size = dfu_upload(sizeof(block), block);
   TEST_ASSERT_EQUAL_INT(DFU_TRANSFER_SIZE_BYTES, read_size);
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL_INT(STATE_DFU_UPLOAD_IDLE, state);
+  get_state_and_check(STATE_DFU_UPLOAD_IDLE);
 
   getstatus = dfu_getstatus();
   TEST_ASSERT_EQUAL_INT(DFU_OK, getstatus.status);

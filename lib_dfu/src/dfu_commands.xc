@@ -62,13 +62,7 @@ struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], 
 
   switch (cmd) {
     case DFU_GETSTATE:
-      if (payload == NULL || payload_len != DFU_GET_STATE_PAYLOAD_SIZE_BYTES) {
-        break;
-      }
-      enum dfu_state state = dfu_getstate();
-      payload[DFU_GETSTATE_INDEX] = (uint8_t)state;
-      response.status = DFU_API_SUCCESS;
-      response.return_data_len = DFU_GET_STATE_PAYLOAD_SIZE_BYTES;
+      response = request_with_arguments(cmd, null, payload, payload_len, null);
       break;
 
     case DFU_GETSTATUS:

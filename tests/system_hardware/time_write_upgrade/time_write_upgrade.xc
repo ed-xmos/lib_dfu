@@ -53,6 +53,15 @@ static void t_end(void) {
   }
 }
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static enum dfu_state get_state()
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  return payload[0];
+}
+
 void write_begin(void)
 {
   enum dfu_state state;
@@ -65,7 +74,7 @@ void write_begin(void)
   fl_disconnect();
 
   t_start(1);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_APP_IDLE);
 
@@ -73,7 +82,7 @@ void write_begin(void)
   dfu_detach();
   t_end();
   t_start(3);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_APP_DETACH);
 
@@ -84,7 +93,7 @@ void write_begin(void)
   dfu_bus_reset();
   t_end();
   t_start(5);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_DFU_IDLE);
 }
@@ -126,7 +135,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
   t_start(8);
   dfu_dnload(0, 0, block);
   t_end();
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_DFU_MANIFEST_SYNC);
 

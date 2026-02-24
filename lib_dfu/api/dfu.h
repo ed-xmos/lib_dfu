@@ -78,13 +78,6 @@ struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], 
  */
 
 /**
- * DFU GETSTATE request
- *
- * \return Current interface state
- */
-enum dfu_state dfu_getstate(void);
-
-/**
  * DFU DETACH request
  */
 void dfu_detach(void);

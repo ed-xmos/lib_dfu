@@ -469,7 +469,6 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
     debug_printf("\n");
   }
 #endif
-
   switch (state) {
     case STATE_APP_IDLE:
       response = state_app_idle(request);
@@ -530,18 +529,27 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
       }
       break;
   }
+
+  /* Handle common requests last */
+  if (request == DFU_GETSTATUS) {
+    // response = dfu_getstatus();
+
+  } else if (request == DFU_GETSTATE && !isnull(read_block) && block_size_bytes == DFU_GET_STATE_PAYLOAD_SIZE_BYTES) {
+    response.status = DFU_API_SUCCESS;
+    response.return_data_len = DFU_GET_STATE_PAYLOAD_SIZE_BYTES;
+    response.reset_type = DFU_RESET_TYPE_NONE;
+    read_block[DFU_GETSTATE_INDEX] = state;
+
+  } else {
+    /* For other requests, delegate to state machine handlers */
+  }
+
   return response;
 }
 
 struct dfu_cmd_response request(enum dfu_request request)
 {
   return request_with_arguments(request, null, null, 0, null);
-}
-
-enum dfu_state dfu_getstate(void)
-{
-  request(DFU_GETSTATE);
-  return state;
 }
 
 struct dfu_getstatus dfu_getstatus(void)

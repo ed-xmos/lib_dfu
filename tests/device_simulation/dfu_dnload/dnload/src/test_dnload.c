@@ -188,14 +188,21 @@ void make_test_data(uint8_t seq[], int32_t length) {
   }
 }
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
 void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t block[]) {
   struct dfu_getstatus ret;
-  enum dfu_state state;
 
   struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, (size_t)block_size);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_SYNC, state);
+  get_state_and_check(STATE_DFU_DOWNLOAD_SYNC);
 
   do {
     ret = dfu_getstatus();
@@ -208,13 +215,11 @@ void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t bl
 
 void dnload_zero(void) {
   struct dfu_getstatus ret;
-  enum dfu_state state;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
   struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_MANIFEST_SYNC, state);
+  get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
     ret = dfu_getstatus();
@@ -227,18 +232,13 @@ void dnload_zero(void) {
 }
 
 void detach() {
-  enum dfu_state state;
-
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
+  get_state_and_check(STATE_APP_DETACH);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 void dnload(const uint8_t images[MAX_IMAGE_SIZE], int32_t block_size, int32_t block_count, int32_t tail_size, int32_t repeats) {
