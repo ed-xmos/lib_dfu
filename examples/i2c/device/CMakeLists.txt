@@ -20,7 +20,7 @@ set(APP_COMPILER_FLAGS      -O2
                             -Wextra
 )
 
-set(APP_DEPENDENT_MODULES   lib_dfu "lib_i2c(6.4.1)" "humphrey-xmos/lib_device_control(feature/dfu-support)")
+include(../deps.cmake)
 
 set(XMOS_SANDBOX_DIR        ${CMAKE_CURRENT_LIST_DIR}/../../../..)
 
