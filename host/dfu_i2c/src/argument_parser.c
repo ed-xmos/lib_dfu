@@ -1,4 +1,4 @@
-// Copyright 2020-2022 XMOS LIMITED.
+// Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,7 +15,8 @@ void print_usage(FILE *stream)
 {
   fprintf(stream, "\
 usage:      dfu_i2c --help\n\
-            dfu_i2c OPTIONS write_upgrade boot.dfu data.dfu\n\
+            dfu_i2c --help-advanced\n\
+            dfu_i2c OPTIONS write_upgrade boot.dfu\n\
 \n\
 OPTIONS:    --quiet\n\
             --i2c-address 0x%02X (default)\n\
@@ -26,9 +27,6 @@ OPTIONS:    --quiet\n\
 
 static const char advanced_usage[] =
 "\n\
-            --skip-boot-image\n\
-            --skip-data-image\n\
-\n\
 advanced:   dfu_i2c OPTIONS override_spispec spispec.bin\n\
             dfu_i2c OPTIONS detach_and_bus_reset\n\
             dfu_i2c OPTIONS reboot\n"
@@ -63,9 +61,7 @@ struct options parse_arguments(int argc, char **argv)
     .arguments = {NULL, NULL},
     .device_id = {DFU_SUFFIX_IGNORE_ID, DFU_SUFFIX_IGNORE_ID,
                   DFU_SUFFIX_IGNORE_ID, I2C_ADDRESS_DEFAULT},
-    .block_size = BLOCK_SIZE_DEFAULT,
-    .skip_boot_image = false,
-    .skip_data_image = false
+    .block_size = BLOCK_SIZE_DEFAULT
   };
 
   if (argc <= 1) {
@@ -101,18 +97,12 @@ struct options parse_arguments(int argc, char **argv)
         exit(1);
       }
       continue;
-    } else if ( (strcmp(argv[optind], "--skip-boot-image") == 0 ) || (strcmp(argv[optind], "-s") == 0) ) {
-      o.skip_boot_image = true;
-      continue;
-    } else if ( (strcmp(argv[optind], "--skip-data-image") == 0 ) || (strcmp(argv[optind], "-t") == 0) ) {
-      o.skip_data_image = true;
-      continue;
     } else {
       o.operation = parse_operation(argv[optind]);
       switch (o.operation) {
         case WRITE_UPGRADE:
-          if (argc != optind + 3) {
-            if (argc < optind + 3)
+          if (argc != optind + 2) {
+            if (argc < optind + 2)
               PRINT_ERROR("Not enough command line arguments\n");
             else
               PRINT_ERROR("Too many command line arguments\n");
@@ -121,7 +111,7 @@ struct options parse_arguments(int argc, char **argv)
             exit(1);
           }
           o.arguments[0] = argv[optind + 1];
-          o.arguments[1] = argv[optind + 2];
+          o.arguments[1] = NULL;
           break;
 
         case OVERRIDE_SPISPEC:
@@ -167,8 +157,7 @@ struct options parse_arguments(int argc, char **argv)
         printf("- operation: ");
         switch (o.operation) {
           case WRITE_UPGRADE:
-            printf("%s %s %s\n", operation_str(o.operation),
-                   o.arguments[0], o.arguments[1]);
+            printf("%s %s\n", operation_str(o.operation), o.arguments[0]);
             break;
 
           case OVERRIDE_SPISPEC:
@@ -191,12 +180,6 @@ struct options parse_arguments(int argc, char **argv)
         if (o.operation == WRITE_UPGRADE) {
           printf("- block size %u\n", o.block_size);
           printf("- block size %d\n", o.block_size);
-          if (o.skip_boot_image) {
-            printf("- skip boot image\n");
-          }
-          if (o.skip_data_image) {
-            printf("- skip data image\n");
-          }
         }
       }
       break;

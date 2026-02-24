@@ -1,4 +1,4 @@
-// Copyright 2020-2022 XMOS LIMITED.
+// Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #include <stdlib.h>
 #include <stdio.h>
@@ -222,30 +222,18 @@ static int download_file(const unsigned char *bytes, size_t length,
   return 0;
 }
 
-int write_upgrade(struct inputs inputs, unsigned block_size,
-                  bool skip_boot_image, bool skip_data_image)
+int write_upgrade(struct inputs inputs, unsigned block_size)
 {
   if (!quiet) {
-    printf("write upgrade %d boot bytes and %d data bytes\n",
-           (int)inputs.boot.length, (int)inputs.data.length);
+    printf("write upgrade %d boot bytes\n", (int)inputs.boot.length);
   }
 
   if (detach_and_bus_reset() != 0)
     return 1;
 
-  // data first so a failed cycle doesn't leave a good boot
-  // that way device only needs to fall back on bad data but not on bad boot
-  if (!skip_data_image) {
-    if (download_file(inputs.data.bytes, inputs.data.length,
-                      block_size, DFU_BLOCK_NUM_DATA_IMAGE_MARKER) != 0)
-      return 2;
-  }
-
-  if (!skip_boot_image) {
-    if (download_file(inputs.boot.bytes, inputs.boot.length,
-                      block_size, 0) != 0)
-      return 3;
-  }
+  if (download_file(inputs.boot.bytes, inputs.boot.length,
+                    block_size, 0) != 0)
+    return 2;
 
   if (!quiet)
     printf("write upgrade successful\n");

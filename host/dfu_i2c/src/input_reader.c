@@ -1,4 +1,4 @@
-// Copyright 2020-2022 XMOS LIMITED.
+// Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #include <stdio.h>
 #include <stdlib.h>
@@ -88,15 +88,12 @@ static size_t call_verify_suffix(const unsigned char *bytes, size_t length,
 }
 
 struct inputs read_write_upgrade_inputs(const char *boot_file_name,
-                                        const char *data_file_name,
                                         struct device_id device_id)
 {
   struct inputs inputs;
   memset(&inputs, 0, sizeof(struct inputs));
   inputs.boot.length = load_file(boot_file_name, &inputs.boot.bytes);
-  inputs.data.length = load_file(data_file_name, &inputs.data.bytes);
   inputs.boot.length = call_verify_suffix(inputs.boot.bytes, inputs.boot.length, device_id);
-  inputs.data.length = call_verify_suffix(inputs.data.bytes, inputs.data.length, device_id);
   return inputs;
 }
 
@@ -114,15 +111,10 @@ void cleanup_inputs(struct inputs *inputs)
     free(inputs->boot.bytes);
     inputs->boot.bytes = NULL;
   }
-  if (inputs->data.bytes != NULL) {
-    free(inputs->data.bytes);
-    inputs->data.bytes = NULL;
-  }
   if (inputs->spispec.bytes != NULL) {
     free(inputs->spispec.bytes);
     inputs->spispec.bytes = NULL;
   }
   inputs->boot.length = 0;
-  inputs->data.length = 0;
   inputs->spispec.length = 0;
 }

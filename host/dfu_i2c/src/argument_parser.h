@@ -1,4 +1,4 @@
-// Copyright 2020-2021 XMOS LIMITED.
+// Copyright 2020-2026 XMOS LIMITED.
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #ifndef __argument_parser_h__
 #define __argument_parser_h__
@@ -28,8 +28,6 @@ struct options {
   const char *arguments[2];
   struct device_id device_id;
   unsigned block_size;
-  bool skip_boot_image;
-  bool skip_data_image;
 };
 
 struct options parse_arguments(int argc, char **argv);
