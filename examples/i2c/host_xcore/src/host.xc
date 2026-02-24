@@ -2,10 +2,12 @@
 // This Software is subject to the terms of the XMOS Public Licence: Version 1.
 #include <platform.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <syscall.h>
 #include <assert.h>
 #include <timer.h>
+#include <string.h>
 
 #include "control.h"
 #include "dfu.h"
@@ -17,11 +19,12 @@
 port p_scl = on tile[0]: XS1_PORT_1N; // Can be accessed via signal SCL_3V3, TP13
 port p_sda = on tile[0]: XS1_PORT_1O; // Can be accessed via signal SDA_3V3, TP14
 
-#define GET_STATE_LENGTH_BYTES 5
+#define GET_STATE_LENGTH_BYTES (4 + DFU_GET_STATE_PAYLOAD_SIZE_BYTES) // sizeof(struct dfu_dnload_header) + 1 byte for state
+#define GET_STATUS_LENGTH_BYTES (4 + DFU_GET_STATUS_PAYLOAD_SIZE_BYTES)
 
-int dfu_getState(client i2c_master_if i_i2c, unsigned char *state)
+int host_getState(client interface i2c_master_if i_i2c, uint8_t *state)
 {
-  unsigned char payload[GET_STATE_LENGTH_BYTES];
+  uint8_t payload[GET_STATE_LENGTH_BYTES];
   int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_GETSTATE), i_i2c, payload, GET_STATE_LENGTH_BYTES);
   if (ctrl != CONTROL_SUCCESS) {
     printf("control read state command failed with %d\n", ctrl);
@@ -31,18 +34,41 @@ int dfu_getState(client i2c_master_if i_i2c, unsigned char *state)
   return 0;
 }
 
-// int dfu_getStatus(unsigned int interface, unsigned char *state, unsigned int *timeout,
-//                   unsigned char *nextState, unsigned char *strIndex)
-// {
-//     unsigned int data[2];
-//     libusb_control_transfer(devh, USB_BMREQ_D2H_CLASS_INT, DFU_GETSTATUS, 0, interface, (unsigned char *)data, 6, 0);
+int host_getStatus(client interface i2c_master_if i_i2c, uint8_t *status, uint8_t *nextState, unsigned int *timeout, uint8_t *strIndex)
+{
+  uint8_t payload[GET_STATUS_LENGTH_BYTES];
+  int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_GETSTATUS), i_i2c, payload, GET_STATUS_LENGTH_BYTES);
+  if (ctrl != CONTROL_SUCCESS) {
+    printf("control read status command failed with %d\n", ctrl);
+    exit(1);
+  }
+  *status = payload[4 + DFU_GETSTATUS_STATUS_INDEX];
+  memcpy(timeout, &payload[4 + DFU_GETSTATUS_POLL_TIMEOUT_INDEX], DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
+  *nextState = payload[4 + DFU_GETSTATUS_STATE_INDEX];
+  // *strIndex = payload[4 + DFU_GETSTATUS_STRINDEX_INDEX];
+  return 0;
+}
 
-//     *state = data[0] & 0xff;
-//     *timeout = (data[0] >> 8) & 0xffffff;
-//     *nextState = data[1] & 0xff;
-//     *strIndex = (data[1] >> 8) & 0xff;
-//     return 0;
-// }
+int host_upload(client interface i2c_master_if i_i2c, uint8_t *payload, int32_t length)
+{
+  int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_UPLOAD), i_i2c, payload, length);
+  if (ctrl != CONTROL_SUCCESS) {
+    printf("control read upload command failed with %d\n", ctrl);
+    exit(1);
+  }
+  return 0;
+}
+
+int host_detach(client interface i2c_master_if i_i2c)
+{
+  uint8_t payload[4] = { 0 };
+  int ctrl = control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(DFU_DETACH), i_i2c, payload, 4);
+  if (ctrl != CONTROL_SUCCESS) {
+    printf("control write detach command failed with %d\n", ctrl);
+    exit(1);
+  }
+  return 0;
+}
 
 int main(void)
 {
@@ -53,7 +79,7 @@ int main(void)
     }
     on tile[1]: {
       control_version_t version;
-      unsigned char payload[4];
+      uint8_t payload[4];
       int i;
 
       if (control_init_i2c(DEVICE_I2C_ADDRESS) != CONTROL_SUCCESS) {
@@ -73,8 +99,20 @@ int main(void)
 
       printf("started\n");
 
-      dfu_getState(i_i2c[0], &payload[0]);
+      host_getState(i_i2c[0], &payload[0]);
       printf("DFU state: %d\n", payload[0]);
+
+      unsigned int timeout;
+      uint8_t state;
+      uint8_t status;
+      host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
+      printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
+
+      host_detach(i_i2c[0]);
+      printf("Sent detach command\n");
+
+      host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
+      printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
 
       for (i = 0; i < 4; i++) {
         payload[0] = i;
