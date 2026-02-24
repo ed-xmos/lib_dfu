@@ -7,20 +7,7 @@
 #if __XC__
 
 #include <stdint.h>
-
-enum dfu_reset_type
-{
-    DFU_RESET_TYPE_NONE,
-    DFU_RESET_TYPE_RESET_TO_DFU,
-    DFU_RESET_TYPE_RESET_TO_APP
-};
-
-struct dfu_request_result
-{
-    int return_code;
-    int return_data_len;
-    enum dfu_reset_type reset_type;
-};
+#include "dfu.h"
 
 struct dfu_request_params
 {
@@ -32,7 +19,7 @@ struct dfu_request_params
 
 interface i_dfu
 {
-    struct dfu_request_result HandleDfuRequest(struct dfu_request_params request, unsigned data_buffer[], unsigned data_buffer_length);
+    struct dfu_cmd_response HandleDfuRequest(struct dfu_request_params request, unsigned data_buffer[], unsigned data_buffer_length);
     void finish();
 };
 

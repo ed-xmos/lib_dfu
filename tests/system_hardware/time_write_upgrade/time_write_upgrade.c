@@ -53,6 +53,24 @@ static void t_end(void) {
   }
 }
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static enum dfu_state get_state()
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  return payload[0];
+}
+
+static struct dfu_getstatus get_status()
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
+  return ret;
+}
+
 void write_begin(void)
 {
   enum dfu_state state;
@@ -65,7 +83,7 @@ void write_begin(void)
   fl_disconnect();
 
   t_start(1);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_APP_IDLE);
 
@@ -73,7 +91,7 @@ void write_begin(void)
   dfu_detach();
   t_end();
   t_start(3);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_APP_DETACH);
 
@@ -84,7 +102,7 @@ void write_begin(void)
   dfu_bus_reset();
   t_end();
   t_start(5);
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_DFU_IDLE);
 }
@@ -107,12 +125,13 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
       break;
 
     t_start(6);
-    dfu_dnload(marker | block_count, read, block);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, (marker | block_count));
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     t_end();
 
     do {
       t_start(7);
-      ret = dfu_getstatus();
+      ret = get_status();
       t_end();
       assert(ret.status == DFU_OK);
       delay_milliseconds(ret.poll_timeout_msec);
@@ -123,16 +142,17 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
     block_count++;
   }
 
-  t_start(8);
-  dfu_dnload(0, 0, block);
+  t_start(8);block_count
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   t_end();
-  state = dfu_getstate();
+  state = get_state();
   t_end();
   assert(state == STATE_DFU_MANIFEST_SYNC);
 
   do {
     t_start(9);
-    ret = dfu_getstatus();
+    ret = get_status();
     t_end();
     assert(ret.status == DFU_OK);
     // Short delay for testing purposes.

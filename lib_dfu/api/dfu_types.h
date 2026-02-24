@@ -39,7 +39,7 @@ enum dfu_request {
   DFU_GETSTATUS = 3,
   DFU_CLRSTATUS = 4,
   DFU_GETSTATE = 5,
-  DFU_ABORT = 6,
+  DFU_ABORT = 6, // TODO - fully support
 
   // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
   XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.

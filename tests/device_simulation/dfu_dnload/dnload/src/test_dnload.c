@@ -188,17 +188,33 @@ void make_test_data(uint8_t seq[], int32_t length) {
   }
 }
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+static struct dfu_getstatus get_status()
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
+  return ret;
+}
+
 void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t block[]) {
   struct dfu_getstatus ret;
-  enum dfu_state state;
 
-  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, (size_t)block_size);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, (uint8_t *)block, block_size, &block_num);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_SYNC, state);
+  get_state_and_check(STATE_DFU_DOWNLOAD_SYNC);
 
   do {
-    ret = dfu_getstatus();
+    ret = get_status();
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
@@ -208,16 +224,14 @@ void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t bl
 
 void dnload_zero(void) {
   struct dfu_getstatus ret;
-  enum dfu_state state;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
-  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_MANIFEST_SYNC, state);
+  get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
-    ret = dfu_getstatus();
+    ret = get_status();
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_MANIFEST);
@@ -227,18 +241,20 @@ void dnload_zero(void) {
 }
 
 void detach() {
-  enum dfu_state state;
+  get_state_and_check(STATE_APP_IDLE);
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  dfu_request(DFU_DETACH);
+  get_state_and_check(STATE_APP_DETACH);
 
-  dfu_detach();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
+  dfu_request(XMOS_BUS_RESET);
+  get_state_and_check(STATE_DFU_IDLE);
+}
 
-  dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+void reboot() {
+  get_state_and_check(STATE_DFU_IDLE);
+
+  dfu_request(XMOS_BUS_RESET);
+  get_state_and_check(STATE_APP_IDLE);
 }
 
 void dnload(const uint8_t images[MAX_IMAGE_SIZE], int32_t block_size, int32_t block_count, int32_t tail_size, int32_t repeats) {
@@ -307,4 +323,6 @@ void test_dnload(void) {
   dnload((const uint8_t *)images, block_size, block_count, tail_size, repeats);
 
   verify((const uint8_t *)images);
+  
+  reboot();
 }

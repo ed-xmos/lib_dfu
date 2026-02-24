@@ -11,7 +11,6 @@
 #include <xassert.h>
 #include <xccompat.h>
 
-#include "descriptor_defs.h"
 #include "dfu_reboot.h"
 #include "xud_device.h"
 #include "dfu_types.h"
@@ -137,10 +136,10 @@ int DFUProcessResetState(client interface i_dfu i)
     request.value = inDFU;
     /* Interface used here such that the handler can be on another tile */
     unsigned data_buffer[1];
-    struct dfu_request_result result = i.HandleDfuRequest(request, data_buffer, 0);
+    struct dfu_cmd_response result = i.HandleDfuRequest(request, data_buffer, 0);
     
     // Return code of 0 means normal operation (APP_IDLE), non-zero means we are in DFU mode (DFU_IDLE or DFU_ERROR).
-    if (result.return_code)
+    if (result.status)
     {
         // In DFU mode...
         if (!DFUModeIsActive())
@@ -179,7 +178,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
     request.index = sp.wIndex;
     request.length = sp.wLength;
     /* Interface used here such that the handler can be on another tile */
-    struct dfu_request_result result = i.HandleDfuRequest(request, data_buffer, data_buffer_len);
+    struct dfu_cmd_response result = i.HandleDfuRequest(request, data_buffer, data_buffer_len);
 
     if (result.reset_type == DFU_RESET_TYPE_RESET_TO_DFU) {
         SetDFUFlag(_BOOT_DFU_MODE_FLAG);
@@ -191,7 +190,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
 
     int returnVal = 0;
     /* Check if the request was handled */
-    if(result.return_code == 0)
+    if(result.status == DFU_API_SUCCESS)
     {
         if (sp.bmRequestType.Direction == USB_BM_REQTYPE_DIRECTION_D2H && sp.wLength != 0)
         {

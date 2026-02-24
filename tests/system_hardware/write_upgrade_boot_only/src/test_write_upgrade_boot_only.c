@@ -24,26 +24,38 @@ FILE* dfu_file;
 void setUp(void) {}
 void tearDown(void) {}
 
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+static struct dfu_getstatus get_status()
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
+  return ret;
+}
+
 void detach()
 {
-  enum dfu_state state;
-
-  state = dfu_getstate();
-  assert(state == STATE_APP_IDLE);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  assert(state == STATE_APP_DETACH);
+  get_state_and_check(STATE_APP_DETACH);
 
   dfu_bus_reset();
-  state = dfu_getstate();
-  assert(state == STATE_DFU_IDLE);
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
 {
   struct dfu_getstatus ret;
-  enum dfu_state state;
   int block_count = 0;
   size_t read;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
@@ -57,10 +69,11 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     if (read == 0)
       break;
 
-    dfu_dnload(block_count, (int32_t)read, block);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, block_count);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
     do {
-      ret = dfu_getstatus();
+      ret = get_status();
       assert(ret.status == DFU_OK);
       delay_microseconds(1);
     } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
@@ -70,11 +83,11 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     block_count++;
   }
 
-  dfu_dnload(0, 0, block);
-  state = dfu_getstate();
-  assert(state == STATE_DFU_MANIFEST_SYNC);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
-  ret = dfu_getstatus();
+  ret = get_status();
   assert(ret.state == STATE_DFU_IDLE);
   assert(ret.status == DFU_OK);
 
@@ -109,7 +122,7 @@ FILE * verify(FILE * bin_file, int block_size)
     if (ret == 0)
       break;
 
-    struct dfu_cmd_response response = dfu_handle_read_command(DFU_UPLOAD, actual, (size_t)block_size);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, actual, (size_t)block_size, NULL);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_LESS_OR_EQUAL_INT32(block_size, response.return_data_len);
 

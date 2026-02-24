@@ -6,7 +6,7 @@
 
 #include <xccompat.h>
 
-#include "xua.h"
+// #include "xua.h"
 #include "xud_device.h"
 #include "dfu_types.h"
 
@@ -46,7 +46,7 @@ USB_Descriptor_Device_t DFUdevDesc =
     .bcdDevice                      = BCD_DEVICE,
     .iManufacturer                  = DFU_MANUFACTURER_STR_INDEX,
     .iProduct                       = DFU_PRODUCT_STR_INDEX,
-    .iSerialNumber                  = 0, /* Set to None by default */
+    .iSerialNumber                  = DFU_SERIAL_NUMBER_STR_INDEX,
     .bNumConfigurations             = 0x01
 };
 
@@ -111,7 +111,7 @@ USB_Config_Descriptor_DFU_t DFUcfgDesc = {
         .bLength = sizeof(USB_DFU_Functional_Descriptor_t),
         .bDescriptorType = 0x21, //  DFU FUNCTIONAL
         .bmAttributes = DFU_FUNC_ATTRS,
-        .wDetachTimeOut = 0x00FA,
+        .wDetachTimeOut = 250,
         .wTransferSize = _DFU_TRANSFER_SIZE_BYTES,
         .bcdDFUVersion = 0x0110
     }
