@@ -6,6 +6,7 @@
 #include <syscall.h>
 #include <assert.h>
 #include <timer.h>
+
 #include "i2c.h"
 #include "control_host.h"
 #include "resource.h"

@@ -8,20 +8,19 @@ set(XMOS_SANDBOX_DIR ${CMAKE_SOURCE_DIR}/../../../..)
 include("${XMOS_SANDBOX_DIR}/lib_device_control/host/host_build_i2c.cmake")
 
 # target: choose the target platform
-set(APP_HW_TARGET XK-EVK-XU316)
-# set(APP_HW_TARGET xk-voice-l71.xn)
+set(APP_HW_TARGET           XK-EVK-XU316)
 
-set(APP_INCLUDES src ../shared)
+set(APP_INCLUDES            src ../shared)
 
-set(APP_COMPILER_FLAGS
-    -O2
-    -g
-    -report
-    -Wall
-    -Wextra
+set(APP_COMPILER_FLAGS      -O2
+                            -g
+                            -report
+                            -Wall
+                            -Wextra
 )
 
-set(APP_DEPENDENT_MODULES lib_device_control "lib_i2c(6.4.1)")
+set(APP_DEPENDENT_MODULES   lib_device_control "lib_i2c(6.4.1)")
+
 XMOS_REGISTER_APP()
 
 target_link_libraries(${PROJECT_NAME} PRIVATE control_i2c_host)
