@@ -13,51 +13,18 @@ bool quiet = false;
 
 void print_usage(FILE *stream)
 {
-#if USE_USB
-  fprintf(stream, "\
-usage:      dfu_usb --help\n\
-            dfu_usb OPTIONS write_upgrade boot.dfu data.dfu\n\
-\n\
-OPTIONS:    --quiet\n\
-            --vendor-id 0x%04X (default)\n\
-            --product-id 0x%04X (default)\n\
-            --bcd-device 0x%04X (default)\n\
-            --block-size %d (default)\n",
-          VENDOR_ID_DEFAULT,
-          PRODUCT_ID_DEFAULT,
-          BCD_DEVICE_DEFAULT,
-          BLOCK_SIZE_DEFAULT);
-#endif
-#if USE_I2C
   fprintf(stream, "\
 usage:      dfu_i2c --help\n\
             dfu_i2c OPTIONS write_upgrade boot.dfu data.dfu\n\
 \n\
 OPTIONS:    --quiet\n\
-            --vendor-id 0x%04X (default)\n\
-            --product-id 0x%04X (default)\n\
-            --bcd-device 0x%04X (default)\n\
             --i2c-address 0x%02X (default)\n\
             --block-size %d (default)\n",
-          VENDOR_ID_DEFAULT,
-          PRODUCT_ID_DEFAULT,
-          BCD_DEVICE_DEFAULT,
           I2C_ADDRESS_DEFAULT,
           BLOCK_SIZE_DEFAULT);
-#endif
 }
 
 static const char advanced_usage[] =
-#if USE_USB
-"\n\
-            --skip-boot-image\n\
-            --skip-data-image\n\
-\n\
-advanced:   dfu_usb OPTIONS override_spispec spispec.bin\n\
-            dfu_usb OPTIONS detach_and_bus_reset\n\
-            dfu_usb OPTIONS reboot\n"
-#endif
-#if USE_I2C
 "\n\
             --skip-boot-image\n\
             --skip-data-image\n\
@@ -65,7 +32,6 @@ advanced:   dfu_usb OPTIONS override_spispec spispec.bin\n\
 advanced:   dfu_i2c OPTIONS override_spispec spispec.bin\n\
             dfu_i2c OPTIONS detach_and_bus_reset\n\
             dfu_i2c OPTIONS reboot\n"
-#endif
 ;
 
 const char *operation_str(int operation)
@@ -95,8 +61,8 @@ struct options parse_arguments(int argc, char **argv)
   struct options o = {
     .operation = UNKNOWN,
     .arguments = {NULL, NULL},
-    .device_id = {VENDOR_ID_DEFAULT, PRODUCT_ID_DEFAULT,
-                  BCD_DEVICE_DEFAULT, I2C_ADDRESS_DEFAULT},
+    .device_id = {DFU_SUFFIX_IGNORE_ID, DFU_SUFFIX_IGNORE_ID,
+                  DFU_SUFFIX_IGNORE_ID, I2C_ADDRESS_DEFAULT},
     .block_size = BLOCK_SIZE_DEFAULT,
     .skip_boot_image = false,
     .skip_data_image = false
@@ -118,44 +84,6 @@ struct options parse_arguments(int argc, char **argv)
       exit(2);
     } else if ( (strcmp(argv[optind], "--quiet") == 0 ) || (strcmp(argv[optind], "-q") == 0) ) {
       quiet = true;
-      continue;
-    } else if ( (strcmp(argv[optind], "--vendor-id") == 0 ) || (strcmp(argv[optind], "-n") == 0) ) {
-      optind++;
-      o.device_id.vendor = (uint16_t)strtol(argv[optind], NULL, 0);
-      if (o.device_id.vendor == 0 && errno == EINVAL) {
-        PRINT_ERROR("Invalid vendor ID `%s'\n", argv[optind]);
-        exit(1);
-      }
-      if (o.device_id.vendor == 0xFFFF) {
-        PRINT_ERROR("Vendor ID is 0xFFFF, the ignore value for DFU suffix verification\n");
-        PRINT_ERROR("this is not safe and utility will not proceed\n");
-        exit(1);
-      }
-      continue;
-    } else if ( (strcmp(argv[optind], "--product-id") == 0 ) || (strcmp(argv[optind], "-p") == 0) ) {
-      optind++;
-      o.device_id.product = (uint16_t)strtol(argv[optind], NULL, 0);
-      if (o.device_id.product == 0 && errno == EINVAL) {
-        PRINT_ERROR("Invalid product ID `%s'\n", argv[optind]);
-        exit(1);
-      }
-      if (o.device_id.product == 0xFFFF) {
-        PRINT_ERROR("Vendor ID is 0xFFFF, the ignore value for DFU suffix verification\n");
-        PRINT_ERROR("this is not safe and utility will not proceed\n");
-        exit(1);
-      }
-      continue;
-    } else if ( (strcmp(argv[optind], "--bcd-device") == 0 ) || (strcmp(argv[optind], "-d") == 0) ) {
-      optind++;
-      o.device_id.bcddevice = (uint16_t)strtol(argv[optind], NULL, 0);
-      if (o.device_id.bcddevice == 0 && errno == EINVAL) {
-        PRINT_ERROR("Invalid bcdDevice `%s'\n", argv[optind]);
-        exit(1);
-      }
-      if (o.device_id.bcddevice == 0xFFFF) {
-        PRINT_WARNING("bcdDevice is 0xFFFF, the ignore value for DFU suffix verification\n");
-        exit(1);
-      }
       continue;
     } else if ( (strcmp(argv[optind], "--i2c-address") == 0 ) || (strcmp(argv[optind], "-i") == 0) ) {
       optind++;
@@ -259,11 +187,7 @@ struct options parse_arguments(int argc, char **argv)
             printf("%s\n", operation_str(o.operation));
             break;
         }
-        printf("- vendor ID 0x%04X, product ID 0x%04X, bcdDevice 0x%04X\n",
-               o.device_id.vendor, o.device_id.product, o.device_id.bcddevice);
-#if USE_I2C
         printf("- I2C address 0x%02X\n", o.device_id.i2c_address);
-#endif
         if (o.operation == WRITE_UPGRADE) {
           printf("- block size %u\n", o.block_size);
           printf("- block size %d\n", o.block_size);

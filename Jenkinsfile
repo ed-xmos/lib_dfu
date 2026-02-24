@@ -222,7 +222,7 @@ pipeline {
                         }
 
                         dir("host/dfu_i2c") {
-                            sh "cmake -B build -DI2C=ON -DPRODUCT=XVF3610"
+                            sh "cmake -B build"
                             sh "cmake --build build"
                         }
                     }

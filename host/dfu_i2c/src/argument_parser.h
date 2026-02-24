@@ -9,11 +9,8 @@
 #include <stdbool.h>
 #include "device_id.h"
 
-// USB parameters
-// USB_PID is set in the Makefile, it must match the product selected from CLI
-#define PRODUCT_ID_DEFAULT USB_PID
-#define VENDOR_ID_DEFAULT 0x20B1
-#define BCD_DEVICE_DEFAULT 0xFFFF // default 0xFFFF means skip checking
+// 0xFFFF means ignore ID checks in DFU suffix verification
+#define DFU_SUFFIX_IGNORE_ID 0xFFFF
 
 #define I2C_ADDRESS_DEFAULT 0x2C
 #define BLOCK_SIZE_DEFAULT 128

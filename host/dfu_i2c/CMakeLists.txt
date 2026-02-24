@@ -1,4 +1,6 @@
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.12)
+
+project("dfu_i2c")
 
 # Force release mode so that all the DLLs are statically linked
 set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Only Release mode is allowed" FORCE)
@@ -8,7 +10,6 @@ add_compile_definitions(_GNU_SOURCE HOST_APP)
 set (INCLUDE_DIRS 
         "../../../lib_device_control/lib_device_control/api"
         "../../../lib_device_control/lib_device_control/inc"
-        "../../../lib_device_control/lib_device_control/src"
         "../../../lib_device_control/host/api"
         "../../../lib_device_control/host/inc"
         "../api"
@@ -32,18 +33,6 @@ set (SOURCE_FILES
 
 set (LINK_LIBS)
 
-set (PRODUCT "/" CACHE STRING "Possible values XVF3610, XVF3615")
-
-string (TOLOWER "${PRODUCT}" PRODUCT_LOWER)
-
-if (${PRODUCT_LOWER} STREQUAL "xvf3610")
-    add_compile_definitions(USB_PID=0x0016)
-elseif(${PRODUCT_LOWER} STREQUAL "xvf3615")
-    add_compile_definitions(USB_PID=0x0018)
-else()
-    message (FATAL_ERROR "Invalid PRODUCT ${PRODUCT}, possible values XVF3610, XVF3615")
-endif()
-
 set (DFUCTRL_LIB dfuctrl_i2c_1.0)
 set (DFUCTRL_APP dfu_i2c)
 add_compile_definitions(nologo USE_I2C RPI)
@@ -56,7 +45,7 @@ target_compile_definitions(${DFUCTRL_LIB} PUBLIC)
 target_include_directories(${DFUCTRL_LIB} PUBLIC ${INCLUDE_DIRS})
 target_link_libraries(${DFUCTRL_LIB} ${LINK_LIBS})
 
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/${PRODUCT_LOWER})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 add_executable(${DFUCTRL_APP} src/main.c)
 target_include_directories(${DFUCTRL_APP} PUBLIC "api")
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")

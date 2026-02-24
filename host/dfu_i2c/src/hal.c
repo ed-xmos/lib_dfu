@@ -15,38 +15,6 @@
 
 extern bool quiet;
 
-#if USE_USB
-static int hal_connect_usb(struct device_id device_id)
-{
-  const int usb_interface_number = 3;
-  if (control_init_usb(device_id.vendor, device_id.product, usb_interface_number)
-      != CONTROL_SUCCESS) {
-    PRINT_ERROR("Control initialisation over USB failed\n");
-    return 1;
-  }
-  if (!quiet) {
-    printf("USB connected (vendor ID 0x%04X, product ID 0x%04X)\n",
-           device_id.vendor, device_id.product);
-  }
-
-  control_version_t version;
-  if (control_query_version(&version) != CONTROL_SUCCESS) {
-    PRINT_ERROR("Control query version failed\n");
-    return 2;
-  }
-  if (version != CONTROL_VERSION) {
-    PRINT_ERROR("Mismatch of the control version between host and device.\
-                     Expected 0x%X, received 0x%X\n", CONTROL_VERSION, version);
-    return 3;
-  }
-  if (!quiet)
-    printf("control version query successful\n");
-
-  return 0;
-}
-#endif
-
-#if USE_I2C
 static int hal_connect_i2c(struct device_id device_id)
 {
   const int shift = 0;
@@ -73,16 +41,10 @@ static int hal_connect_i2c(struct device_id device_id)
 
   return 0;
 }
-#endif
 
 int hal_connect(struct device_id device_id)
 {
-#if USE_USB
-  return hal_connect_usb(device_id);
-#endif
-#if USE_I2C
   return hal_connect_i2c(device_id);
-#endif
 }
 
 int hal_read_command(int command,
@@ -136,14 +98,8 @@ int hal_reboot(void)
 
 int hal_disconnect(void)
 {
-#if USE_USB
-  if (control_cleanup_usb() != CONTROL_SUCCESS)
-    return 1;
-#endif
-#if USE_I2C
   if (control_cleanup_i2c() != CONTROL_SUCCESS)
     return 1;
-#endif
 
   return 0;
 }
