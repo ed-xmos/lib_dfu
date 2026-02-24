@@ -10,8 +10,6 @@
 #include "dfu.h"
 #include "dfu_types.h"
 
-#define RESOURCE_ID_DFU 0xD0
-
 struct dfu_cmd_response request_with_arguments(enum dfu_request request,
                                               const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                               uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],

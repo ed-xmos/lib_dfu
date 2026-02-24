@@ -10,6 +10,7 @@
 #include "control.h"
 #include "app.h"
 #include "resource.h"
+#include "dfu_control_server.h"
 
 on tile[PORT_I2C_SCL_TILE_NUM]: port p_scl = PORT_I2C_SCL;
 on tile[PORT_I2C_SDA_TILE_NUM]: port p_sda = PORT_I2C_SDA;
@@ -20,7 +21,7 @@ int main(void)
   interface control i_control[1];
 
   par {
-    on tile[PORT_I2C_SCL_TILE_NUM]: par {
+    on tile[1]: par {
       app(i_control[0]);
     }
     on tile[PORT_I2C_SCL_TILE_NUM]: {
@@ -33,6 +34,7 @@ int main(void)
         i2c_control_client(i_i2c, i_control);
 #pragma warning enable
         i2c_slave(i_i2c, p_scl, p_sda, DEVICE_I2C_ADDRESS);
+        // dfu_control_server(i_control[1]);
       }
     }
   }

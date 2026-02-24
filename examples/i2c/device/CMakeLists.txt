@@ -10,6 +10,7 @@ set(APP_INCLUDES            src ../shared)
 
 # To enable I2C adapter in the lib_device_control library, this application must build 'i2c' configuration
 set(TRANSPORT_CONFIG        "I2C")
+set(CONTROL_APP_DFU         ON)
 
 set(APP_COMPILER_FLAGS      -O2
                             -g
@@ -19,7 +20,7 @@ set(APP_COMPILER_FLAGS      -O2
                             -Wextra
 )
 
-set(APP_DEPENDENT_MODULES   lib_dfu "lib_i2c(6.4.1)" "lib_device_control(develop)")
+set(APP_DEPENDENT_MODULES   lib_dfu "lib_i2c(6.4.1)" "humphrey-xmos/lib_device_control(feature/dfu-support)")
 
 set(XMOS_SANDBOX_DIR        ${CMAKE_CURRENT_LIST_DIR}/../../../..)
 
