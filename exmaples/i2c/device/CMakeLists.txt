@@ -3,14 +3,13 @@ include($ENV{XMOS_CMAKE_PATH}/xcommon.cmake)
 project(i2c)
 
 # target: choose the target platform
-set(APP_HW_TARGET XK-EVK-XU316-AIV_i2c.xn)
+set(APP_HW_TARGET xk-voice-l71.xn)
 
 # Includes and flags
 set(APP_INCLUDES src ../shared)
 
 # To enable I2C adapter in the lib_device_control library, this application must build 'i2c' configuration
 set(TRANSPORT_CONFIG  "I2C")
-set(CONTROL_APP_DFU   ON)
 
 set(APP_COMPILER_FLAGS
   -lquadflash  # TODO - move this to the lib_dfu module

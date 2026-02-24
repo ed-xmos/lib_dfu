@@ -10,12 +10,8 @@
 #include "control.h"
 #include "app.h"
 
-#ifndef I2C_TILE
-#define I2C_TILE 1  // Vision Board: Tile 1, else: tile 0
-#endif
-
-on tile[I2C_TILE]: port p_scl = PORT_I2C_SCL;
-on tile[I2C_TILE]: port p_sda = PORT_I2C_SDA;
+on tile[PORT_I2C_SCL_TILE_NUM]: port p_scl = PORT_I2C_SCL;
+on tile[PORT_I2C_SDA_TILE_NUM]: port p_sda = PORT_I2C_SDA;
 
 const char i2c_device_addr = 0x2C;
 
@@ -25,14 +21,14 @@ int main(void)
   interface control i_control[1];
 
   par {
-    on tile[I2C_TILE]: par {
+    on tile[PORT_I2C_SCL_TILE_NUM]: par {
       app(i_control[0]);
     }
-    on tile[I2C_TILE]: {
+    on tile[PORT_I2C_SCL_TILE_NUM]: {
       control_init();
       control_register_resources(i_control, 1);
 
-      /* TODO [[combine]] */
+      /* bug 17317 - [[combine]] */
       par {
 #pragma warning disable unusual-code // Suppress slice interface warning (no array size passed)
         i2c_control_client(i_i2c, i_control);

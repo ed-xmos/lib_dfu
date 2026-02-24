@@ -35,15 +35,6 @@ pipeline {
     }
 
     stages {
-        // This is a prompt of what testing needs porting from old Jenkinsfile
-        //         stage('Build of hardware system tests') {
-        //           steps {
-        //             dir("${REPO}/tests/system_hardware") {
-        //               runWaf('.')
-        //             }
-        //           }
-        //         }
-
         stage('🏗️ Build and test') {
             agent {
                 label 'x86_64 && linux && documentation'
@@ -66,13 +57,18 @@ pipeline {
                     }
                 }
 
-                // stage('Examples build') {
-                //     steps {
-                //         dir("${REPO_NAME}/examples") {
-                //             xcoreBuild()
-                //         }
-                //     }
-                // }
+                stage('Examples build') {
+                    steps {
+                        dir("${REPO_NAME}/examples") {
+                            dir("i2c/device") {
+                                xcoreBuild()
+                            }
+                            dir("i2c/host_xcore") {
+                                xcoreBuild()
+                            }
+                        }
+                    }
+                }
                   
                 stage('Build Linux host app') {
                     steps {

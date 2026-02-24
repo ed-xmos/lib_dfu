@@ -11,7 +11,6 @@
 void app(server interface control i_control)
 {
   unsigned num_commands;
-  unsigned i;
 
   printf("started\n");
 #ifdef ERRONEOUS_DEVICE
@@ -36,7 +35,7 @@ void app(server interface control i_control)
           resid += 1;
 #endif
         printf("%u: W %d %d %d,", num_commands, resid, cmd, payload_len);
-        for (i = 0; i < payload_len; i++) {
+        for (unsigned i = 0; i < payload_len; i++) {
           printf(" %02x", payload[i]);
         }
         printf("\n");
