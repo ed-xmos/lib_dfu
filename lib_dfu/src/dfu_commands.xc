@@ -15,7 +15,7 @@
 
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
   switch (cmd) {
     case DFU_DETACH:
       response = request(DFU_DETACH);
@@ -58,7 +58,7 @@ struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, con
 
 struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0 };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
 
   switch (cmd) {
     case DFU_GETSTATE:
