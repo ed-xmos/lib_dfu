@@ -66,17 +66,7 @@ struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], 
       break;
 
     case DFU_GETSTATUS:
-      if (payload == NULL || payload_len != DFU_GET_STATUS_PAYLOAD_SIZE_BYTES) {
-        break;
-      }
-      struct dfu_getstatus ret = dfu_getstatus();
-      memset(payload, 0, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
-      payload[DFU_GETSTATUS_STATUS_INDEX] = ret.status;
-      memcpy(&payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX], &ret.poll_timeout_msec, DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
-      payload[DFU_GETSTATUS_STATE_INDEX] = ret.state;
-      
-      response.status = DFU_API_SUCCESS;
-      response.return_data_len = DFU_GET_STATUS_PAYLOAD_SIZE_BYTES;
+      response = request_with_arguments(cmd, null, payload, payload_len, null);
       break;
 
     case DFU_UPLOAD:

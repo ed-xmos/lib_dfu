@@ -62,6 +62,15 @@ static enum dfu_state get_state()
   return payload[0];
 }
 
+static struct dfu_getstatus get_status()
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
+  return ret;
+}
+
 void write_begin(void)
 {
   enum dfu_state state;
@@ -121,7 +130,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
 
     do {
       t_start(7);
-      ret = dfu_getstatus();
+      ret = get_status();
       t_end();
       assert(ret.status == DFU_OK);
       delay_milliseconds(ret.poll_timeout_msec);
@@ -141,7 +150,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
 
   do {
     t_start(9);
-    ret = dfu_getstatus();
+    ret = get_status();
     t_end();
     assert(ret.status == DFU_OK);
     // Short delay for testing purposes.

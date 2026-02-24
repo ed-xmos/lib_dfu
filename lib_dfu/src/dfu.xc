@@ -531,8 +531,24 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
   }
 
   /* Handle common requests last */
-  if (request == DFU_GETSTATUS) {
-    // response = dfu_getstatus();
+  if (request == DFU_GETSTATUS && !isnull(read_block) && block_size_bytes == DFU_GET_STATUS_PAYLOAD_SIZE_BYTES) {
+    unsigned int ret_poll_timeout_msec = 0; // TODO - move?
+    memset(read_block, 0, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+    read_block[DFU_GETSTATUS_STATUS_INDEX] = status;
+    memcpy(&read_block[DFU_GETSTATUS_POLL_TIMEOUT_INDEX], &ret_poll_timeout_msec, DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
+
+    // special treatment for the sync states: make it look like we've stayed in the busy state (either dfuDNBUSY or
+    // dfuMANIFEST) for the duration of poll timeout, while we actually leave immediately (going back to the sync state)
+    if (state == STATE_DFU_DOWNLOAD_SYNC) {
+      read_block[DFU_GETSTATUS_STATE_INDEX] = STATE_DFU_DOWNLOAD_BUSY;
+    } else if (state == STATE_DFU_MANIFEST_SYNC) {
+      read_block[DFU_GETSTATUS_STATE_INDEX] = STATE_DFU_MANIFEST;
+    } else {
+      read_block[DFU_GETSTATUS_STATE_INDEX] = state;
+    }
+    
+    response.status = DFU_API_SUCCESS;
+    response.return_data_len = DFU_GET_STATUS_PAYLOAD_SIZE_BYTES;
 
   } else if (request == DFU_GETSTATE && !isnull(read_block) && block_size_bytes == DFU_GET_STATE_PAYLOAD_SIZE_BYTES) {
     response.status = DFU_API_SUCCESS;
@@ -550,30 +566,6 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
 struct dfu_cmd_response request(enum dfu_request request)
 {
   return request_with_arguments(request, null, null, 0, null);
-}
-
-struct dfu_getstatus dfu_getstatus(void)
-{
-  request(DFU_GETSTATUS);
-
-  struct dfu_getstatus ret;
-  ret.status = status;
-  ret.state = state;
-  ret.poll_timeout_msec = POLL_TIMEOUT_MSEC;
-
-  // special treament for the sync states:
-  // make it look like we've stayed in the busy state (either dfuDNBUSY or
-  // dfuMANIFEST) for the duration of poll timeout, while we actually leave
-  // immediately (going back to the sync state)
-  if (state == STATE_DFU_DOWNLOAD_SYNC) {
-    ret.state = STATE_DFU_DOWNLOAD_BUSY;
-  } else if (state == STATE_DFU_MANIFEST_SYNC) {
-    ret.state = STATE_DFU_MANIFEST;
-  } else {
-    ret.poll_timeout_msec = 0;
-  }
-
-  return ret;
 }
 
 void dfu_clrstatus(void)
@@ -606,10 +598,4 @@ int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZ
 {
   struct dfu_cmd_response response = request_with_arguments(DFU_UPLOAD, null, read_block, block_size_bytes, null);
   return (response.status == DFU_API_SUCCESS) ? response.return_data_len : -1;
-}
-
-struct dfu_cmd_response dfu_abort(void)
-{
-  struct dfu_cmd_response response = request(DFU_ABORT);
-  return response;
 }

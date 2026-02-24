@@ -141,25 +141,9 @@ void dfu_dnload(int32_t block_num, int32_t block_size_bytes,
 int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES]);
 
 /**
- * DFU GETSTATUS request
- *
- * At time of writing, all flash programming work is done as part of GETSTATUS.
- * This means that a DNLOAD request completes immediately and does not cause
- * any flash erasing or writing.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library.
- *
- * \return Status code, poll timeout value and current interface state
- */
-struct dfu_getstatus dfu_getstatus(void);
-
-/**
  * DFU CLRSTATUS request
  */
 void dfu_clrstatus(void);
-
-struct dfu_cmd_response dfu_abort(void);
 
 /** \} */
 

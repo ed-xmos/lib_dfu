@@ -140,6 +140,14 @@ static void get_state_and_check(enum dfu_state expected_state)
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
+static void get_status_and_check(enum dfu_status expected_status, enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL_UINT8(expected_status, payload[DFU_GETSTATUS_STATUS_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(expected_state, payload[DFU_GETSTATUS_STATE_INDEX]);
+}
+
 void detach() {
   // TODO pass if we are already in DFU_IDLE from previous test.
 
@@ -169,9 +177,7 @@ void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_coun
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_EQUAL(block_size, response.return_data_len);
     
-    struct dfu_getstatus status = dfu_getstatus();
-    TEST_ASSERT_EQUAL(DFU_OK, status.status);
-    TEST_ASSERT_EQUAL(STATE_DFU_UPLOAD_IDLE, status.state);
+    get_status_and_check(DFU_OK, STATE_DFU_UPLOAD_IDLE);
   }
   if (tail_size >= 0) {
     debug_printf("upload block %d 0x%04X (tail %d bytes)\n", block_count, marker | block_count, tail_size);
