@@ -28,7 +28,7 @@ int host_getState(client interface i2c_master_if i_i2c, uint8_t *state)
   int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_GETSTATE), i_i2c, payload, GET_STATE_LENGTH_BYTES);
   if (ctrl != CONTROL_SUCCESS) {
     printf("control read state command failed with %d\n", ctrl);
-    exit(1);
+    return 1;
   }
   *state = payload[4];
   return 0;
@@ -40,9 +40,10 @@ int host_getStatus(client interface i2c_master_if i_i2c, uint8_t *status, uint8_
   int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_GETSTATUS), i_i2c, payload, GET_STATUS_LENGTH_BYTES);
   if (ctrl != CONTROL_SUCCESS) {
     printf("control read status command failed with %d\n", ctrl);
-    exit(1);
+    return 1;
   }
   *status = payload[4 + DFU_GETSTATUS_STATUS_INDEX];
+  *timeout = 0;
   memcpy(timeout, &payload[4 + DFU_GETSTATUS_POLL_TIMEOUT_INDEX], DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
   *nextState = payload[4 + DFU_GETSTATUS_STATE_INDEX];
   // *strIndex = payload[4 + DFU_GETSTATUS_STRINDEX_INDEX];
@@ -54,18 +55,18 @@ int host_upload(client interface i2c_master_if i_i2c, uint8_t *payload, int32_t 
   int ctrl = control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(DFU_UPLOAD), i_i2c, payload, length);
   if (ctrl != CONTROL_SUCCESS) {
     printf("control read upload command failed with %d\n", ctrl);
-    exit(1);
+    return 1;
   }
   return 0;
 }
 
-int host_detach(client interface i2c_master_if i_i2c)
+int host_request(client interface i2c_master_if i_i2c, enum dfu_request request)
 {
   uint8_t payload[4] = { 0 };
-  int ctrl = control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(DFU_DETACH), i_i2c, payload, 4);
+  int ctrl = control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(request), i_i2c, payload, 4);
   if (ctrl != CONTROL_SUCCESS) {
     printf("control write detach command failed with %d\n", ctrl);
-    exit(1);
+    return 1;
   }
   return 0;
 }
@@ -99,6 +100,7 @@ int main(void)
 
       printf("started\n");
 
+      /* DFU endpoint access */
       host_getState(i_i2c[0], &payload[0]);
       printf("DFU state: %d\n", payload[0]);
 
@@ -108,12 +110,30 @@ int main(void)
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
 
-      host_detach(i_i2c[0]);
+      host_request(i_i2c[0], DFU_DETACH);
       printf("Sent detach command\n");
 
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
 
+      host_request(i_i2c[0], XMOS_BUS_RESET);
+      printf("Sent bus reset command\n");
+
+      host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
+      printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
+
+      host_request(i_i2c[0], XMOS_BUS_RESET);
+      printf("Sent bus reset command\n");
+
+      /* Allow device to reboot */
+      pause_long();
+      pause_long();
+      pause_long();
+
+      host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
+      printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
+
+      /* Data endpoint exchange */
       for (i = 0; i < 4; i++) {
         payload[0] = i;
         if (control_write_command(RESOURCE_ID, CONTROL_CMD_SET_WRITE(0), i_i2c[0], payload, 1) != CONTROL_SUCCESS) {
@@ -139,6 +159,7 @@ int main(void)
 
       control_cleanup_i2c();
       printf("done\n");
+      exit(0);
     }
   }
   return 0;

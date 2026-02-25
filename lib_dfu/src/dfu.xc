@@ -337,8 +337,10 @@ static struct dfu_cmd_response state_dnload_sync(enum dfu_request request, enum 
         response = normal_transition(STATE_DFU_DOWNLOAD_IDLE);
       }
     }
-  }
-  else if (request != DFU_GETSTATE) {
+  } else if (request == XMOS_BUS_RESET) {
+    /* fall-through, handle in common command handler */
+
+  } else if (request != DFU_GETSTATE) {
     response = error_condition(DFU_errSTALLED_PKT, request);
   }
   return response;
@@ -363,8 +365,10 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, enu
         response = normal_transition(STATE_DFU_MANIFEST_SYNC);
       }
     }
-  }
-  else if (request != DFU_GETSTATE) {
+  } else if (request == XMOS_BUS_RESET) {
+    /* fall-through, handle in common command handler */
+
+  } else if (request != DFU_GETSTATE) {
     response = error_condition(DFU_errSTALLED_PKT, request);
   }
   return response;
@@ -489,7 +493,7 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
       } else if (request == DFU_UPLOAD) {
         response = state_entry_upload(read_block, block_size_bytes, read_length);
 
-      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         // no other requests expected, defined as error
         response = error_condition(DFU_errSTALLED_PKT, request);
       }
@@ -507,7 +511,7 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
       if (request == DFU_DNLOAD) {
         response = state_download_idle(write_block, block_size_bytes, block_num);
 
-      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         response = error_condition(DFU_errSTALLED_PKT, request);
       }
       break;
@@ -516,7 +520,7 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
       if (request == DFU_UPLOAD) {
         response = state_upload_idle(read_block, block_size_bytes, read_length);
 
-      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         // no other requests expected, defined as error
         response = error_condition(DFU_errSTALLED_PKT, request);
       }
@@ -564,6 +568,7 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
       timer tmr;
       unsigned now;
       tmr :> now;
+      debug_printf("Rebooting out of DFU mode\n");
       tmr when timerafter(now + (DELAY_BEFORE_REBOOT_FROM_DFU_MS * XS1_TIMER_KHZ)) :> void;
       device_reboot();
       // Note: testing will fall through to app idle without reboot, which is fine.
