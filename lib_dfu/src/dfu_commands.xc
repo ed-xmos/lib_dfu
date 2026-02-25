@@ -10,23 +10,15 @@
 
 #include "dfu.h"
 #include "dfu_types.h"
-#include "dfu_state_machine.h"
 
+// TODO - deprecated - used in tests
 
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  if (cmd == XMOS_DFU_REVERTFACTORY) {
-    // TODO - add support for this command
-    // response.status = DFU_API_SUCCESS;
-
-  } else {
-    response = request_with_arguments(cmd, payload, null, payload_len, value);
-  }
-  return response;
+  return dfu_request_with_arguments(cmd, payload, null, payload_len, value);
 }
 
 struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
-  return request_with_arguments(cmd, null, payload, payload_len, null);
+  return dfu_request_with_arguments(cmd, null, payload, payload_len, null);
 }

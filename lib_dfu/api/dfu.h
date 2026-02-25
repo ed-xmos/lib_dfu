@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <quadflash.h>
 #include <stdint.h>
+#include <xccompat.h>
 
 #include "dfu_default_conf.h"
 #include "dfu_types.h"
@@ -44,6 +45,41 @@ struct dfu_cmd_response {
  * DFU_GETSTATE   Zero      Interface 1         State
  * DFU_ABORT      Zero      Interface Zero      None
  */
+
+ /**
+  * DFU request handling with arguments
+  * 
+  * \param request the DFU request to handle
+  * \param write_block pointer to the data payload of the request for write operations, usage depends on command, for download it's
+  * the data block to write, for other commands it's unused and can be null
+  * \param read_block pointer to the data payload buffer for read operations, usage depends on command, for upload it's the buffer
+  * to fill with the data block to upload, for other commands it's unused and can be null
+  * \param block_size_bytes the size of the data block to read/write for upload/download commands, for other commands it's unused and can be 0
+  * \param block_num for download command, the block number to write, for other commands it's unused and can be null
+  * 
+  * \return struct dfu_cmd_response containing status and any return value, usage depends on command, for upload the return_data_len is the size of the block to upload, for other commands it's unused and can be 0
+  * \retval DFU_API_SUCCESS if command was handled successfully, the value is the upload block-number for upload command, 0 otherwise.
+  * \retval DFU_API_ERROR if there was an error handling the command
+  * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
+  */
+struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
+                                                    NULLABLE_ARRAY_OF(const uint8_t, write_block),
+                                                    NULLABLE_ARRAY_OF(uint8_t, read_block),
+                                                    int32_t block_size_bytes,
+                                                    NULLABLE_REFERENCE_PARAM(int32_t, block_num));
+
+/**
+ * Send request to DFU with no data
+ * 
+ * \param request the DFU request to send
+ * 
+ * \return struct dfu_cmd_response containing status
+ * \retval DFU_API_SUCCESS for status, if command was handled successfully
+ * \retval DFU_API_ERROR for status, if there was an error handling the command
+ * \retval DFU_API_BAD_PARAM for status, if the command or parameters were invalid
+ *
+ */
+struct dfu_cmd_response dfu_request(enum dfu_request request);
 
  /** DFU host write request handling
   *

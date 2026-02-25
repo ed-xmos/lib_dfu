@@ -457,10 +457,11 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
   return response;
 }
 
-struct dfu_cmd_response request_with_arguments(enum dfu_request request,
-                                              const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
-                                              uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
-                                              int32_t block_size_bytes, int32_t &?block_num)
+struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
+                                                   const uint8_t (&?write_block)[],
+                                                   uint8_t (&?read_block)[],
+                                                   int32_t block_size_bytes,
+                                                   int32_t &?block_num)
 {
   static enum dnload_sub_state sub_state = DNLOAD_SYNC;
   static int32_t read_length = 0;
@@ -492,6 +493,10 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
 
       } else if (request == DFU_UPLOAD) {
         response = state_entry_upload(read_block, block_size_bytes, read_length);
+
+      } else if (request == XMOS_DFU_REVERTFACTORY) {
+        flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
+        response.status = DFU_API_SUCCESS;
 
       } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         // no other requests expected, defined as error
@@ -582,19 +587,19 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
   return response;
 }
 
-struct dfu_cmd_response request(enum dfu_request request)
+struct dfu_cmd_response dfu_request(enum dfu_request request)
 {
-  return request_with_arguments(request, null, null, 0, null);
+  return dfu_request_with_arguments(request, null, null, 0, null);
 }
 
 void dfu_bus_reset(void)
 {
-  request(XMOS_BUS_RESET);
+  dfu_request(XMOS_BUS_RESET);
 }
 
 void dfu_detach(void)
 {
-  request(DFU_DETACH);
+  dfu_request(DFU_DETACH);
 }
 
 void dfu_timeout_detach(void)
