@@ -36,9 +36,7 @@ fl_QuadDeviceSpec flash_devices[] = {DFU_USER_FLASH_DEVICE};
 /* Using specified flash device rather than all supported in tools */
 fl_DeviceSpec flash_devices[] = {DFU_USER_FLASH_DEVICE};
 #endif
-#else
-/* TODO - figure out out best to define this/pass it in */
-#define CLKBLK_FLASHLIB XS1_CLKBLK_1 /* Clock block for use by flash lib */
+
 #endif
 
 #if (DFU_QUAD_SPI_FLASH)

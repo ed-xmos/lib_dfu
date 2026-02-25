@@ -11,13 +11,11 @@ static void get_state_and_check(enum dfu_state expected_state)
 {
   struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  TEST_ASSERT_EQUAL(expected_state, payload[DFU_GETSTATE_INDEX]);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
-void test_clrstatus(void)
+void test_bus_reset(void)
 {
-  enum dfu_state state;
-
   get_state_and_check(STATE_APP_IDLE);
 
   struct dfu_cmd_response response = dfu_handle_write_command(DFU_DETACH, 0, NULL, 0);
@@ -28,13 +26,7 @@ void test_clrstatus(void)
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_IDLE);
 
-  // another detach is unexpected here
-  response = dfu_handle_write_command(DFU_DETACH, 0, NULL, 0);
-  TEST_ASSERT_EQUAL(DFU_API_ERROR, response.status);
-  get_state_and_check(STATE_DFU_ERROR);
-
-  // clear error state
-  response = dfu_handle_write_command(DFU_CLRSTATUS, 0, NULL, 0);
+  response = dfu_handle_write_command(XMOS_BUS_RESET, 0, NULL, 0);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
-  get_state_and_check(STATE_DFU_IDLE);
+  get_state_and_check(STATE_APP_IDLE);
 }

@@ -188,11 +188,12 @@ void make_test_data(uint8_t seq[], int32_t length) {
   }
 }
 
-void single_dnload_block(int block_num, size_t block_size, const uint8_t block[]) {
+void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t block[]) {
   struct dfu_getstatus ret;
   enum dfu_state state;
 
-  dfu_dnload(block_num, block_size, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, (size_t)block_size);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   state = dfu_getstate();
   TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_SYNC, state);
 
@@ -210,7 +211,8 @@ void dnload_zero(void) {
   enum dfu_state state;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
-  dfu_dnload(0, 0, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   state = dfu_getstate();
   TEST_ASSERT_EQUAL(STATE_DFU_MANIFEST_SYNC, state);
 
@@ -239,18 +241,18 @@ void detach() {
   TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
 }
 
-void dnload(const uint8_t images[MAX_IMAGE_SIZE], int block_size, int block_count, int tail_size, int repeats) {
-  for (int r = 0; r < repeats; r++) {
-    const int marker = 0;  // Was, DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
-    for (int i = 0; i < block_count; i++) {
-      debug_printf("dnload block %d 0x%04X (%d bytes)\n", i, marker | (unsigned)i, block_size);
+void dnload(const uint8_t images[MAX_IMAGE_SIZE], int32_t block_size, int32_t block_count, int32_t tail_size, int32_t repeats) {
+  for (int32_t r = 0; r < repeats; r++) {
+    const int32_t marker = 0;  // Was, DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
+    for (int32_t i = 0; i < block_count; i++) {
+      debug_printf("dnload block %d 0x%04X (%d bytes)\n", i, marker | (int32_t)i, block_size);
 
-      single_dnload_block((marker | i), (size_t)block_size, &images[i * block_size]);
+      single_dnload_block((marker | i), block_size, &images[i * block_size]);
     }
     if (tail_size > 0) {
       debug_printf("dnload block %d 0x%04X (tail %d bytes)\n", block_count, marker | block_count, tail_size);
 
-      single_dnload_block((marker | block_count), (size_t)tail_size, &images[block_count * block_size]);
+      single_dnload_block((marker | block_count), tail_size, &images[block_count * block_size]);
     }
     TEST_ASSERT_TRUE(fl.flash_open);
     debug_printf("dnload zero\n");
