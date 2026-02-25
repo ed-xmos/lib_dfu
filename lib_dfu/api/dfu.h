@@ -80,33 +80,6 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
  */
 struct dfu_cmd_response dfu_request(enum dfu_request request);
 
- /** DFU host write request handling
-  *
-  * \param cmd - the DFU command (bRequest)
-  * \param value - the wValue field of the request, usage depends on command, either block-num for download or timeout for detach
-  * \param payload - pointer to the data payload of the request, usage depends on command
-  * \param payload_len - length of the data payload in bytes
-  * 
-  * \return struct dfu_cmd_response containing status and any return value
-  * \retval DFU_API_SUCCESS if command was handled successfully, the value will mark whether device needs a reboot
-  * \retval DFU_API_ERROR if there was an error handling the command
-  * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
-  */
-struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len);
-
-/** DFU host read request handling
- * 
- * \param cmd - the DFU command (bRequest)
- * \param payload - pointer to the data payload buffer to be filled by the command handler, usage depends on command
- * \param payload_len - length of the data payload buffer in bytes
- * 
- * \return struct dfu_cmd_response containing status and any return value
- * \retval DFU_API_SUCCESS if command was handled successfully, the value is the upload block-number, 0 otherwise.
- * \retval DFU_API_ERROR if there was an error handling the command
- * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
- */
-struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len);
-
 /**
  * \defgroup lib_dfu_api API
  * \{

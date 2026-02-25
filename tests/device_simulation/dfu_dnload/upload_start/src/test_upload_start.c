@@ -47,14 +47,14 @@ static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
 
 static void get_state_and_check(enum dfu_state expected_state)
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
 static void get_status_and_check(enum dfu_status expected_status, enum dfu_state expected_state)
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   TEST_ASSERT_EQUAL_UINT8(expected_status, payload[DFU_GETSTATUS_STATUS_INDEX]);
   TEST_ASSERT_EQUAL_UINT8(expected_state, payload[DFU_GETSTATUS_STATE_INDEX]);
@@ -73,7 +73,7 @@ void test_upload_start(void) {
 
   TEST_ASSERT_EQUAL_INT(0, flash_open);
 
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_UPLOAD, block, sizeof(block));
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, block, sizeof(block), NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   TEST_ASSERT_EQUAL_INT(DFU_TRANSFER_SIZE_BYTES, response.return_data_len);
 

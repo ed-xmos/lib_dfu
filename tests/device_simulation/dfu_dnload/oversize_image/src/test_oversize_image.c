@@ -142,14 +142,14 @@ static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
 
 static void get_state_and_check(enum dfu_state expected_state)
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
 static struct dfu_getstatus get_status()
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
   struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
@@ -160,7 +160,7 @@ static enum dfu_status single_dnload_block(int block_num, size_t block_size, con
 {
   struct dfu_getstatus ret;
 
-  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, block_size);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, block_size, block_num);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_DNLOAD_SYNC);
 
@@ -183,7 +183,7 @@ void dnload_zero(void)
   enum dfu_state state;
   char block[DFU_TRANSFER_SIZE_BYTES];
 
-  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
@@ -249,7 +249,7 @@ void dnload(int partitions, int block_size, int block_count)
         status = single_dnload_block(marker | i, block_size, block);
         if (status != DFU_OK) {
           assert(status == DFU_errADDRESS);
-          struct dfu_cmd_response response = dfu_handle_write_command(DFU_CLRSTATUS, 0, NULL, 0);
+          struct dfu_cmd_response response = dfu_request(DFU_CLRSTATUS);
           TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
           get_state_and_check(STATE_DFU_IDLE);
           break;

@@ -16,7 +16,6 @@ set(LIB_C_SRCS              src/dfu_flashlib_user.c
                             flash/test/dfu_flash_stubs.c)
 
 set(LIB_XC_SRCS             src/dfu.xc
-                            src/dfu_commands.xc
                             src/usb/dfu_usb_requests.xc
                             src/dfu_reboot.xc)
 

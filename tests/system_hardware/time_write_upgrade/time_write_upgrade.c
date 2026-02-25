@@ -57,14 +57,14 @@ static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
 
 static enum dfu_state get_state()
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   return payload[0];
 }
 
 static struct dfu_getstatus get_status()
 {
-  struct dfu_cmd_response response = dfu_handle_read_command(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
   struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
@@ -125,7 +125,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
       break;
 
     t_start(6);
-    struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, marker | block_count, block, read);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, (marker | block_count));
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     t_end();
 
@@ -142,8 +142,8 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
     block_count++;
   }
 
-  t_start(8);
-  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  t_start(8);block_count
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   t_end();
   state = get_state();
