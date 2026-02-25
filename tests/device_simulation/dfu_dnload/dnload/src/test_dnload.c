@@ -250,6 +250,13 @@ void detach() {
   get_state_and_check(STATE_DFU_IDLE);
 }
 
+void reboot() {
+  get_state_and_check(STATE_DFU_IDLE);
+
+  dfu_bus_reset();
+  get_state_and_check(STATE_APP_IDLE);
+}
+
 void dnload(const uint8_t images[MAX_IMAGE_SIZE], int32_t block_size, int32_t block_count, int32_t tail_size, int32_t repeats) {
   for (int32_t r = 0; r < repeats; r++) {
     const int32_t marker = 0;  // Was, DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
@@ -316,4 +323,6 @@ void test_dnload(void) {
   dnload((const uint8_t *)images, block_size, block_count, tail_size, repeats);
 
   verify((const uint8_t *)images);
+  
+  reboot();
 }

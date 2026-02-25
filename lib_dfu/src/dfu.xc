@@ -12,6 +12,7 @@
 
 #include "dfu_flash.h"
 #include "dfu.h"
+#include "dfu_reboot.h"
 #include "fifo.h"
 
 #define POLL_TIMEOUT_MSEC 1
@@ -267,7 +268,13 @@ static enum dfu_api_status upload_block(uint8_t read_block[], int32_t block_size
 
 static struct dfu_cmd_response state_app_idle(enum dfu_request request) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  if (request == DFU_DETACH) {
+  if (request == XMOS_BUS_RESET) {
+    response.status = DFU_API_SUCCESS;
+    // TODO - USB DFU mode enable when "value" is set.
+    // response = normal_transition(STATE_DFU_IDLE);
+    // response.reset_type = DFU_RESET_TYPE_RESET_TO_DFU;
+
+  } else if (request == DFU_DETACH) {
     response = normal_transition(STATE_APP_DETACH);
 
   } else if (request == DFU_ABORT) {
@@ -283,9 +290,13 @@ static struct dfu_cmd_response state_app_idle(enum dfu_request request) {
 
 static struct dfu_cmd_response state_detach(enum dfu_request request) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
-    // no other requests expected, return to appIDLE
+  if (request == XMOS_BUS_RESET) {
+    response = normal_transition(STATE_DFU_IDLE);
+
+  } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
+    // no other requests expected, return to appIDLE, but respond with STALL.
     response = normal_transition(STATE_APP_IDLE);
+    response.status = DFU_API_ERROR;
   }
   return response;
 }
@@ -442,16 +453,6 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
   return response;
 }
 
-// TODO - rename, this is an event, not a command handler
-void dfu_bus_reset(void)
-{
-  if (state == STATE_APP_DETACH) {
-    normal_transition(STATE_DFU_IDLE);
-  } else {
-    normal_transition(STATE_APP_IDLE);
-  }
-}
-
 struct dfu_cmd_response request_with_arguments(enum dfu_request request,
                                               const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                               uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
@@ -556,6 +557,19 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
     response.reset_type = DFU_RESET_TYPE_NONE;
     read_block[DFU_GETSTATE_INDEX] = state;
 
+  } else if ((request == XMOS_BUS_RESET) && (response.status != DFU_API_SUCCESS)) {
+    // if bus reset was not handled by state machine handlers, handle it here by resetting to app idle.
+    if (state != STATE_APP_IDLE) {
+      /* Exit from DFU mode. Send reboot command */
+      timer tmr;
+      unsigned now;
+      tmr :> now;
+      tmr when timerafter(now + (DELAY_BEFORE_REBOOT_FROM_DFU_MS * XS1_TIMER_KHZ)) :> void;
+      device_reboot();
+      // Note: testing will fall through to app idle without reboot, which is fine.
+    }
+    response = normal_transition(STATE_APP_IDLE);
+
   } else {
     /* For other requests, delegate to state machine handlers */
   }
@@ -566,6 +580,11 @@ struct dfu_cmd_response request_with_arguments(enum dfu_request request,
 struct dfu_cmd_response request(enum dfu_request request)
 {
   return request_with_arguments(request, null, null, 0, null);
+}
+
+void dfu_bus_reset(void)
+{
+  request(XMOS_BUS_RESET);
 }
 
 void dfu_clrstatus(void)

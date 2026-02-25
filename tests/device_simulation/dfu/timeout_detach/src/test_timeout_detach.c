@@ -17,8 +17,6 @@ static void get_status_and_check(enum dfu_status expected_status, enum dfu_state
 
 void test_timeout_detach(void)
 {
-  struct dfu_getstatus ret;
-
   get_status_and_check(DFU_OK, STATE_APP_IDLE);
 
   dfu_handle_write_command(DFU_DETACH, 0, NULL, 0);

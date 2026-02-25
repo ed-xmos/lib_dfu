@@ -5,9 +5,12 @@
 #include <print.h>
 #include <xs1_su.h>
 
+#include "dfu.h"
 #include "xs2_su_registers.h"
 #define XS2_SU_PERIPH_USB_ID 0x1
 #define PLL_MASK 0x3FFFFFFF
+
+#if (DFU_ENABLE == 1)
 
 /* Note, this function is prototyped in xs1.h only from 13 tools onwards */
 unsigned get_tile_id(tileref);
@@ -74,3 +77,12 @@ void device_reboot(void)
 
     while (1);
 }
+
+#else
+
+// Testing only - not a real reboot, just simulating bus reset.
+void device_reboot(void)
+{
+}
+
+#endif
