@@ -63,8 +63,7 @@ struct dfu_cmd_response {
   * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
   */
 struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
-                                                    NULLABLE_ARRAY_OF(const uint8_t, write_block),
-                                                    NULLABLE_ARRAY_OF(uint8_t, read_block),
+                                                    NULLABLE_ARRAY_OF(uint8_t, block),
                                                     int32_t block_size_bytes,
                                                     NULLABLE_REFERENCE_PARAM(int32_t, block_num));
 

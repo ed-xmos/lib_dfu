@@ -15,10 +15,10 @@
 
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
-  return dfu_request_with_arguments(cmd, payload, null, payload_len, value);
+  return dfu_request_with_arguments(cmd, (payload, uint8_t []), payload_len, value);
 }
 
 struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
-  return dfu_request_with_arguments(cmd, null, payload, payload_len, null);
+  return dfu_request_with_arguments(cmd, payload, payload_len, null);
 }
