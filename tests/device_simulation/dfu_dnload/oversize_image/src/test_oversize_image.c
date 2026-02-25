@@ -160,7 +160,8 @@ static enum dfu_status single_dnload_block(int block_num, size_t block_size, con
 {
   struct dfu_getstatus ret;
 
-  dfu_dnload(block_num, block_size, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_num, block, block_size);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_DNLOAD_SYNC);
 
   do {
@@ -182,7 +183,8 @@ void dnload_zero(void)
   enum dfu_state state;
   char block[DFU_TRANSFER_SIZE_BYTES];
 
-  dfu_dnload(0, 0, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {

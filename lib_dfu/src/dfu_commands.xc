@@ -16,12 +16,7 @@
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-
-  if (cmd == XMOS_BUS_RESET) {
-    dfu_bus_reset();
-    response.status = DFU_API_SUCCESS;
-
-  } else if (cmd == XMOS_DFU_REVERTFACTORY) {
+  if (cmd == XMOS_DFU_REVERTFACTORY) {
     // TODO - add support for this command
     // response.status = DFU_API_SUCCESS;
 

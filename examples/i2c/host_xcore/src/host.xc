@@ -127,8 +127,6 @@ int main(void)
 
       /* Allow device to reboot */
       pause_long();
-      pause_long();
-      pause_long();
 
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);

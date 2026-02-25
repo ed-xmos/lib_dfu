@@ -125,7 +125,8 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
       break;
 
     t_start(6);
-    dfu_dnload(marker | block_count, read, block);
+    struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, marker | block_count, block, read);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     t_end();
 
     do {
@@ -142,7 +143,8 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
   }
 
   t_start(8);
-  dfu_dnload(0, 0, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   t_end();
   state = get_state();
   t_end();

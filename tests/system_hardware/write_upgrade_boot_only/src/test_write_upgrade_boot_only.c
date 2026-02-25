@@ -69,7 +69,8 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     if (read == 0)
       break;
 
-    dfu_dnload(block_count, (int32_t)read, block);
+    struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, block_count, block, read);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
     do {
       ret = get_status();
@@ -82,7 +83,8 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     block_count++;
   }
 
-  dfu_dnload(0, 0, block);
+  struct dfu_cmd_response response = dfu_handle_write_command(DFU_DNLOAD, 0, block, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   ret = get_status();

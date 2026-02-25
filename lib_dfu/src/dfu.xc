@@ -613,11 +613,6 @@ void dfu_timeout_detach(void)
   }
 }
 
-void dfu_dnload(int32_t block_num, int32_t block_size_bytes, const uint8_t write_block[DFU_TRANSFER_SIZE_BYTES])
-{
-  request_with_arguments(DFU_DNLOAD, write_block, null, block_size_bytes, block_num);
-}
-
 int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES])
 {
   struct dfu_cmd_response response = request_with_arguments(DFU_UPLOAD, null, read_block, block_size_bytes, null);
