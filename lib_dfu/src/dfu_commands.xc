@@ -16,70 +16,22 @@
 struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len)
 {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  switch (cmd) {
-    case DFU_DETACH:
-      response = request(DFU_DETACH);
-      break;
 
-    case XMOS_BUS_RESET:
-      dfu_bus_reset();
-      response.status = DFU_API_SUCCESS;
-      // TODO sort out return value here, for USB
-      break;
+  if (cmd == XMOS_BUS_RESET) {
+    dfu_bus_reset();
+    response.status = DFU_API_SUCCESS;
 
-    case DFU_DNLOAD:
-      if (payload == NULL && payload_len > 0) {
-        break;
-      } else if (payload_len > DFU_TRANSFER_SIZE_BYTES) {
-        break;
-      }
-      response = request_with_arguments(DFU_DNLOAD, payload, NULL, payload_len, value);
-      break;
+  } else if (cmd == XMOS_DFU_REVERTFACTORY) {
+    // TODO - add support for this command
+    // response.status = DFU_API_SUCCESS;
 
-    case DFU_CLRSTATUS:
-      response = request(DFU_CLRSTATUS);
-      break;
-
-    case DFU_ABORT:
-      response = request(DFU_ABORT);
-      break;
-
-      case XMOS_DFU_REVERTFACTORY:
-        // TODO - add support for this command
-        break;
-
-    default:
-      debug_printf("Unrecognised write command: %d\n", cmd);
-      response.status = DFU_API_ERROR;
-      break;
+  } else {
+    response = request_with_arguments(cmd, payload, null, payload_len, value);
   }
   return response;
 }
 
 struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len)
 {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-
-  switch (cmd) {
-    case DFU_GETSTATE:
-      response = request_with_arguments(cmd, null, payload, payload_len, null);
-      break;
-
-    case DFU_GETSTATUS:
-      response = request_with_arguments(cmd, null, payload, payload_len, null);
-      break;
-
-    case DFU_UPLOAD:
-      if (payload == NULL || payload_len > DFU_TRANSFER_SIZE_BYTES) {
-        break;
-      }
-      response = request_with_arguments(DFU_UPLOAD, null, payload, payload_len, null);
-      break;
-
-    default:
-      debug_printf("Unrecognised read command: %d\n", cmd);
-      response.status = DFU_API_ERROR;
-      break;
-  }
-  return response;
+  return request_with_arguments(cmd, null, payload, payload_len, null);
 }
