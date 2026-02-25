@@ -73,8 +73,9 @@ void test_upload_start(void) {
 
   TEST_ASSERT_EQUAL_INT(0, flash_open);
 
-  int read_size = dfu_upload(sizeof(block), block);
-  TEST_ASSERT_EQUAL_INT(DFU_TRANSFER_SIZE_BYTES, read_size);
+  struct dfu_cmd_response response = dfu_handle_read_command(DFU_UPLOAD, block, sizeof(block));
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL_INT(DFU_TRANSFER_SIZE_BYTES, response.return_data_len);
 
   get_state_and_check(STATE_DFU_UPLOAD_IDLE);
 

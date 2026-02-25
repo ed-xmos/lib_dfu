@@ -592,11 +592,6 @@ void dfu_bus_reset(void)
   request(XMOS_BUS_RESET);
 }
 
-void dfu_clrstatus(void)
-{
-  request(DFU_CLRSTATUS);
-}
-
 void dfu_detach(void)
 {
   request(DFU_DETACH);
@@ -611,10 +606,4 @@ void dfu_timeout_detach(void)
     debug_printf("unexpected detach timeout call\n");
     // remain in current state, no error code indication
   }
-}
-
-int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES])
-{
-  struct dfu_cmd_response response = request_with_arguments(DFU_UPLOAD, null, read_block, block_size_bytes, null);
-  return (response.status == DFU_API_SUCCESS) ? response.return_data_len : -1;
 }

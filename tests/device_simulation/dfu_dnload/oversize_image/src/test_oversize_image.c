@@ -249,7 +249,8 @@ void dnload(int partitions, int block_size, int block_count)
         status = single_dnload_block(marker | i, block_size, block);
         if (status != DFU_OK) {
           assert(status == DFU_errADDRESS);
-          dfu_clrstatus();
+          struct dfu_cmd_response response = dfu_handle_write_command(DFU_CLRSTATUS, 0, NULL, 0);
+          TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
           get_state_and_check(STATE_DFU_IDLE);
           break;
         }

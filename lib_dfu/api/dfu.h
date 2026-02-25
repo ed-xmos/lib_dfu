@@ -106,45 +106,6 @@ void dfu_bus_reset(void);
  */
 void dfu_timeout_detach(void);
 
-/**
- * DFU DNLOAD request
- *
- * Block size can vary, but normally doesn't. Typical use is a sequence of fixed
- * size blocks until the end of an image, then one zero-size block to finish.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library. While DNLOAD request does no erasing or writing work, it
- * needs to know the page size to being converting blocks to pages.
- *
- * \param block_num          Block number
- * \param block_size_bytes   Block size in bytes
- * \param block              Block contents
- */
-void dfu_dnload(int32_t block_num, int32_t block_size_bytes,
-                const uint8_t block[DFU_TRANSFER_SIZE_BYTES]);
-
-/**
- * DFU  UPLOAD request
- *
- * Block size can vary, but normally doesn't. Typical use is a sequence of fixed
- * size blocks until the end of an image, then one zero-size block to finish.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library. While UPLOAD request does no erasing or writing work, it
- * needs to know the page size to being converting blocks to pages.
- *
- * \param block_size_bytes   Block size in bytes
- * \param block              Block contents
- * 
- * \return Block number of the block returned in the block parameter. This is useful for the caller to track the progress of the upload.
- */
-int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES]);
-
-/**
- * DFU CLRSTATUS request
- */
-void dfu_clrstatus(void);
-
 /** \} */
 
 #endif
