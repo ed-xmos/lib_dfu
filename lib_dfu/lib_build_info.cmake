@@ -11,7 +11,6 @@ set(LIB_DEPENDENT_MODULES   "lib_xassert(4.3.2)" "lib_logging(3.4.0)")
 set(LIB_INCLUDES            api src src/modules src/usb)
 
 set(LIB_C_SRCS              src/dfu_flashlib_user.c
-                            src/usb/dfu_callbacks.c
                             src/modules/fifo.c
                             flash/quad/dfu_flash.c
                             flash/test/dfu_flash_stubs.c)
