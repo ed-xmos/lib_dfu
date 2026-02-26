@@ -225,7 +225,7 @@ pipeline {
                             sh 'mkdir -p RPi/dfu_i2c'
                             sh 'mv bin RPi/dfu_i2c'
                             sh 'mv lib RPi/dfu_i2c'
-                            archiveArtifacts artifacts: "RPi/dfu_i2c/*", fingerprint: true
+                            archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
                         }
                     }
                 }
