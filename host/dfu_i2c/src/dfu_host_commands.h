@@ -3,7 +3,6 @@
 #ifndef DFU_HOST_COMMANDS_H
 #define DFU_HOST_COMMANDS_H
 
-#include "dfu_commands.h"
 #include "dfu_types.h"
 
 #define DFU_CMD_DETACH          DFU_DETACH

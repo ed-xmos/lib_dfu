@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "control_host.h"
-#include "dfu_commands.h"
 #include "device_id.h"
 #include "dfu_utils.h"
 #include "labels.h"
