@@ -208,6 +208,9 @@ pipeline {
                 steps {
                     println "Stage running on ${env.NODE_NAME}"
 
+                    // Bring in device control code to test the I2C host app on RPi
+                    sh 'git clone --depth 1 git@github.com:xmos/lib_device_control.git'
+                
                     dir(REPO_NAME) {
                         checkoutScmShallow()
                         dir("host/xmosdfu") {
@@ -216,6 +219,11 @@ pipeline {
                             sh 'mkdir -p RPi'
                             sh 'mv bin/xmosdfu RPi/xmosdfu'
                             archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
+                        }
+
+                        dir("host/dfu_i2c") {
+                            sh "cmake -B build"
+                            sh "cmake --build build"
                         }
                     }
                 }
