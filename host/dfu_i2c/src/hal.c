@@ -12,8 +12,6 @@
 #define KWD_BOOT_ERROR 2
 #define AP_CONTROL_FLAG 1
 
-#define RESOURCE_ID_DFU 0xD0 // Temp - TODO - remove
-
 extern bool quiet;
 
 static int hal_connect_i2c(struct device_id device_id)
