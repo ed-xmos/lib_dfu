@@ -222,6 +222,10 @@ pipeline {
                         dir("host/dfu_i2c") {
                             sh "cmake -B build"
                             sh "cmake --build build"
+                            sh 'mkdir -p RPi/dfu_i2c'
+                            sh 'mv bin RPi/dfu_i2c'
+                            sh 'mv lib RPi/dfu_i2c'
+                            archiveArtifacts artifacts: "RPi/dfu_i2c/*", fingerprint: true
                         }
                     }
                 }
