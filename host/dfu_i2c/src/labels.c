@@ -11,8 +11,6 @@ const char *command_str(int command)
     case DFU_CMD_CLRSTATUS:         return "CLRSTATUS";
     case DFU_CMD_GETSTATE:          return "GETSTATE";
     case DFU_CMD_GETSTATUS:         return "GETSTATUS";
-    case DFU_CMD_REBOOT:            return "REBOOT";
-    case DFU_CMD_GET_ERROR_INFO:    return "GET_ERROR_INFO";
     default: return "?";
   }
 }

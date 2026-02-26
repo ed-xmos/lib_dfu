@@ -58,13 +58,6 @@ static int check_state(enum dfu_state expected)
       PRINT_ERROR("Status %s\n", status_str(getstatus.status));
     }
 
-    int error_info = 0;
-    if (hal_read_command(DFU_CMD_GET_ERROR_INFO, (unsigned char*)&error_info,
-                         sizeof(int)) == 0) {
-      error_info = le32toh(error_info);
-      PRINT_ERROR("Info code %u\n", error_info);
-    }
-
     PRINT_ERROR("Send CLRSTATUS to attempt recovery\n");
     hal_write_command(DFU_CMD_CLRSTATUS, NULL, 0);
     return 2;
@@ -94,12 +87,6 @@ static int check_status(struct dfu_getstatus *getstatus)
   if (getstatus->status != DFU_OK) {
     PRINT_ERROR("Status was %s when %s expected\n",
             status_str(getstatus->status), status_str(DFU_OK));
-
-    int error_info = 0;
-    if (hal_read_command(DFU_CMD_GET_ERROR_INFO, (unsigned char*)&error_info,
-                         sizeof(int)) == 0) {
-      PRINT_ERROR("Info code %d\n", error_info);
-    }
 
     PRINT_ERROR("State %s (%d)\n",
                     state_str(getstatus->state), getstatus->state);

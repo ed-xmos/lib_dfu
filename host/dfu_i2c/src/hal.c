@@ -12,6 +12,8 @@
 #define KWD_BOOT_ERROR 2
 #define AP_CONTROL_FLAG 1
 
+#define RESOURCE_ID_DFU 0xD0 // Temp - TODO - remove
+
 extern bool quiet;
 
 static int hal_connect_i2c(struct device_id device_id)
@@ -89,7 +91,7 @@ int hal_reboot(void)
   if (!quiet)
     printf("HAL: reboot\n");
 
-  if (hal_write_command(DFU_CMD_REBOOT, NULL, 0) != 0)
+  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0)
     return 1;
 
   return 0;
