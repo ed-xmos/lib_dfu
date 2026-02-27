@@ -11,7 +11,6 @@
 #include <xassert.h>
 #include <xccompat.h>
 
-#include "descriptor_defs.h"
 #include "dfu_reboot.h"
 #include "xud_device.h"
 #include "dfu_types.h"
