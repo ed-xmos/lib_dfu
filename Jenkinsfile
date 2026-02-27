@@ -207,7 +207,7 @@ pipeline {
                     // Bring in device control code to test the I2C host app on RPi
                     // sh 'git clone --depth 1 git@github.com:xmos/lib_device_control.git'
                     // TODO - return to the above...
-                    sh 'git clone --depth 1 -b feature/dfu-support git@github.com:humphrey-xmos/lib_device_control.git'
+                    sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
                 
                     dir(REPO_NAME) {
                         checkoutScmShallow()

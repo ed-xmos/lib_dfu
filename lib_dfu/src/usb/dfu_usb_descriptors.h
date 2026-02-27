@@ -8,6 +8,7 @@
 
 // #include "xua.h"
 #include "xud_device.h"
+#include "dfu.h"
 #include "dfu_types.h"
 
 #ifndef __XC__
@@ -28,6 +29,10 @@
 #error DFU_MANUFACTURER_STR_INDEX not defined!!
 #endif
 
+#ifndef DFU_SERIAL_NUMBER_STR_INDEX
+#define DFU_SERIAL_NUMBER_STR_INDEX 0
+#endif
+
 USB_Descriptor_Device_t DFUdevDesc =
 {
     .bLength                        = sizeof(USB_Descriptor_Device_t),
@@ -40,7 +45,7 @@ USB_Descriptor_Device_t DFUdevDesc =
     .bDeviceClass                   = 0, /* See interface */
     .bDeviceSubClass                = 0, /* See interface */
     .bDeviceProtocol                = 0, /* See interface */
-    .bMaxPacketSize0                = _DFU_TRANSFER_SIZE_BYTES,
+    .bMaxPacketSize0                = DFU_TRANSFER_SIZE_BYTES,
     .idVendor                       = DFU_VENDOR_ID,
     .idProduct                      = DFU_PID,
     .bcdDevice                      = BCD_DEVICE,
@@ -112,7 +117,7 @@ USB_Config_Descriptor_DFU_t DFUcfgDesc = {
         .bDescriptorType = 0x21, //  DFU FUNCTIONAL
         .bmAttributes = DFU_FUNC_ATTRS,
         .wDetachTimeOut = 250,
-        .wTransferSize = _DFU_TRANSFER_SIZE_BYTES,
+        .wTransferSize = DFU_TRANSFER_SIZE_BYTES,
         .bcdDFUVersion = 0x0110
     }
 };

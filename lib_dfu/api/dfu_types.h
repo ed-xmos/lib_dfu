@@ -44,7 +44,16 @@ enum dfu_request {
   // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
   XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
 
-  XMOS_DFU_REVERTFACTORY = 0xf1,
+  // Not actual requests, used internally to indicate deferred actions to be taken after responding to a request.
+  DFU_DEFERRED_ACTION_REBOOT = 20,
+  DFU_DEFERRED_ACTION_RESET_TO_DFU = 21,
+  DFU_DEFERRED_ACTION_FLASH_CONNECT = 22,
+  DFU_DEFERRED_ACTION_FLASH_ERASE = 23,
+  DFU_DEFERRED_ACTION_FLASH_WRITE = 24,
+  DFU_DEFERRED_ACTION_FLASH_DISCONNECT = 25,
+
+  /* For lib_device_control access this will be 0x71 due to read bit */
+  XMOS_DFU_REVERTFACTORY = 0xF1,
 };
 
 /**
@@ -97,7 +106,7 @@ struct dfu_getstatus {
 
 /* TODO - lib_xua types, remove in time */
 #define _DFU_TRANSFER_SIZE_BYTES (64)   // bMaxPacketSize0 in DFU device descriptor
-#define _DFU_TRANSFER_SIZE_WORDS (_DFU_TRANSFER_SIZE_BYTES/4)
+// #define _DFU_TRANSFER_SIZE_WORDS (_DFU_TRANSFER_SIZE_BYTES/4)
 #define _FLASH_PAGE_SIZE_BYTES    (256)
 #define _NUM_DFU_PAGES_PER_FLASH_PAGE (_FLASH_PAGE_SIZE_BYTES/_DFU_TRANSFER_SIZE_BYTES)
 

@@ -35,6 +35,10 @@
 #define DFU_USB_EN 0
 #endif
 
+#ifndef DFU_BCD_DEVICE
+#define DFU_BCD_DEVICE 0x0100
+#endif
+
 #ifdef __DOXYGEN__
 /** User defined flash device specification for DFU to use.
  * 
@@ -61,11 +65,15 @@
 #endif
 
 /** Number of DFU packets per flash page */
-#ifndef NUM_DFU_PAGES_PER_FLASH_PAGE
-#define NUM_DFU_PAGES_PER_FLASH_PAGE (DFU_FLASH_PAGE_SIZE_BYTES / DFU_TRANSFER_SIZE_BYTES)
-#if DFU_TRANSFER_SIZE_BYTES > DFU_FLASH_PAGE_SIZE_BYTES
+#ifndef NUM_TRANSFER_BLOCKS_PER_FLASH_PAGE
+#define NUM_TRANSFER_BLOCKS_PER_FLASH_PAGE (DFU_FLASH_PAGE_SIZE_BYTES / DFU_TRANSFER_SIZE_BYTES)
+#endif
+
+#if (DFU_TRANSFER_SIZE_BYTES > DFU_FLASH_PAGE_SIZE_BYTES)
 #error "DFU_TRANSFER_SIZE_BYTES must not be greater than DFU_FLASH_PAGE_SIZE_BYTES"
 #endif
+#if (DFU_FLASH_PAGE_SIZE_BYTES % DFU_TRANSFER_SIZE_BYTES)
+#error DFU_FLASH_PAGE_SIZE_BYTES should be a multiple of DFU_TRANSFER_SIZE_BYTES
 #endif
 
 /* TODO - can we use the DFU image size from download or block 0? 
