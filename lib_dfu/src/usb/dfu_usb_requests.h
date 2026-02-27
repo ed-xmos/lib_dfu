@@ -26,9 +26,10 @@ void DFUSetModeInactive(void);
 /** Check the initial state of DFU mode
  * Used during boot to determine whether to enter DFU mode or not.
  * 
- * \todo update parameter to user customisable.
+ * \retval 0 if DFU mode should not be active (normal boot)
+ * \retval 1 if DFU mode should be active (boot to DFU)
  */
-void DFUCheckInitState(NULLABLE_RESOURCE(chanend, c_aud_ctl));
+int32_t DFUCheckInitState();
 
 /* Handle USB reset events
  * 
@@ -49,11 +50,7 @@ int dfu_usb_vendor_requests(XUD_ep ep0_out, XUD_ep ep0_in, REFERENCE_PARAM(USB_S
  *
  * Returns XUD_RES_OKAY if request was handled, XUD_RES_ERR if request was not recognised/handled.
  */
-int dfu_usb_class_int_requests(XUD_ep ep0_out, XUD_ep ep0_in, REFERENCE_PARAM(USB_SetupPacket_t, sp), CLIENT_INTERFACE(i_dfu, dfuInterface), NULLABLE_RESOURCE(chanend, c_aud_ctl), unsigned int xua_dfu_interface_num);
-
-/* User callback for notification of entry to DFU mode. */
-// TODO - make parameter user customisable via macro or something, and remove from DFU interface since this is really a user callback and not a DFU interface function
-void DFUNotifyEntryCallback(NULLABLE_RESOURCE(chanend, c_aud_ctl), int handshake);
+int dfu_usb_class_int_requests(XUD_ep ep0_out, XUD_ep ep0_in, REFERENCE_PARAM(USB_SetupPacket_t, sp), CLIENT_INTERFACE(i_dfu, dfuInterface));
 
 #endif /* DFU_USB_EN */
 #endif /* DFU_USB_REQUESTS_H */

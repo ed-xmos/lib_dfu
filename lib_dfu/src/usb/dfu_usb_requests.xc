@@ -80,7 +80,7 @@ void DFUDelay(unsigned d)
     tmr when timerafter(s + d) :> void;
 }
 
-void DFUCheckInitState(NULLABLE_RESOURCE(chanend, c_aud_ctl))
+int32_t DFUCheckInitState()
 {
     // Setting the flag, below, has always resulted in a reboot.
     unsigned flag = GetDFUFlag();
@@ -90,13 +90,15 @@ void DFUCheckInitState(NULLABLE_RESOURCE(chanend, c_aud_ctl))
     flag = _BOOT_DFU_MODE_FLAG;
 #endif
 
+    int32_t ret = 0;
     if (flag == _BOOT_DFU_MODE_FLAG)
     {
+        ret = 1;
         DFUSetModeActive();
-        DFUNotifyEntryCallback(c_aud_ctl, 0 /* no handshake for init */);
     } else {
         DFUSetModeInactive();
     }
+    return ret;
 }
 
 // Tell the DFU state machine that a USB reset has occurred
@@ -229,28 +231,8 @@ int dfu_usb_vendor_requests(XUD_ep ep0_out, XUD_ep ep0_in, USB_SetupPacket_t &sp
     return result;
 }
 
-int dfu_usb_class_int_requests(XUD_ep ep0_out, XUD_ep ep0_in, USB_SetupPacket_t &sp, client interface i_dfu dfuInterface, NULLABLE_RESOURCE(chanend, c_aud_ctl), unsigned int usb_dfu_interface_num) {
-    int result = XUD_RES_ERR;
-
-    unsigned interfaceNum = sp.wIndex & 0xff;
-    /* DFU interface number changes based on which mode we are currently running in */
-    unsigned dfu_if = (DFU_mode_active) ? 0 : usb_dfu_interface_num;
-
-    if (interfaceNum == dfu_if)
-    {
-        /* If running in application mode stop audio */
-        /* Don't interrupt audio for save and restore cmds */
-        static unsigned int notify_audio_stop_for_DFU = 0;
-        if (!DFU_mode_active && !notify_audio_stop_for_DFU)
-        {
-            DFUNotifyEntryCallback(c_aud_ctl, 1 /* handshake */);
-            notify_audio_stop_for_DFU = 1;  // So we notify AUDIO_STOP_FOR_DFU only once
-        }
-
-        // TODO - do we need to support alternative interface for DFU?
-        result = DFUDeviceRequests(ep0_out, ep0_in, sp, 0, dfuInterface);
-    }
-    return result;
+int dfu_usb_class_int_requests(XUD_ep ep0_out, XUD_ep ep0_in, USB_SetupPacket_t &sp, client interface i_dfu dfuInterface) {
+    return DFUDeviceRequests(ep0_out, ep0_in, sp, 0, dfuInterface);
 }
 
 #endif /* DFU_USB_EN */
