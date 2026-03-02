@@ -135,7 +135,7 @@ int DFUProcessResetState(client interface i_dfu i)
     struct dfu_request_params request = { XMOS_BUS_RESET, 0, 0, 0 };
     request.value = inDFU;
     /* Interface used here such that the handler can be on another tile */
-    unsigned data_buffer[1];
+    unsigned char data_buffer[1];
     struct dfu_cmd_response result = i.HandleDfuRequest(request, data_buffer, 0);
     
     // Return code of 0 means normal operation (APP_IDLE), non-zero means we are in DFU mode (DFU_IDLE or DFU_ERROR).
@@ -163,13 +163,13 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
     (void)altInterface;
 
     unsigned int data_buffer_len = 0;
-    unsigned int data_buffer[(DFU_TRANSFER_SIZE_BYTES / 4) + 1];
+    unsigned char data_buffer[(DFU_TRANSFER_SIZE_BYTES / 4) + 1];
 
     if(sp.bmRequestType.Direction == USB_BM_REQTYPE_DIRECTION_H2D)
     {
         // Host to device
         if (sp.wLength)
-            XUD_GetBuffer(ep0_out, (data_buffer, unsigned char[]), data_buffer_len);
+            XUD_GetBuffer(ep0_out, data_buffer, data_buffer_len);
     }
     /* Swap to dfu_request_params to avoid having USB SP struct as dependency of DFU. */
     struct dfu_request_params request;
@@ -194,7 +194,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
     {
         if (sp.bmRequestType.Direction == USB_BM_REQTYPE_DIRECTION_D2H && sp.wLength != 0)
         {
-            returnVal = XUD_DoGetRequest(ep0_out, ep0_in, (data_buffer, unsigned char[]), result.return_data_len, result.return_data_len);
+            returnVal = XUD_DoGetRequest(ep0_out, ep0_in, data_buffer, result.return_data_len, result.return_data_len);
         }
         else
         {
