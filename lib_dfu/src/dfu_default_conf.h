@@ -35,6 +35,10 @@
 #define DFU_USB_EN 0
 #endif
 
+#ifndef DFU_BCD_DEVICE
+#define DFU_BCD_DEVICE 0x0100
+#endif
+
 #ifdef __DOXYGEN__
 /** User defined flash device specification for DFU to use.
  * 

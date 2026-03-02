@@ -8,13 +8,16 @@ set(APP_HW_TARGET           xk-voice-l71.xn)
 # Includes and flags
 set(APP_INCLUDES            src ../shared)
 
-set(APP_COMPILER_FLAGS      -O2
+set(COMPILER_FLAGS          -O2
                             -g
                             -lquadflash
                             -report
                             -Wall
                             -Wextra
 )
+
+set(APP_COMPILER_FLAGS_factory  ${COMPILER_FLAGS} -DDFU_BCD_DEVICE=0x0101)
+set(APP_COMPILER_FLAGS_update   ${COMPILER_FLAGS} -DDFU_BCD_DEVICE=0x0200)
 
 include(../deps.cmake)
 
