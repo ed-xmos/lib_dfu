@@ -4,6 +4,8 @@
 #if defined(_MSC_VER)
 #include <Winsock2.h>
 #pragma comment(lib, "ws2_32.lib")
+#elif __xcore__
+#include <xcore/hwtimer.h>
 #else
 #include <unistd.h>
 #include <arpa/inet.h>
@@ -13,6 +15,10 @@ void sleep_milliseconds(unsigned milliseconds)
 {
 #if defined(_MSC_VER)
   Sleep(milliseconds);
+#elif __xcore__
+  hwtimer_t timer = hwtimer_alloc();
+  hwtimer_delay(timer, milliseconds * XS1_TIMER_KHZ);
+  hwtimer_free(timer);
 #else
   usleep(milliseconds * 1000);
 #endif

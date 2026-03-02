@@ -6,7 +6,6 @@
 #include <stdint.h>
 
 struct device_id {
-  uint16_t vendor, product, bcddevice;
   uint8_t i2c_address;
 };
 
