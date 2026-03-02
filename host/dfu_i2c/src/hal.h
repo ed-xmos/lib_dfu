@@ -4,11 +4,11 @@
 #define __hal_h__
 
 #include <stddef.h>
-#include <xccompat.h>
 
 #include "control_host.h"
 #include "device_id.h"
 #if USE_I2C && __xcore__
+#include <xccompat.h>
 #include "i2c.h"
 #endif
 

@@ -134,10 +134,6 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 
 #if USE_I2C && __xcore__
 int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c))
-#else
-int hal_reboot(void)
-#endif
-
 {
   if (!quiet) {
     printf("HAL: reboot\n");
@@ -149,6 +145,20 @@ int hal_reboot(void)
 
   return 0;
 }
+#else
+int hal_reboot(void)
+{
+  if (!quiet) {
+    printf("HAL: reboot\n");
+  }
+
+  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0) {
+    return 1;
+  }
+
+  return 0;
+}
+#endif
 
 int hal_disconnect(void)
 {
