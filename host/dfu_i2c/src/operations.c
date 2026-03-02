@@ -38,21 +38,22 @@ extern bool quiet;
 
 static int check_state(enum dfu_state expected)
 {
-  enum dfu_state state;
+  uint8_t payload[DFU_GET_STATE_PAYLOAD_SIZE_BYTES];
 
-  if (hal_read_command(DFU_CMD_GETSTATE, (unsigned char*)&state, sizeof(enum dfu_state)) != 0) {
+  if (hal_read_command(DFU_CMD_GETSTATE, payload, sizeof(payload)) != 0) {
     return 1;
   }
-
   // convert from hard little endian order after deserialisation
-  state = (enum dfu_state)le32toh(state);
+  enum dfu_state state = (enum dfu_state)le32toh(payload[DFU_GETSTATE_INDEX]);
 
   if (state == STATE_DFU_ERROR) {
     PRINT_ERROR("Device in dfu ERROR state\n");
+    
+    uint8_t payload_status[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
 
-    struct dfu_getstatus getstatus;
-    if (hal_read_command(DFU_CMD_GETSTATUS, (unsigned char*)&getstatus, sizeof(struct dfu_getstatus)) == 0) {
-      getstatus.status = (enum dfu_status)le32toh(getstatus.status);
+    struct dfu_getstatus getstatus = { 0 };
+    if (hal_read_command(DFU_CMD_GETSTATUS, payload_status, sizeof(payload_status)) == 0) {
+      getstatus.status = (enum dfu_status)le32toh(payload_status[DFU_GETSTATUS_STATUS_INDEX]);
       PRINT_ERROR("Status %s\n", status_str(getstatus.status));
     }
 
@@ -62,8 +63,7 @@ static int check_state(enum dfu_state expected)
   }
 
   if (state != expected) {
-    PRINT_ERROR("Device state is %s (%d), expected %s (%d)\n",
-            state_str(state), state, state_str(expected), expected);
+    PRINT_ERROR("Device state is %s (%d), expected %s (%d)\n", state_str(state), state, state_str(expected), expected);
     return 3;
   }
 
@@ -72,14 +72,15 @@ static int check_state(enum dfu_state expected)
 
 static int check_status(struct dfu_getstatus *getstatus)
 {
-  if (hal_read_command(DFU_CMD_GETSTATUS, (unsigned char*)getstatus, sizeof(struct dfu_getstatus)) != 0) {
+  uint8_t payload[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
+  if (hal_read_command(DFU_CMD_GETSTATUS, payload, sizeof(payload)) != 0) {
     return 1;
   }
 
   // convert from hard little endian order after deserialization
-  getstatus->state = le32toh(getstatus->state);
-  getstatus->status = le32toh(getstatus->status);
-  getstatus->poll_timeout_msec = le32toh(getstatus->poll_timeout_msec);
+  getstatus->state = le32toh(payload[DFU_GETSTATUS_STATE_INDEX]);
+  getstatus->status = le32toh(payload[DFU_GETSTATUS_STATUS_INDEX]);
+  getstatus->poll_timeout_msec = le32toh(payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX]) & ((1 << (DFU_GETSTATUS_POLL_TIMEOUT_BYTES * 8)) - 1);
 
   if (getstatus->status != DFU_OK) {
     PRINT_ERROR("Status was %s when %s expected\n", status_str(getstatus->status), status_str(DFU_OK));
@@ -131,32 +132,7 @@ int detach_and_bus_reset(void)
   return 0;
 }
 
-static int dnload_block(const unsigned char *block, int num_block_bytes,
-                        unsigned block_count, unsigned short marker)
-{
-  // TODO - should we move the header hanlding into the hal?
-  struct dfu_dnload_header header;
-
-  unsigned char payload[sizeof(header) + num_block_bytes];
-
-  // note hard little endian order of block number for serialisation
-  size_t payload_bytes = num_block_bytes + sizeof(header);
-  header.block_num = htole16(marker | block_count);
-  header.pad = 0;
-  memcpy(payload, &header, sizeof(header));
-  if (num_block_bytes > 0) {
-    memcpy(payload + sizeof(header), block, num_block_bytes);
-  }
-
-  if (hal_write_command(DFU_CMD_DNLOAD, payload, payload_bytes) != 0) {
-    return 1;
-  }
-
-  return 0;
-}
-
-static int download_file(const unsigned char *bytes, size_t length,
-                         unsigned block_size, unsigned short marker)
+static int download_file(const unsigned char *bytes, size_t length, unsigned block_size, unsigned short marker)
 {
   size_t byte_count = 0;
   unsigned block_count = 0;
@@ -177,7 +153,7 @@ static int download_file(const unsigned char *bytes, size_t length,
              block_count, (int)block_bytes); // size_t different in xCORE unit test
     }
 
-    if (dnload_block(bytes + byte_count, block_bytes, block_count, marker) != 0) {
+    if (hal_write_command(DFU_CMD_DNLOAD, bytes + byte_count, block_bytes) != 0) {
       return 1;
     }
 
@@ -197,7 +173,7 @@ static int download_file(const unsigned char *bytes, size_t length,
     byte_count += block_bytes;
   }
 
-  if (dnload_block(NULL, 0, 0, marker) != 0) {
+  if (hal_write_command(DFU_CMD_DNLOAD, NULL, 0) != 0) {
     return 4;
   }
 
