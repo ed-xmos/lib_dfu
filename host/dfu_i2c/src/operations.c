@@ -27,7 +27,6 @@
 #include <endian.h>
 #endif
 
-#include "dfu_host_commands.h"
 #include "labels.h"
 #include "dfu_utils.h"
 #include "hal.h"
@@ -40,7 +39,7 @@ static int check_state(enum dfu_state expected)
 {
   uint8_t payload[DFU_GET_STATE_PAYLOAD_SIZE_BYTES];
 
-  if (hal_read_command(DFU_CMD_GETSTATE, payload, sizeof(payload)) != 0) {
+  if (hal_read_command(DFU_GETSTATE, payload, sizeof(payload)) != 0) {
     return 1;
   }
   // convert from hard little endian order after deserialisation
@@ -52,13 +51,13 @@ static int check_state(enum dfu_state expected)
     uint8_t payload_status[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
 
     struct dfu_getstatus getstatus = { 0 };
-    if (hal_read_command(DFU_CMD_GETSTATUS, payload_status, sizeof(payload_status)) == 0) {
+    if (hal_read_command(DFU_GETSTATUS, payload_status, sizeof(payload_status)) == 0) {
       getstatus.status = (enum dfu_status)le32toh(payload_status[DFU_GETSTATUS_STATUS_INDEX]);
       PRINT_ERROR("Status %s\n", status_str(getstatus.status));
     }
 
     PRINT_ERROR("Send CLRSTATUS to attempt recovery\n");
-    hal_write_command(DFU_CMD_CLRSTATUS, NULL, 0);
+    hal_write_command(DFU_CLRSTATUS, NULL, 0);
     return 2;
   }
 
@@ -73,7 +72,7 @@ static int check_state(enum dfu_state expected)
 static int check_status(struct dfu_getstatus *getstatus)
 {
   uint8_t payload[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
-  if (hal_read_command(DFU_CMD_GETSTATUS, payload, sizeof(payload)) != 0) {
+  if (hal_read_command(DFU_GETSTATUS, payload, sizeof(payload)) != 0) {
     return 1;
   }
 
@@ -88,12 +87,16 @@ static int check_status(struct dfu_getstatus *getstatus)
     PRINT_ERROR("State %s (%d)\n", state_str(getstatus->state), getstatus->state);
 
     PRINT_ERROR("Send CLRSTATUS to attempt recovery\n");
-    hal_write_command(DFU_CMD_CLRSTATUS, NULL, 0);
+    hal_write_command(DFU_CLRSTATUS, NULL, 0);
     return 2;
   }
 
+  static unsigned last_timeout = 0;
   if (!quiet) {
     printf("poll timeout %u msec\n", getstatus->poll_timeout_msec);
+  } else if (getstatus->poll_timeout_msec != last_timeout) {
+    last_timeout = getstatus->poll_timeout_msec;
+    printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
   }
 
   return 0;
@@ -105,29 +108,40 @@ int detach_and_bus_reset(void)
     printf("detach and bus reset\n");
   }
 
-  if (check_state(STATE_APP_IDLE) != 0) {
+  uint8_t descriptor_payload[DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES];
+  if (hal_read_command(XMOS_DFU_GET_DESCRIPTOR, descriptor_payload, DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) != 0) {
     return 1;
+  } else {
+    printf("device descriptor: bcdDevice 0x%04X, bmAttributes 0x%02X, mode 0x%02X\n",
+           le32toh((descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] << 8) | descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX]),
+           descriptor_payload[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX],
+           descriptor_payload[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX]);
   }
 
-  if (hal_write_command(DFU_CMD_DETACH, NULL, 0) != 0) {
-    return 2;
-  }
+  if (check_state(STATE_APP_IDLE) == 0) {
+    if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {
+      return 2;
+    }
 
-  if (check_state(STATE_APP_DETACH) != 0) {
-    return 3;
-  }
+    if (check_state(STATE_APP_DETACH) != 0) {
+      return 3;
+    }
 
-  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0) {
-    return 4;
+    if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
+      return 4;
+    }
+
+  } else {
+    if (hal_write_command(DFU_ABORT, NULL, 0) != 0) {
+      return 6;
+    }
   }
 
   if (check_state(STATE_DFU_IDLE) != 0) {
-    return 5;
+    return 7;
   }
 
-  if (!quiet) {
-    printf("detach and bus reset successful\n");
-  }
+  printf("detach and bus reset successful\n");
 
   return 0;
 }
@@ -139,27 +153,28 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
   struct dfu_getstatus getstatus;
 
   if (!quiet) {
-    printf("start download of %d bytes, block size %d, marker 0x%X\n",
-           (int)length, block_size, marker); // size_t different in xCORE unit test
+    printf("start download of %d bytes, block size %d, marker 0x%X\n", (int)length, block_size, marker); // size_t different in xCORE unit test
   }
 
   while (byte_count < length) {
     size_t block_bytes = block_size;
-    if (length - byte_count < block_size)
+    if (length - byte_count < block_size) {
       block_bytes = length - byte_count;
-
-    if (!quiet) {
-      printf("download block %u, %d bytes\n",
-             block_count, (int)block_bytes); // size_t different in xCORE unit test
     }
 
-    if (hal_write_command(DFU_CMD_DNLOAD, bytes + byte_count, block_bytes) != 0) {
+    printf("download block %u, %d bytes\n", block_count, (int)block_bytes); // size_t different in xCORE unit test
+
+    if (hal_write_command(DFU_DNLOAD, &bytes[byte_count], block_bytes) != 0) {
       return 1;
     }
 
     do {
       if (check_status(&getstatus) != 0) {
         return 2;
+      }
+
+      if (getstatus.state == STATE_DFU_DOWNLOAD_IDLE && getstatus.poll_timeout_msec != 0) {
+        printf("Warning: unexpected non-zero timeout when in Download idle: %d ms\n", getstatus.poll_timeout_msec);
       }
 
       sleep_milliseconds(getstatus.poll_timeout_msec);
@@ -173,7 +188,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
     byte_count += block_bytes;
   }
 
-  if (hal_write_command(DFU_CMD_DNLOAD, NULL, 0) != 0) {
+  if (hal_write_command(DFU_DNLOAD, NULL, 0) != 0) {
     return 4;
   }
 
@@ -202,24 +217,14 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
     return 1;
   }
 
+  printf("upgrading: image size %d bytes, block size %d, num blocks %d, tail %d bytes\n",
+    (int)inputs.boot.length, block_size, (((unsigned)inputs.boot.length + block_size - 1U) / block_size), ((unsigned)inputs.boot.length % block_size));
+
   if (download_file(inputs.boot.bytes, inputs.boot.length, block_size, 0) != 0) {
     return 2;
   }
 
-  if (!quiet) {
-    printf("write upgrade successful\n");
-  }
+  printf("write upgrade successful\n");
 
   return 0;
-}
-
-int override_spispec(struct inputs inputs)
-{
-  if (!quiet) {
-    printf("override spispec (%d bytes)\n", (int)inputs.spispec.length);
-  }
-
-  (void)inputs;
-  PRINT_ERROR("override-spispec is not supported by this lib_dfu host build\n");
-  return 1;
 }

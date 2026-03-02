@@ -24,7 +24,7 @@ void test_clrstatus(void)
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_APP_DETACH);
 
-  response = dfu_request(XMOS_BUS_RESET);
+  response = dfu_request(XMOS_DFU_BUS_RESET);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_IDLE);
 

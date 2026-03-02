@@ -36,10 +36,11 @@ int hal_connect(struct device_id device_id)
 
   control_version_t version;
 #if USE_I2C && __xcore__
-  if (control_read_command(CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, i_i2c, &version, sizeof(control_version_t)) != CONTROL_SUCCESS) {
+  if (control_read_command(CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, i_i2c, &version, sizeof(control_version_t)) != CONTROL_SUCCESS)
 #else
-  if (control_read_command(CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, &version, sizeof(control_version_t)) != CONTROL_SUCCESS) {
+  if (control_read_command(CONTROL_SPECIAL_RESID, CONTROL_GET_VERSION, &version, sizeof(control_version_t)) != CONTROL_SUCCESS)
 #endif
+  {
     PRINT_ERROR("Control query version failed\n");
     return 2;
   }
@@ -69,17 +70,18 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
   }
 
 #if USE_I2C && __xcore__
-  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), i_i2c, buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS) {
+  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), i_i2c, buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS)
 #else
-  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS) {
+  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS)
 #endif
+  {
     PRINT_ERROR("Control read command did not return success\n");
     return 1;
   }
   struct dfu_upload_header header;
   memcpy(&header, buffer, sizeof(header));
   if (header.read_length != num_bytes) {
-    PRINT_ERROR("Received %zu bytes, expected %zu bytes\n", header.read_length, num_bytes);
+    PRINT_ERROR("Received %u bytes, expected %zu bytes\n", header.read_length, num_bytes);
     return 1;
   } else {
     memcpy(payload, buffer + sizeof(header), num_bytes);
@@ -87,6 +89,7 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
 
   return 0;
 }
+
 #if USE_I2C && __xcore__
 int hal_write_command(int command, const unsigned char payload[], size_t num_bytes, CLIENT_INTERFACE(i2c_master_if, i_i2c))
 #else
@@ -121,10 +124,11 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
   }
 
 #if USE_I2C && __xcore__
-  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), i_i2c, buffer, payload_bytes) != CONTROL_SUCCESS) {
+  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), i_i2c, buffer, payload_bytes) != CONTROL_SUCCESS)
 #else
-  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), buffer, payload_bytes) != CONTROL_SUCCESS) {
+  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), buffer, payload_bytes) != CONTROL_SUCCESS)
 #endif
+  {
     PRINT_ERROR("Control write command did not return success\n");
     return 1;
   }
@@ -139,7 +143,7 @@ int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c))
     printf("HAL: reboot\n");
   }
 
-  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0, i_i2c) != 0) {
+  if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0, i_i2c) != 0) {
     return 1;
   }
 
@@ -152,13 +156,29 @@ int hal_reboot(void)
     printf("HAL: reboot\n");
   }
 
-  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0) {
+  if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
     return 1;
   }
 
   return 0;
 }
 #endif
+
+#if USE_I2C && __xcore__
+int hal_revert_factory(CLIENT_INTERFACE(i2c_master_if, i_i2c))
+#else
+int hal_revert_factory(void)
+#endif
+{
+  if (!quiet) {
+    printf("HAL: revert factory\n");
+  }
+
+  if (hal_write_command(XMOS_DFU_REVERTFACTORY, NULL, 0) != 0) {
+    return 1;
+  }
+  return 0;
+}
 
 int hal_disconnect(void)
 {

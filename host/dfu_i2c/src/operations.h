@@ -8,8 +8,6 @@
 
 int write_upgrade(struct inputs inputs, unsigned block_size);
 
-int override_spispec(struct inputs inputs);
-
 int detach_and_bus_reset(void);
 
 #endif

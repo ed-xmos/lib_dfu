@@ -15,6 +15,8 @@ int main(int argc, char **argv)
   struct options options = parse_arguments(argc, argv);
   int ret = 0;
 
+  printf("op: %d\n", options.operation)
+
   switch (options.operation) {
     case WRITE_UPGRADE: {
       struct inputs inputs = read_write_upgrade_inputs(options.arguments[0], options.device_id);
@@ -43,19 +45,6 @@ int main(int argc, char **argv)
       break;
     }
 
-    case OVERRIDE_SPISPEC: {
-      struct inputs inputs = read_override_spispec_input(options.arguments[0]);
-
-      if (hal_connect(options.device_id) != 0)
-        return 1;
-
-      ret = override_spispec(inputs);
-
-      hal_disconnect();
-      cleanup_inputs(&inputs);
-      break;
-    }
-
     case DETACH_AND_BUS_RESET: {
       if (hal_connect(options.device_id) != 0)
         return 1;
@@ -69,6 +58,26 @@ int main(int argc, char **argv)
     case REBOOT: {
       if (hal_connect(options.device_id) != 0)
         return 1;
+
+      ret = hal_reboot();
+
+      hal_disconnect();
+      break;
+    }
+
+    case REVERT_FACTORY: {
+        printf("revert\n");
+      if (hal_connect(options.device_id) != 0) {
+        printf("connect failed\n");
+        return 1;
+      }
+
+      ret = detach_and_bus_reset();
+      if (ret != 0) {
+        hal_disconnect();
+        return ret;
+      }
+      ret = hal_revert_factory();
 
       ret = hal_reboot();
 

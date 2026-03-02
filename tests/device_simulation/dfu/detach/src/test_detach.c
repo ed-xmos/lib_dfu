@@ -30,7 +30,7 @@ void test_detach(void)
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_status_and_check(DFU_OK, STATE_APP_DETACH);
 
-  response = dfu_request(XMOS_BUS_RESET);
+  response = dfu_request(XMOS_DFU_BUS_RESET);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_status_and_check(DFU_OK, STATE_DFU_IDLE);
 }

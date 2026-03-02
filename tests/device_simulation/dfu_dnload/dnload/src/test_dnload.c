@@ -246,14 +246,14 @@ void detach() {
   dfu_request(DFU_DETACH);
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_request(XMOS_BUS_RESET);
+  dfu_request(XMOS_DFU_BUS_RESET);
   get_state_and_check(STATE_DFU_IDLE);
 }
 
 void reboot() {
   get_state_and_check(STATE_DFU_IDLE);
 
-  dfu_request(XMOS_BUS_RESET);
+  dfu_request(XMOS_DFU_BUS_RESET);
   get_state_and_check(STATE_APP_IDLE);
 }
 

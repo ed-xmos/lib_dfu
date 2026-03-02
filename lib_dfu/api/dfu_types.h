@@ -28,6 +28,21 @@
 #define DFU_GETSTATUS_POLL_TIMEOUT_BYTES 3
 #define DFU_GETSTATUS_STATE_INDEX 4
 
+#define DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES 4
+#define DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX 0
+#define DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX 2
+#define DFU_GETDESCRIPTOR_MODE_FLAG_INDEX 3
+
+#define DFU_MODE_RUNTIME 1
+#define DFU_MODE_DFU 2
+
+#define DFU_ATTR_CAN_DOWNLOAD              (1u << 0)
+#define DFU_ATTR_CAN_UPLOAD                (1u << 1)
+#define DFU_ATTR_MANIFESTATION_TOLERANT    (1u << 2)
+#define DFU_ATTR_WILL_DETACH               (1u << 3)
+// DFU functional attributes
+#define DFU_FUNC_ATTRS (DFU_ATTR_CAN_UPLOAD | DFU_ATTR_CAN_DOWNLOAD | DFU_ATTR_WILL_DETACH | DFU_ATTR_MANIFESTATION_TOLERANT)
+
 /**
  * DFU request types
  */
@@ -42,7 +57,8 @@ enum dfu_request {
   DFU_ABORT = 6, // TODO - fully support
 
   // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
-  XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+  XMOS_DFU_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+  XMOS_DFU_GET_DESCRIPTOR = 10, // For simulating getting a descriptor on transports other than USB.
 
   // Not actual requests, used internally to indicate deferred actions to be taken after responding to a request.
   DFU_DEFERRED_ACTION_REBOOT = 20,

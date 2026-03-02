@@ -36,6 +36,12 @@ int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c));
 int hal_reboot(void);
 #endif
 
+#if USE_I2C && __xcore__
+int hal_revert_factory(CLIENT_INTERFACE(i2c_master_if, i_i2c));
+#else
+int hal_revert_factory(void);
+#endif
+
 int hal_disconnect(void);
 
 #endif

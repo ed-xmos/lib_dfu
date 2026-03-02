@@ -5,12 +5,16 @@
 const char *command_str(int command)
 {
   switch (command) {
-    case DFU_CMD_DETACH:            return "DETACH";
-    case DFU_CMD_BUS_RESET:         return "BUS_RESET";
-    case DFU_CMD_DNLOAD:            return "DNLOAD";
-    case DFU_CMD_CLRSTATUS:         return "CLRSTATUS";
-    case DFU_CMD_GETSTATE:          return "GETSTATE";
-    case DFU_CMD_GETSTATUS:         return "GETSTATUS";
+    case DFU_DETACH:              return "DETACH";
+    case DFU_DNLOAD:              return "DOWNLOAD";
+    case DFU_UPLOAD:              return "UPLOAD";
+    case DFU_GETSTATUS:           return "GETSTATUS";
+    case DFU_CLRSTATUS:           return "CLRSTATUS";
+    case DFU_GETSTATE:            return "GETSTATE";
+    case DFU_ABORT:               return "ABORT";
+    case XMOS_DFU_BUS_RESET:      return "BUS_RESET";
+    case XMOS_DFU_GET_DESCRIPTOR: return "GET_DESCRIPTOR";
+    case XMOS_DFU_REVERTFACTORY:  return "REVERT_FACTORY";
     default: return "?";
   }
 }
@@ -36,7 +40,7 @@ const char *state_str(enum dfu_state state)
 const char *status_str(enum dfu_status status)
 {
   switch (status) {
-    case DFU_OK:           return "OK";
+    case DFU_OK:              return "OK";
     case DFU_errTARGET:       return "errTARGET";
     case DFU_errFILE:         return "errFILE";
     case DFU_errWRITE:        return "errWRITE";
