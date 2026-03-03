@@ -320,6 +320,10 @@ static struct dfu_cmd_response state_detach(enum dfu_request request) {
 static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  if (block_size_bytes <= 0) {
+    response = error_condition(DFU_errADDRESS, 0);
+    return response;
+  }
   if (!flash_is_connected()) {
     t_profiler :> t_profiler_start;
     if (flash_init() != DFU_FLASH_OK) {
@@ -333,6 +337,7 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
   enum dfu_api_status ret = dnload_block(write_block, block_num, block_size_bytes);
   // TODO - test first page for valid image and return errFILE if not valid
   if (ret != DFU_API_SUCCESS) {
+    flash_deinit();
     response = error_condition(DFU_errUNKNOWN, ret);
   } else {
     response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
