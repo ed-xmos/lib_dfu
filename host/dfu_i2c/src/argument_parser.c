@@ -83,7 +83,7 @@ struct options parse_arguments(int argc, char **argv)
       continue;
     } else if ( (strcmp(argv[optind], "--i2c-address") == 0 ) || (strcmp(argv[optind], "-i") == 0) ) {
       optind++;
-      o.device_id.i2c_address = strtol(argv[optind], NULL, 0);
+      o.device_id.i2c_address = (uint8_t)strtol(argv[optind], NULL, 0);
       if (o.device_id.i2c_address == 0 && errno == EINVAL) {
         PRINT_ERROR("Invalid I2C address `%s'\n", argv[optind]);
       exit(1);
@@ -91,7 +91,7 @@ struct options parse_arguments(int argc, char **argv)
       continue;
     } else if ( (strcmp(argv[optind], "--block-size") == 0 ) || (strcmp(argv[optind], "-b") == 0) ) {
       optind++;
-      o.block_size = strtoul(argv[optind], NULL, 0);
+      o.block_size = (unsigned)strtoul(argv[optind], NULL, 0);
       if (o.block_size == 0 && errno == EINVAL) {
         PRINT_ERROR("Invalid block size `%s'\n", argv[optind]);
         exit(1);
