@@ -163,7 +163,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
     (void)altInterface;
 
     unsigned int data_buffer_len = 0;
-    unsigned char data_buffer[(DFU_TRANSFER_SIZE_BYTES / 4) + 1];
+    unsigned char data_buffer[DFU_TRANSFER_SIZE_BYTES + 4];
 
     if(sp.bmRequestType.Direction == USB_BM_REQTYPE_DIRECTION_H2D)
     {
