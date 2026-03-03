@@ -27,7 +27,6 @@
 #include <endian.h>
 #endif
 
-#include "dfu_host_commands.h"
 #include "labels.h"
 #include "dfu_utils.h"
 #include "hal.h"
@@ -40,7 +39,7 @@ static int check_state(enum dfu_state expected)
 {
   uint8_t payload[DFU_GET_STATE_PAYLOAD_SIZE_BYTES];
 
-  if (hal_read_command(DFU_CMD_GETSTATE, payload, sizeof(payload)) != 0) {
+  if (hal_read_command(DFU_GETSTATE, payload, sizeof(payload)) != 0) {
     return 1;
   }
   // convert from hard little endian order after deserialisation
@@ -52,13 +51,13 @@ static int check_state(enum dfu_state expected)
     uint8_t payload_status[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
 
     struct dfu_getstatus getstatus = { 0 };
-    if (hal_read_command(DFU_CMD_GETSTATUS, payload_status, sizeof(payload_status)) == 0) {
+    if (hal_read_command(DFU_GETSTATUS, payload_status, sizeof(payload_status)) == 0) {
       getstatus.status = (enum dfu_status)le32toh(payload_status[DFU_GETSTATUS_STATUS_INDEX]);
       PRINT_ERROR("Status %s\n", status_str(getstatus.status));
     }
 
     PRINT_ERROR("Send CLRSTATUS to attempt recovery\n");
-    hal_write_command(DFU_CMD_CLRSTATUS, NULL, 0);
+    hal_write_command(DFU_CLRSTATUS, NULL, 0);
     return 2;
   }
 
@@ -73,7 +72,7 @@ static int check_state(enum dfu_state expected)
 static int check_status(struct dfu_getstatus *getstatus)
 {
   uint8_t payload[DFU_GET_STATUS_PAYLOAD_SIZE_BYTES];
-  if (hal_read_command(DFU_CMD_GETSTATUS, payload, sizeof(payload)) != 0) {
+  if (hal_read_command(DFU_GETSTATUS, payload, sizeof(payload)) != 0) {
     return 1;
   }
 
@@ -88,7 +87,7 @@ static int check_status(struct dfu_getstatus *getstatus)
     PRINT_ERROR("State %s (%d)\n", state_str(getstatus->state), getstatus->state);
 
     PRINT_ERROR("Send CLRSTATUS to attempt recovery\n");
-    hal_write_command(DFU_CMD_CLRSTATUS, NULL, 0);
+    hal_write_command(DFU_CLRSTATUS, NULL, 0);
     return 2;
   }
 
@@ -109,7 +108,7 @@ int detach_and_bus_reset(void)
     return 1;
   }
 
-  if (hal_write_command(DFU_CMD_DETACH, NULL, 0) != 0) {
+  if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {
     return 2;
   }
 
@@ -117,7 +116,7 @@ int detach_and_bus_reset(void)
     return 3;
   }
 
-  if (hal_write_command(DFU_CMD_BUS_RESET, NULL, 0) != 0) {
+  if (hal_write_command(XMOS_BUS_RESET, NULL, 0) != 0) {
     return 4;
   }
 
@@ -153,7 +152,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
              block_count, (int)block_bytes); // size_t different in xCORE unit test
     }
 
-    if (hal_write_command(DFU_CMD_DNLOAD, bytes + byte_count, block_bytes) != 0) {
+    if (hal_write_command(DFU_DNLOAD, bytes + byte_count, block_bytes) != 0) {
       return 1;
     }
 
@@ -173,7 +172,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
     byte_count += block_bytes;
   }
 
-  if (hal_write_command(DFU_CMD_DNLOAD, NULL, 0) != 0) {
+  if (hal_write_command(DFU_DNLOAD, NULL, 0) != 0) {
     return 4;
   }
 

@@ -3,7 +3,6 @@
 #ifndef __labels_h__
 #define __labels_h__
 
-#include "dfu_host_commands.h"
 #include "dfu_types.h"
 
 const char *command_str(int command);

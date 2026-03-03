@@ -29,7 +29,8 @@ static const char advanced_usage[] =
 "\n\
 advanced:   dfu_i2c OPTIONS override_spispec spispec.bin\n\
             dfu_i2c OPTIONS detach_and_bus_reset\n\
-            dfu_i2c OPTIONS reboot\n"
+            dfu_i2c OPTIONS reboot\n\
+            dfu_i2c OPTIONS revert_factory\n"
 ;
 
 const char *operation_str(int operation)
@@ -39,6 +40,7 @@ const char *operation_str(int operation)
     case OVERRIDE_SPISPEC:     return "override_spispec";
     case DETACH_AND_BUS_RESET: return "detach_and_bus_reset";
     case REBOOT:               return "reboot";
+    case REVERT_FACTORY:       return "revert_factory";
     default: return "?";
   }
 }
@@ -46,7 +48,7 @@ const char *operation_str(int operation)
 int parse_operation(const char *arg)
 {
   const int operations[] = {WRITE_UPGRADE, OVERRIDE_SPISPEC,
-                            DETACH_AND_BUS_RESET, REBOOT, UNKNOWN};
+                            DETACH_AND_BUS_RESET, REBOOT, REVERT_FACTORY, UNKNOWN};
   for (int i = 0; operations[i] != UNKNOWN; i++) {
     if (strcmp(arg, operation_str(operations[i])) == 0)
       return operations[i];
@@ -146,6 +148,15 @@ struct options parse_arguments(int argc, char **argv)
           o.arguments[1] = NULL;
           break;
 
+        case REVERT_FACTORY:
+          if (argc != optind + 1) {
+            print_usage(stderr);
+            exit(1);
+          }
+          o.arguments[0] = NULL;
+          o.arguments[1] = NULL;
+          break;
+
         default:
           PRINT_ERROR("Unknown operation \"%s\"\n", argv[optind]);
           print_usage(stderr);
@@ -169,6 +180,10 @@ struct options parse_arguments(int argc, char **argv)
             break;
 
           case REBOOT:
+            printf("%s\n", operation_str(o.operation));
+            break;
+
+          case REVERT_FACTORY:
             printf("%s\n", operation_str(o.operation));
             break;
 
