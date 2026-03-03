@@ -28,6 +28,10 @@
 #error DFU_MANUFACTURER_STR_INDEX not defined!!
 #endif
 
+#ifndef DFU_SERIAL_NUMBER_STR_INDEX
+#define DFU_SERIAL_NUMBER_STR_INDEX 0
+#endif
+
 USB_Descriptor_Device_t DFUdevDesc =
 {
     .bLength                        = sizeof(USB_Descriptor_Device_t),
