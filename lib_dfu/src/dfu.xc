@@ -271,7 +271,7 @@ static enum dfu_api_status upload_block(uint8_t read_block[], int32_t block_size
     } else {
       // TODO - fix snooping into fifo
       fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
-      dfu_fifo.count = dfu_fifo.max;
+      dfu_fifo.count = DFU_FLASH_PAGE_SIZE_BYTES;
     }
   }
 
