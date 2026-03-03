@@ -4,6 +4,7 @@
 #include <print.h>
 #include <string.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define DEBUG_UNIT DFU
 #define DEBUG_PRINT_ENABLE_DFU 0
@@ -29,6 +30,15 @@ enum dnload_sub_state {
   DNLOAD_ERASING,
   DNLOAD_WRITING
 };
+
+static timer t_profiler;
+static unsigned t_profiler_start = 0;
+static unsigned t_profiler_end = 0;
+
+static unsigned t_profile_connect = 0;
+static unsigned t_profile_first_erase = 0;
+static unsigned t_profile_first_write = 0;
+static unsigned t_profile_second_write = 0;
 
 #if DEBUG_PRINT_ENABLE_DFU
 static const char * unsafe request_str(enum dfu_request r)
@@ -157,11 +167,14 @@ static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_ar
   
   switch (sub_state_arg) {
     case DNLOAD_SYNC:
+      t_profiler :> t_profiler_start;
       // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
       enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
       if (erase_status != DFU_FLASH_OK && erase_status != DFU_FLASH_BUSY) {
         return DFU_errERASE;
       }
+      t_profiler :> t_profiler_end;
+      t_profile_first_erase = t_profiler_end - t_profiler_start;
 
       sub_transition_dnload(DNLOAD_ERASING, sub_state_arg);
 
@@ -176,9 +189,12 @@ static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_ar
         sub_transition_dnload(DNLOAD_WRITING, sub_state_arg);
 
         if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
+          t_profiler :> t_profiler_start;
           if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
             return DFU_errWRITE;
           }
+          t_profiler :> t_profiler_end;
+          t_profile_first_write = t_profiler_end - t_profiler_start;
         }
 
       } else if (erase_status == DFU_FLASH_BUSY) {
@@ -305,10 +321,13 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
                                                   int32_t block_size_bytes, int32_t &?block_num) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
   if (!flash_is_connected()) {
+    t_profiler :> t_profiler_start;
     if (flash_init() != DFU_FLASH_OK) {
       response = error_condition(DFU_errTARGET, 0);
       return response;
     }
+    t_profiler :> t_profiler_end;
+    t_profile_connect = t_profiler_end - t_profiler_start;
   }
   fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
   enum dfu_api_status ret = dnload_block(write_block, block_num, block_size_bytes);
@@ -359,6 +378,11 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, enu
         response = normal_transition(STATE_DFU_IDLE);
         sub_state_arg = DNLOAD_SYNC;
         flash_deinit();
+
+        printf("DFU: profile results:\n");
+        printf("  Connect time: %u ms\n", t_profile_connect);
+        printf("  First erase time: %u ms\n", t_profile_first_erase);
+        printf("  First write time: %u ms\n", t_profile_first_write);
 
       } else {
         response = normal_transition(STATE_DFU_MANIFEST);
