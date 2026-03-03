@@ -242,27 +242,6 @@ static enum dfu_status getstatus_from_manifest(void)
   return DFU_OK;
 }
 
-/* Expecting only to be called from DFU_IDLE or DFU_DNLOAD_IDLE, fifo should be ready */
-static enum dfu_api_status dnload_block(const uint8_t write_block[], int32_t block_num, int32_t block_size_bytes)
-{
-  (void)block_num; // TODO - remove, or check
-  enum dfu_api_status dnload_status = DFU_API_ERROR;
-
-  if (block_size_bytes > 0) {
-    // non-zero return value from the push function indicates not enough space
-    // in the queue of blocks awaiting conversion to pages
-    // for some reason there are have been not enough pulls or too many pushes
-    if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) == FIFO_OK) {
-      dnload_status = DFU_API_SUCCESS;
-    }
-  } else {
-    // zero-size block indicates end of download, move on to manifest state
-    dnload_status = DFU_API_SUCCESS;
-  }
-
-  return dnload_status;
-}
-
 static enum dfu_api_status upload_block(uint8_t read_block[], int32_t block_size_bytes)
 {
   if (fifo_is_empty(dfu_fifo)) {
@@ -334,14 +313,13 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
     t_profile_connect = t_profiler_end - t_profiler_start;
   }
   fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
-  enum dfu_api_status ret = dnload_block(write_block, block_num, block_size_bytes);
-  // TODO - test first page for valid image and return errFILE if not valid
-  if (ret != DFU_API_SUCCESS) {
+  if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) != FIFO_OK) {
     flash_deinit();
-    response = error_condition(DFU_errUNKNOWN, ret);
+    response = error_condition(DFU_errUNKNOWN, 0);
   } else {
     response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
   }
+  // TODO - test first page for valid image and return errFILE if not valid
   return response;
 }
 
@@ -405,18 +383,12 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, enu
 static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  if (block_size_bytes == 0) {
-    enum dfu_api_status ret = dnload_block(write_block, 0, 0);
-    if (ret != DFU_API_SUCCESS) {
-      response = error_condition(DFU_errFILE, ret);
-    } else {
+  if (block_size_bytes <= 0) {
       response = normal_transition(STATE_DFU_MANIFEST_SYNC);
-    }
 
   } else {
-    enum dfu_api_status ret = dnload_block(write_block, block_num, block_size_bytes);
-    if (ret != DFU_API_SUCCESS) {
-      response = error_condition(DFU_errWRITE, ret);
+    if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) != FIFO_OK) {
+      response = error_condition(DFU_errFILE, 0);
     } else {
       response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
     }
@@ -544,7 +516,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       if (request == DFU_DNLOAD) {
         response = state_download_idle(block, block_size_bytes, block_num);
 
-      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
+      } else if ((request != DFU_GETSTATUS) && (request != DFU_GETSTATE) && (request != XMOS_BUS_RESET)) {
         response = error_condition(DFU_errSTALLED_PKT, request);
       }
       break;
@@ -553,7 +525,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       if (request == DFU_UPLOAD) {
         response = state_upload_idle(block, block_size_bytes, read_length);
 
-      } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
+      } else if ((request != DFU_GETSTATUS) && (request != DFU_GETSTATE) && (request != XMOS_BUS_RESET)) {
         // no other requests expected, defined as error
         response = error_condition(DFU_errSTALLED_PKT, request);
       }
