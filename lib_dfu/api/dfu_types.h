@@ -52,7 +52,8 @@ enum dfu_request {
   DFU_DEFERRED_ACTION_FLASH_WRITE = 24,
   DFU_DEFERRED_ACTION_FLASH_DISCONNECT = 25,
 
-  XMOS_DFU_REVERTFACTORY = 0x71,
+  /* For lib_device_control access this will be 0x71 due to read bit */
+  XMOS_DFU_REVERTFACTORY = 0xF1,
 };
 
 /**
