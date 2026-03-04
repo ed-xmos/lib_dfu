@@ -458,6 +458,28 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
   return response;
 }
 
+static struct dfu_cmd_response state_revert_factory(void) {
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+
+  if (flash_init() == DFU_FLASH_OK) {
+    int32_t sector_size = flash_get_sector_size();
+    enum flash_status erase_status = flash_erase_sector_async(sector_size);
+    if (erase_status != DFU_FLASH_BUSY) {
+      debug_printf("Factory revert: failed to start sector erase\n");
+    } else {
+      while (flash_erase_sector_async(sector_size) == DFU_FLASH_BUSY) {
+        // Wait
+      }
+    }
+    flash_deinit();
+  } else {
+    debug_printf("Factory revert: failed to init flash\n");
+  }
+  // We always succeed for now, is there a case to report error if there is no upgrade image to delete?
+  response.status = DFU_API_SUCCESS;
+  return response;
+}
+
 struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
                                                    uint8_t (&?block)[],
                                                    int32_t block_size_bytes,
@@ -475,6 +497,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
     debug_printf("\n");
   }
 #endif
+  // TODO - review return status codes and whether they are compatible with USB DFU spec, ie. whether to stall or not.
   switch (state) {
     case STATE_APP_IDLE:
       response = state_app_idle(request);
@@ -495,8 +518,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
         response = state_entry_upload(block, block_size_bytes, read_length);
 
       } else if (request == XMOS_DFU_REVERTFACTORY) {
-        flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
-        response.status = DFU_API_SUCCESS;
+        response = state_revert_factory();
 
       } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         // no other requests expected, defined as error
