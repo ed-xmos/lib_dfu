@@ -190,11 +190,20 @@ static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout) {
 
 static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_arg)
 {
-  int32_t page_size_bytes = flash_get_page_size();
   uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
   
   switch (sub_state_arg) {
     case DNLOAD_SYNC:
+      if (!flash_is_connected()) {
+        t_profiler :> t_profiler_start;
+        if (flash_init() != DFU_FLASH_OK) {
+          // response = error_condition(DFU_errTARGET, 0);
+          return DFU_errWRITE;
+        }
+        t_profiler :> t_profiler_end;
+        t_profile_connect = t_profiler_end - t_profiler_start;
+      }
+
       t_profiler :> t_profiler_start;
       // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
       enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
@@ -216,6 +225,7 @@ static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_ar
         // sector erase completed, move on to page write
         sub_transition_dnload(DNLOAD_WRITING, sub_state_arg);
 
+        int32_t page_size_bytes = flash_get_page_size();
         if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
           t_profiler :> t_profiler_start;
           if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
@@ -233,6 +243,7 @@ static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_ar
       break;
 
     case DNLOAD_WRITING:
+      int32_t page_size_bytes = flash_get_page_size();
       if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
         if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
           return DFU_errWRITE;
@@ -329,18 +340,8 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
     response = error_condition(DFU_errADDRESS, 0);
     return response;
   }
-  if (!flash_is_connected()) {
-    t_profiler :> t_profiler_start;
-    if (flash_init() != DFU_FLASH_OK) {
-      response = error_condition(DFU_errTARGET, 0);
-      return response;
-    }
-    t_profiler :> t_profiler_end;
-    t_profile_connect = t_profiler_end - t_profiler_start;
-  }
   fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
   if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) != FIFO_OK) {
-    flash_deinit();
     response = error_condition(DFU_errUNKNOWN, 0);
   } else {
     response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
@@ -437,6 +438,7 @@ static struct dfu_cmd_response state_entry_upload(uint8_t (&?read_block)[DFU_TRA
                                                   int32_t block_size_bytes, int32_t &?read_length) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
   if (!flash_is_connected()) {
+    // TODO - figure out how to defer the flash init.
     if (flash_init() != DFU_FLASH_OK) {
       response = error_condition(DFU_errTARGET, 0);
       return response;
