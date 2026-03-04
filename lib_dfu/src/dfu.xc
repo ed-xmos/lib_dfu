@@ -519,6 +519,9 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
 
       } else if (request == XMOS_DFU_REVERTFACTORY) {
         response = state_revert_factory();
+        
+      } else if (request == DFU_ABORT) {
+        response.status = DFU_API_SUCCESS;
 
       } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE && request != XMOS_BUS_RESET) {
         // no other requests expected, defined as error
