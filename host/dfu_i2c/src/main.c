@@ -15,8 +15,6 @@ int main(int argc, char **argv)
   struct options options = parse_arguments(argc, argv);
   int ret = 0;
 
-  printf("op: %d\n", options.operation);
-
   switch (options.operation) {
     case WRITE_UPGRADE: {
       struct inputs inputs = read_write_upgrade_inputs(options.arguments[0], options.device_id);

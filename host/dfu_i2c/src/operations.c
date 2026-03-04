@@ -141,9 +141,7 @@ int detach_and_bus_reset(void)
     return 7;
   }
 
-  if (!quiet) {
-    printf("detach and bus reset successful\n");
-  }
+  printf("detach and bus reset successful\n");
 
   return 0;
 }
@@ -165,7 +163,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
 
     printf("download block %u, %d bytes\n", block_count, (int)block_bytes); // size_t different in xCORE unit test
 
-    if (hal_write_command(DFU_DNLOAD, bytes + byte_count, block_bytes) != 0) {
+    if (hal_write_command(DFU_DNLOAD, &bytes[byte_count], block_bytes) != 0) {
       return 1;
     }
 
@@ -218,9 +216,7 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
     return 2;
   }
 
-  if (!quiet) {
-    printf("write upgrade successful\n");
-  }
+  printf("write upgrade successful\n");
 
   return 0;
 }

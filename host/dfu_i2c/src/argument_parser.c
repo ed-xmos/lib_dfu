@@ -9,7 +9,7 @@
 #include "argument_parser.h"
 #include "dfu_utils.h"
 
-bool quiet = false;
+bool quiet = true;
 
 void print_usage(FILE *stream)
 {
