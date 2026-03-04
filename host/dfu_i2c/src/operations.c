@@ -104,24 +104,27 @@ int detach_and_bus_reset(void)
     printf("detach and bus reset\n");
   }
 
-  if (check_state(STATE_APP_IDLE) != 0) {
-    return 1;
-  }
+  if (check_state(STATE_APP_IDLE) == 0) {
+    if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {
+      return 2;
+    }
 
-  if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {
-    return 2;
-  }
+    if (check_state(STATE_APP_DETACH) != 0) {
+      return 3;
+    }
 
-  if (check_state(STATE_APP_DETACH) != 0) {
-    return 3;
-  }
+    if (hal_write_command(XMOS_BUS_RESET, NULL, 0) != 0) {
+      return 4;
+    }
 
-  if (hal_write_command(XMOS_BUS_RESET, NULL, 0) != 0) {
-    return 4;
+  } else {
+    if (hal_write_command(DFU_ABORT, NULL, 0) != 0) {
+      return 6;
+    }
   }
 
   if (check_state(STATE_DFU_IDLE) != 0) {
-    return 5;
+    return 7;
   }
 
   if (!quiet) {

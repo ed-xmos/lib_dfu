@@ -6,11 +6,13 @@ const char *command_str(int command)
 {
   switch (command) {
     case DFU_DETACH:            return "DETACH";
-    case XMOS_BUS_RESET:        return "BUS_RESET";
-    case DFU_DNLOAD:            return "DNLOAD";
+    case DFU_DNLOAD:            return "DOWNLOAD";
+    case DFU_UPLOAD:            return "UPLOAD";
+    case DFU_GETSTATUS:         return "GETSTATUS";
     case DFU_CLRSTATUS:         return "CLRSTATUS";
     case DFU_GETSTATE:          return "GETSTATE";
-    case DFU_GETSTATUS:         return "GETSTATUS";
+    case DFU_ABORT:             return "ABORT";
+    case XMOS_BUS_RESET:        return "BUS_RESET";
     case XMOS_DFU_REVERTFACTORY:return "REVERT_FACTORY";
     default: return "?";
   }
