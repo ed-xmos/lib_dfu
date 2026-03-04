@@ -108,7 +108,6 @@ int detach_and_bus_reset(void)
     printf("detach and bus reset\n");
   }
 
-
   uint8_t descriptor_payload[DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES];
   if (hal_read_command(XMOS_DFU_GET_DESCRIPTOR, descriptor_payload, DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) != 0) {
     return 1;
@@ -118,7 +117,6 @@ int detach_and_bus_reset(void)
            descriptor_payload[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX],
            descriptor_payload[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX]);
   }
-
 
   if (check_state(STATE_APP_IDLE) == 0) {
     if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {

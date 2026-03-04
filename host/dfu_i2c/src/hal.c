@@ -84,7 +84,6 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
     PRINT_ERROR("Received %u bytes, expected %zu bytes\n", header.read_length, num_bytes);
     return 1;
   } else {
-    printf("received: length %u, pad 0x%04X\n", header.read_length, header.pad);
     memcpy(payload, buffer + sizeof(header), num_bytes);
   }
 
