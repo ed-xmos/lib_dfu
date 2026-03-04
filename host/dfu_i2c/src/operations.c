@@ -91,8 +91,12 @@ static int check_status(struct dfu_getstatus *getstatus)
     return 2;
   }
 
+  static unsigned last_timeout = 0;
   if (!quiet) {
     printf("poll timeout %u msec\n", getstatus->poll_timeout_msec);
+  } else if (getstatus->poll_timeout_msec != last_timeout) {
+    last_timeout = getstatus->poll_timeout_msec;
+    printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
   }
 
   return 0;
@@ -141,8 +145,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
   struct dfu_getstatus getstatus;
 
   if (!quiet) {
-    printf("start download of %d bytes, block size %d, marker 0x%X\n",
-           (int)length, block_size, marker); // size_t different in xCORE unit test
+    printf("start download of %d bytes, block size %d, marker 0x%X\n", (int)length, block_size, marker); // size_t different in xCORE unit test
   }
 
   while (byte_count < length) {
@@ -150,10 +153,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
     if (length - byte_count < block_size)
       block_bytes = length - byte_count;
 
-    if (!quiet) {
-      printf("download block %u, %d bytes\n",
-             block_count, (int)block_bytes); // size_t different in xCORE unit test
-    }
+    printf("download block %u, %d bytes\n", block_count, (int)block_bytes); // size_t different in xCORE unit test
 
     if (hal_write_command(DFU_DNLOAD, bytes + byte_count, block_bytes) != 0) {
       return 1;
