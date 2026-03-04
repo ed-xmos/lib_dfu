@@ -116,13 +116,13 @@ int main(void)
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
 
-      host_request(i_i2c[0], XMOS_BUS_RESET);
+      host_request(i_i2c[0], XMOS_DFU_BUS_RESET);
       printf("Sent bus reset command\n");
 
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
 
-      host_request(i_i2c[0], XMOS_BUS_RESET);
+      host_request(i_i2c[0], XMOS_DFU_BUS_RESET);
       printf("Sent bus reset command\n");
 
       /* Allow device to reboot */

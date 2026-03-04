@@ -117,7 +117,7 @@ int detach_and_bus_reset(void)
       return 3;
     }
 
-    if (hal_write_command(XMOS_BUS_RESET, NULL, 0) != 0) {
+    if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
       return 4;
     }
 

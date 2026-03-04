@@ -5,15 +5,16 @@
 const char *command_str(int command)
 {
   switch (command) {
-    case DFU_DETACH:            return "DETACH";
-    case DFU_DNLOAD:            return "DOWNLOAD";
-    case DFU_UPLOAD:            return "UPLOAD";
-    case DFU_GETSTATUS:         return "GETSTATUS";
-    case DFU_CLRSTATUS:         return "CLRSTATUS";
-    case DFU_GETSTATE:          return "GETSTATE";
-    case DFU_ABORT:             return "ABORT";
-    case XMOS_BUS_RESET:        return "BUS_RESET";
-    case XMOS_DFU_REVERTFACTORY:return "REVERT_FACTORY";
+    case DFU_DETACH:              return "DETACH";
+    case DFU_DNLOAD:              return "DOWNLOAD";
+    case DFU_UPLOAD:              return "UPLOAD";
+    case DFU_GETSTATUS:           return "GETSTATUS";
+    case DFU_CLRSTATUS:           return "CLRSTATUS";
+    case DFU_GETSTATE:            return "GETSTATE";
+    case DFU_ABORT:               return "ABORT";
+    case XMOS_DFU_BUS_RESET:      return "BUS_RESET";
+    case XMOS_DFU_GET_DESCRIPTOR: return "GET_DESCRIPTOR";
+    case XMOS_DFU_REVERTFACTORY:  return "REVERT_FACTORY";
     default: return "?";
   }
 }

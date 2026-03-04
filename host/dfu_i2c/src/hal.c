@@ -144,7 +144,7 @@ int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c))
     printf("HAL: reboot\n");
   }
 
-  if (hal_write_command(XMOS_BUS_RESET, NULL, 0, i_i2c) != 0) {
+  if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0, i_i2c) != 0) {
     return 1;
   }
 
@@ -157,7 +157,7 @@ int hal_reboot(void)
     printf("HAL: reboot\n");
   }
 
-  if (hal_write_command(XMOS_BUS_RESET, NULL, 0) != 0) {
+  if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
     return 1;
   }
 

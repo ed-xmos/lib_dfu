@@ -55,13 +55,6 @@ USB_Descriptor_Device_t DFUdevDesc =
     .bNumConfigurations             = 0x01
 };
 
-#define DFU_ATTR_CAN_DOWNLOAD              (1u << 0)
-#define DFU_ATTR_CAN_UPLOAD                (1u << 1)
-#define DFU_ATTR_MANIFESTATION_TOLERANT    (1u << 2)
-#define DFU_ATTR_WILL_DETACH               (1u << 3)
-// DFU functional attributes
-#define DFU_FUNC_ATTRS (DFU_ATTR_CAN_UPLOAD | DFU_ATTR_CAN_DOWNLOAD | DFU_ATTR_WILL_DETACH | DFU_ATTR_MANIFESTATION_TOLERANT)
-
 typedef struct
 {
     unsigned char bLength;

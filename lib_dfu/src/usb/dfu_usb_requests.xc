@@ -132,7 +132,7 @@ int DFUProcessResetState(client interface i_dfu i)
         // TODO - flag is sticky at the moment to ride through multiple resets from the host (Windows).
     }
 
-    struct dfu_request_params request = { XMOS_BUS_RESET, 0, 0, 0 };
+    struct dfu_request_params request = { XMOS_DFU_BUS_RESET, 0, 0, 0 };
     request.value = inDFU;
     /* Interface used here such that the handler can be on another tile */
     unsigned data_buffer[1];
