@@ -241,6 +241,7 @@ static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_ar
       break;
 
       default:
+        sub_state_arg = DNLOAD_SYNC;
         return DFU_errUNKNOWN;
   }
 
