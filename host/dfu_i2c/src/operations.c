@@ -220,14 +220,3 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
 
   return 0;
 }
-
-int override_spispec(struct inputs inputs)
-{
-  if (!quiet) {
-    printf("override spispec (%d bytes)\n", (int)inputs.spispec.length);
-  }
-
-  (void)inputs;
-  PRINT_ERROR("override-spispec is not supported by this lib_dfu host build\n");
-  return 1;
-}

@@ -43,19 +43,6 @@ int main(int argc, char **argv)
       break;
     }
 
-    case OVERRIDE_SPISPEC: {
-      struct inputs inputs = read_override_spispec_input(options.arguments[0]);
-
-      if (hal_connect(options.device_id) != 0)
-        return 1;
-
-      ret = override_spispec(inputs);
-
-      hal_disconnect();
-      cleanup_inputs(&inputs);
-      break;
-    }
-
     case DETACH_AND_BUS_RESET: {
       if (hal_connect(options.device_id) != 0)
         return 1;
