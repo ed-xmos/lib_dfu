@@ -533,6 +533,19 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
     debug_printf("\n");
   }
 #endif
+
+  if ((request == XMOS_DFU_GET_DESCRIPTOR) && (block_size_bytes == DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES)) {
+    block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX] = (uint8_t)DFU_BCD_DEVICE;
+    block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] = (uint8_t)(DFU_BCD_DEVICE >> 8);
+    block[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX] = (uint8_t)DFU_FUNC_ATTRS;
+    block[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX] = (state == STATE_APP_IDLE) ? DFU_MODE_RUNTIME : DFU_MODE_DFU;
+    
+    response.status = DFU_API_SUCCESS;
+    response.return_data_len = DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES;
+    response.reset_type = DFU_RESET_TYPE_NONE;
+    return response;
+  }
+
   // TODO - review return status codes and whether they are compatible with USB DFU spec, ie. whether to stall or not.
   switch (state) {
     case STATE_APP_IDLE:
@@ -648,15 +661,6 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       // Note: testing will fall through to app idle without reboot, which is fine.
     }
     response = normal_transition(STATE_APP_IDLE);
-
-  } else if ((request == XMOS_DFU_GET_DESCRIPTOR) && (block_size_bytes == DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES)) {
-    block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX] = (uint8_t)DFU_BCD_DEVICE;
-    block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] = (uint8_t)(DFU_BCD_DEVICE >> 8);
-    block[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX] = (uint8_t)DFU_FUNC_ATTRS;
-    block[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX] = (state == STATE_APP_IDLE) ? DFU_MODE_RUNTIME : DFU_MODE_DFU;
-    response.status = DFU_API_SUCCESS;
-    response.return_data_len = DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES;
-    response.reset_type = DFU_RESET_TYPE_NONE;
 
   } else {
     /* For other requests, delegate to state machine handlers */
