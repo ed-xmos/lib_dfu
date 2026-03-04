@@ -54,19 +54,26 @@ int main(int argc, char **argv)
     }
 
     case REBOOT: {
-      if (hal_connect(options.device_id) != 0)
+      if (hal_connect(options.device_id) != 0) {
+        printf("Connect failed\n");
         return 1;
+      }
 
       ret = hal_reboot();
+      if (ret != 0) {
+        printf("Reboot failed\n");
+      } else {
+        printf("Reboot succeeded\n");
+      }
 
       hal_disconnect();
       break;
     }
 
     case REVERT_FACTORY: {
-        printf("revert\n");
+      printf("Revert factory\n");
       if (hal_connect(options.device_id) != 0) {
-        printf("connect failed\n");
+        printf("Connect failed\n");
         return 1;
       }
 
@@ -76,8 +83,13 @@ int main(int argc, char **argv)
         return ret;
       }
       ret = hal_revert_factory();
-
+      if (ret != 0) {
+        printf("Revert factory failed\n");
+      }
       ret = hal_reboot();
+      if (ret != 0) {
+        printf("Reboot failed\n");
+      }
 
       hal_disconnect();
       break;

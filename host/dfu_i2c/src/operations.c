@@ -172,6 +172,10 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
         return 2;
       }
 
+      if (getstatus.state == STATE_DFU_DOWNLOAD_IDLE && getstatus.poll_timeout_msec != 0) {
+        printf("Warning: unexpected non-zero timeout when in Download idle: %d ms\n", getstatus.poll_timeout_msec);
+      }
+
       sleep_milliseconds(getstatus.poll_timeout_msec);
     } while (getstatus.state == STATE_DFU_DOWNLOAD_BUSY);
 
