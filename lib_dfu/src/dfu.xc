@@ -303,9 +303,6 @@ static struct dfu_cmd_response state_app_idle(enum dfu_request request) {
   } else if (request == DFU_ABORT) {
     response.status = DFU_API_SUCCESS;
 
-  } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
-    // no other requests expected, defined as error
-    response = error_condition(DFU_errSTALLED_PKT, request);
   }
   // no other requests expected, stay in appIDLE
   return response;
@@ -652,13 +649,13 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
     }
     response = normal_transition(STATE_APP_IDLE);
 
-  } else if (request == XMOS_DFU_GET_DESCRIPTOR) {
+  } else if ((request == XMOS_DFU_GET_DESCRIPTOR) && (block_size_bytes == DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES)) {
     block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX] = (uint8_t)DFU_BCD_DEVICE;
     block[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] = (uint8_t)(DFU_BCD_DEVICE >> 8);
     block[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX] = (uint8_t)DFU_FUNC_ATTRS;
     block[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX] = (state == STATE_APP_IDLE) ? DFU_MODE_RUNTIME : DFU_MODE_DFU;
     response.status = DFU_API_SUCCESS;
-    response.return_data_len = 0;
+    response.return_data_len = DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES;
     response.reset_type = DFU_RESET_TYPE_NONE;
 
   } else {
