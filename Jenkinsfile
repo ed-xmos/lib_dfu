@@ -76,6 +76,8 @@ pipeline {
                             dir("host") {
                                 sh "cmake -B build"
                                 sh "cmake --build build"
+
+                                println "We will run pytest from here"
                             }
                             archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
                             archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
@@ -263,6 +265,48 @@ pipeline {
                 }  // Build Windows host app
             }
         }  // Build host apps
+
+        stage('🔧 I2C HW Tests') {
+            agent {
+                label 'xvf3610_int'
+            }
+
+            stages {
+                stage('Checkout') {
+                    steps {
+
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME){
+                            checkoutScmShallow()
+                        }
+                    }
+                }
+                stage('I2C DFU tests') {
+                    steps {
+                        dir ("${REPO_NAME}/tests") {
+                            withTools(params.TOOLS_VERSION) {
+                                createVenv(reqFile: "requirements.txt")
+                                withVenv {
+                                    dir("i2c_rpi_hardware") {
+                                        withXTAG(["XVF3610_INT", "XVF3610_INT", "XVF3610_INT"]) {  xtagIds ->
+                                            sh "echo ${xtagIds}"
+                                            runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            post {
+                cleanup {
+                    xcoreCleanSandbox()
+                }
+            }
+        } // stage "Test on hardware"
 
         stage('🔧 Hardware Tests') {
             agent {

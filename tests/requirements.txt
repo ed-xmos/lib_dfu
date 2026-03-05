@@ -20,6 +20,7 @@
 flake8==7.3.0
 pytest==9.0.2
 pytest-xdist==3.8.0
+fabric==3.2.2
 
 # Development dependencies
 #
