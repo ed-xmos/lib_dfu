@@ -30,7 +30,8 @@ enum dfu_reset_type
 struct dfu_cmd_response {
   enum dfu_api_status status;
   int32_t return_data_len;
-  enum dfu_reset_type reset_type;
+  enum dfu_reset_type reset_type; // TODO - remove
+  enum dfu_request deferred_request;
 };
 
 /* From USB DFU spec v1.1 

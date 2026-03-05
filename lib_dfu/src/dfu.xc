@@ -99,7 +99,7 @@ static struct dfu_cmd_response normal_transition(enum dfu_state new)
   }
   status = DFU_OK;
   state = new;
-  struct dfu_cmd_response response = { DFU_API_SUCCESS, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_SUCCESS, 0, DFU_RESET_TYPE_NONE, 0 };
   return response;
 }
 
@@ -112,7 +112,7 @@ static struct dfu_cmd_response error_condition(enum dfu_status code, int32_t ext
   status = code;
   state = STATE_DFU_ERROR;
   error_info = extra;
-  struct dfu_cmd_response response = { DFU_API_ERROR, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_ERROR, 0, DFU_RESET_TYPE_NONE, 0 };
   return response;
 }
 
@@ -123,9 +123,7 @@ static int32_t dfufifo_full(void)
   return fifo_is_full(dfu_fifo);
 }
 
-static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-
+static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout, struct dfu_cmd_response response) {
   memset(block, 0, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES);
   block[DFU_GETSTATUS_STATUS_INDEX] = status;
   memcpy(&block[DFU_GETSTATUS_POLL_TIMEOUT_INDEX], &timeout, DFU_GETSTATUS_POLL_TIMEOUT_BYTES);
@@ -143,6 +141,7 @@ static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout) {
   response.status = DFU_API_SUCCESS;
   response.return_data_len = DFU_GET_STATUS_PAYLOAD_SIZE_BYTES;
   response.reset_type = DFU_RESET_TYPE_NONE;
+  /* Do not update deferred_action as this is passed through */
   return response;
 }
 
@@ -166,7 +165,7 @@ static enum dfu_api_status upload_block(uint8_t read_block[], int32_t block_size
 }
 
 static struct dfu_cmd_response state_app_idle(enum dfu_request request) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (request == XMOS_DFU_BUS_RESET) {
     response.status = DFU_API_SUCCESS;
     // TODO - USB DFU mode enable when "value" is set.
@@ -185,7 +184,7 @@ static struct dfu_cmd_response state_app_idle(enum dfu_request request) {
 }
 
 static struct dfu_cmd_response state_detach(enum dfu_request request) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (request == XMOS_DFU_BUS_RESET) {
     response = normal_transition(STATE_DFU_IDLE);
 
@@ -199,7 +198,7 @@ static struct dfu_cmd_response state_detach(enum dfu_request request) {
 
 static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (block_size_bytes <= 0) {
     response = error_condition(DFU_errADDRESS, 0);
     return response;
@@ -215,12 +214,19 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
 }
 
 static struct dfu_cmd_response state_dnload_sync(enum dfu_request request) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
-  if (request == DFU_GETSTATUS) {
-    response.reset_type = 0;
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
+  
+  if (request == DFU_DEFERRED_ACTION_FLASH_WRITE) {
+    struct dfu_sub_response rqst_status = sub_sm_process_dnload(dfu_fifo);
+    if (rqst_status.status != DFU_OK) {
+      response = error_condition(rqst_status.status, 0);
+    }
+
+  } else if (request == DFU_GETSTATUS) {
     if (dfufifo_full()) {
       response = normal_transition(STATE_DFU_DOWNLOAD_BUSY);
       response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
+      response.deferred_request = DFU_DEFERRED_ACTION_FLASH_WRITE;
 
     } else {
       response = normal_transition(STATE_DFU_DOWNLOAD_IDLE);
@@ -236,26 +242,28 @@ static struct dfu_cmd_response state_dnload_sync(enum dfu_request request) {
 }
 
 static struct dfu_cmd_response state_manifest_sync(enum dfu_request request) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
 
-  if (request == DFU_GETSTATUS) {
+  if (request == DFU_DEFERRED_ACTION_FLASH_MANIFEST) {
     struct dfu_sub_response rqst_status = sub_sm_process_manifest(dfu_fifo);
     if (rqst_status.status != DFU_OK) {
       response = error_condition(rqst_status.status, 0);
+    }
+
+  } else if (request == DFU_GETSTATUS) {
+    if (fifo_is_empty(dfu_fifo)) {
+      flash_finalise_write();
+      response = normal_transition(STATE_DFU_IDLE);
+      flash_deinit();
+      
+      sub_sm_print_profiler();
 
     } else {
-      if (fifo_is_empty(dfu_fifo)) {
-        flash_finalise_write();
-        response = normal_transition(STATE_DFU_IDLE);
-        flash_deinit();
-        
-        sub_sm_print_profiler();
-
-      } else {
-        response = normal_transition(STATE_DFU_MANIFEST);
-        response = normal_transition(STATE_DFU_MANIFEST_SYNC);
-      }
+      response = normal_transition(STATE_DFU_MANIFEST);
+      response = normal_transition(STATE_DFU_MANIFEST_SYNC);
+      response.deferred_request = DFU_DEFERRED_ACTION_FLASH_MANIFEST;
     }
+
   } else if (request == XMOS_DFU_BUS_RESET) {
     /* fall-through, handle in common command handler */
 
@@ -266,7 +274,7 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request) {
 }
 static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (block_size_bytes <= 0) {
       response = normal_transition(STATE_DFU_MANIFEST_SYNC);
 
@@ -282,7 +290,7 @@ static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)
 
 static struct dfu_cmd_response state_entry_upload(uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?read_length) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (!flash_is_connected()) {
     // TODO - figure out how to defer the flash init.
     if (flash_init() != DFU_FLASH_OK) {
@@ -317,7 +325,7 @@ static struct dfu_cmd_response state_entry_upload(uint8_t (&?read_block)[DFU_TRA
 
 static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
                                                  int32_t block_size_bytes, int32_t &?read_length) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
   if (read_length <= 0) {
     // Terminate read
     response = normal_transition(STATE_DFU_IDLE);
@@ -344,7 +352,7 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
 }
 
 static struct dfu_cmd_response state_revert_factory(void) {
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
 
   if (flash_init() == DFU_FLASH_OK) {
     int32_t sector_size = flash_get_sector_size();
@@ -371,7 +379,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
                                                    int32_t &?block_num)
 {
   static int32_t read_length = 0;
-  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
+  struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE, 0 };
 
 #if DEBUG_PRINT_ENABLE_DFU
   debug_printf("DFU: %s", request_str(request));
@@ -427,19 +435,15 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       break;
 
     case STATE_DFU_DOWNLOAD_SYNC:
-      struct dfu_sub_response rqst_status = sub_sm_process_dnload(dfu_fifo);
-      if (rqst_status.status != DFU_OK) {
-        response = error_condition(rqst_status.status, 0);
+      response = state_dnload_sync(request);
 
-      } else {
-        response = state_dnload_sync(request);
-      }
-
-      if (response.status == DFU_API_SUCCESS && request == DFU_GETSTATUS) {
-        if (state != STATE_DFU_DOWNLOAD_SYNC) {
-          // if we have left the sync state, return status with 0 poll timeout, as we will be ready for next request immediately.
+      if ((response.status == DFU_API_SUCCESS) && (request == DFU_GETSTATUS)) {
+        int32_t poll_timeout = 0;
+        if (state == STATE_DFU_DOWNLOAD_SYNC) {
+          // if we are still in the download sync state, return status with poll timeout for the next step in the download process (either erase or write)
+          poll_timeout = sub_sm_get_poll_timeout();
         }
-        response = build_status(block, sub_sm_get_poll_timeout());
+        response = build_status(block, poll_timeout, response);
       }
       break;
 
@@ -447,10 +451,12 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       response = state_manifest_sync(request);
 
       if (response.status == DFU_API_SUCCESS && request == DFU_GETSTATUS) {
-        if (state != STATE_DFU_MANIFEST_SYNC) {
-          // if we have left the manifest sync state, return status with 0 poll timeout, as we will be ready for next request immediately.
+        int32_t poll_timeout = 0;
+        if (state == STATE_DFU_MANIFEST_SYNC) {
+          // if we are still in the manifest sync state, return status with poll timeout for the next step in the manifest process
+          poll_timeout = sub_sm_get_poll_timeout();
         }
-        response = build_status(block, sub_sm_get_poll_timeout());
+        response = build_status(block, poll_timeout, response);
       }
       break;
 
@@ -485,7 +491,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
   /* Handle common requests last */
   if ((request == DFU_GETSTATUS) && !isnull(block) && (block_size_bytes == DFU_GET_STATUS_PAYLOAD_SIZE_BYTES) && (response.status != DFU_API_SUCCESS)) {
     // if get-status was not handled by state machine handlers, handle it here.
-    response = build_status(block,sub_sm_get_poll_timeout());
+    response = build_status(block, 0, response);
 
   } else if ((request == DFU_GETSTATE) && !isnull(block) && (block_size_bytes == DFU_GET_STATE_PAYLOAD_SIZE_BYTES)) {
     response.status = DFU_API_SUCCESS;

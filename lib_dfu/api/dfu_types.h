@@ -61,12 +61,13 @@ enum dfu_request {
   XMOS_DFU_GET_DESCRIPTOR = 10, // For simulating getting a descriptor on transports other than USB.
 
   // Not actual requests, used internally to indicate deferred actions to be taken after responding to a request.
-  DFU_DEFERRED_ACTION_REBOOT = 20,
-  DFU_DEFERRED_ACTION_RESET_TO_DFU = 21,
-  DFU_DEFERRED_ACTION_FLASH_CONNECT = 22,
-  DFU_DEFERRED_ACTION_FLASH_ERASE = 23,
-  DFU_DEFERRED_ACTION_FLASH_WRITE = 24,
-  DFU_DEFERRED_ACTION_FLASH_DISCONNECT = 25,
+  // DFU_DEFERRED_ACTION_REBOOT = 20,
+  // DFU_DEFERRED_ACTION_RESET_TO_DFU = 21,
+  // DFU_DEFERRED_ACTION_FLASH_CONNECT = 22,
+  // DFU_DEFERRED_ACTION_FLASH_ERASE = 23,
+  DFU_DEFERRED_ACTION_FLASH_WRITE = 22,
+  DFU_DEFERRED_ACTION_FLASH_MANIFEST = 23,
+  DFU_DEFERRED_ACTION_FLASH_DISCONNECT = 24,
 
   /* For lib_device_control access this will be 0x71 due to read bit */
   XMOS_DFU_REVERTFACTORY = 0xF1,

@@ -19,6 +19,7 @@
 #define POLL_TIMEOUT_DNLOAD_ERASE_MSEC 8
 #define POLL_TIMEOUT_DNLOAD_FIRST_WRITE_MSEC 100
 #define POLL_TIMEOUT_DNLOAD_WRITE_MSEC 2
+#define POLL_TIMEOUT_DNLOAD_MANIFEST_MSEC 3
 
 static enum dnload_sub_state sub_state = DNLOAD_SYNC;
 static uint32_t poll_timeout = 0;
@@ -155,6 +156,8 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
   struct dfu_sub_response response = { DFU_errUNKNOWN };
   int32_t page_size_bytes = flash_get_page_size();
   uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
+
+  poll_timeout = POLL_TIMEOUT_DNLOAD_MANIFEST_MSEC;
 
   if (page_size_bytes > DFU_FLASH_PAGE_SIZE_BYTES) {
     // sanity check - this should never happen
