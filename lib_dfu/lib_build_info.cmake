@@ -17,7 +17,8 @@ set(LIB_C_SRCS              src/dfu_flashlib_user.c
 
 set(LIB_XC_SRCS             src/dfu.xc
                             src/usb/dfu_usb_requests.xc
-                            src/dfu_reboot.xc)
+                            src/dfu_reboot.xc
+                            src/dfu_sub_sm.xc)
 
 # -mcmodel=large? 
 set(LIB_COMPILER_FLAGS      -Os

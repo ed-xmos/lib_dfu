@@ -14,6 +14,7 @@
 #include "dfu_flash.h"
 #include "dfu.h"
 #include "dfu_reboot.h"
+#include "dfu_sub_sm.h"
 #include "fifo.h"
 
 #define POLL_TIMEOUT_DNLOAD_ENTRY_MSEC 150
@@ -28,21 +29,6 @@ static uint32_t poll_timeout = 0;
 
 static struct fifo dfu_fifo;
 static uint8_t dfu_fifo_storage[DFU_FLASH_PAGE_SIZE_BYTES];
-
-enum dnload_sub_state {
-  DNLOAD_SYNC,
-  DNLOAD_ERASING,
-  DNLOAD_WRITING
-};
-
-static timer t_profiler;
-static unsigned t_profiler_start = 0;
-static unsigned t_profiler_end = 0;
-
-static unsigned t_profile_connect = 0;
-static unsigned t_profile_first_erase = 0;
-static unsigned t_profile_first_write = 0;
-// static unsigned t_profile_second_write = 0;
 
 #if DEBUG_PRINT_ENABLE_DFU
 static const char * unsafe request_str(enum dfu_request r)
@@ -81,18 +67,6 @@ static const char * unsafe state_str(enum dfu_state s)
       case STATE_DFU_MANIFEST_WAIT_RESET:   return "dfuMANIFEST-WAIT-RESET";
       case STATE_DFU_UPLOAD_IDLE:           return "dfuUPLOAD-IDLE";
       case STATE_DFU_ERROR:                 return "dfuERROR";
-      default:                              return "?";
-    }
-  }
-}
-
-static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
-{
-  unsafe {
-    switch (s) {
-      case DNLOAD_SYNC:                     return "SYNC";
-      case DNLOAD_ERASING:                  return "ERASING";
-      case DNLOAD_WRITING:                  return "WRITING";
       default:                              return "?";
     }
   }
@@ -148,16 +122,6 @@ static struct dfu_cmd_response error_condition(enum dfu_status code, int32_t ext
   return response;
 }
 
-static void sub_transition_dnload(enum dnload_sub_state new, enum dnload_sub_state &sub_state_arg)
-{
-  unsafe {
-    debug_printf("DFU DNLOAD: %s -> %s\n",
-                 dnload_sub_state_str(sub_state_arg),
-                 dnload_sub_state_str(new));
-  }
-  sub_state_arg = new;
-}
-
 static int32_t dfufifo_full(void)
 {
   // TODO - check whether fifo_is_full is sensible check, if fifo size and transfer size are not multiples of each 
@@ -186,100 +150,6 @@ static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout) {
   response.return_data_len = DFU_GET_STATUS_PAYLOAD_SIZE_BYTES;
   response.reset_type = DFU_RESET_TYPE_NONE;
   return response;
-}
-
-static enum dfu_status getstatus_from_dnload(enum dnload_sub_state &sub_state_arg)
-{
-  uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
-  
-  switch (sub_state_arg) {
-    case DNLOAD_SYNC:
-      if (!flash_is_connected()) {
-        t_profiler :> t_profiler_start;
-        if (flash_init() != DFU_FLASH_OK) {
-          // response = error_condition(DFU_errTARGET, 0);
-          return DFU_errWRITE;
-        }
-        t_profiler :> t_profiler_end;
-        t_profile_connect = t_profiler_end - t_profiler_start;
-      }
-
-      t_profiler :> t_profiler_start;
-      // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
-      enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
-      if (erase_status != DFU_FLASH_OK && erase_status != DFU_FLASH_BUSY) {
-        return DFU_errERASE;
-      }
-      t_profiler :> t_profiler_end;
-      t_profile_first_erase = t_profiler_end - t_profiler_start;
-
-      sub_transition_dnload(DNLOAD_ERASING, sub_state_arg);
-
-      break;
-
-    case DNLOAD_ERASING:
-      // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
-      enum flash_status erase_status = flash_erase_sector_async(FLASH_MAX_UPGRADE_SIZE);
-
-      if (erase_status == DFU_FLASH_OK) {
-        // sector erase completed, move on to page write
-        sub_transition_dnload(DNLOAD_WRITING, sub_state_arg);
-
-        int32_t page_size_bytes = flash_get_page_size();
-        if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
-          t_profiler :> t_profiler_start;
-          if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
-            return DFU_errWRITE;
-          }
-          t_profiler :> t_profiler_end;
-          t_profile_first_write = t_profiler_end - t_profiler_start;
-        }
-
-      } else if (erase_status == DFU_FLASH_BUSY) {
-        // still erasing, remain in this state and wait for next poll
-      } else {
-        return DFU_errERASE;
-      }
-      break;
-
-    case DNLOAD_WRITING:
-      int32_t page_size_bytes = flash_get_page_size();
-      if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
-        if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
-          return DFU_errWRITE;
-        }
-      }
-      break;
-
-      default:
-        sub_state_arg = DNLOAD_SYNC;
-        return DFU_errUNKNOWN;
-  }
-
-  return DFU_OK;
-}
-
-static enum dfu_status getstatus_from_manifest(void)
-{
-  int32_t page_size_bytes = flash_get_page_size();
-  uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
-
-  if (page_size_bytes > DFU_FLASH_PAGE_SIZE_BYTES) {
-    // sanity check - this should never happen
-    return DFU_errUNKNOWN;
-  }
-
-  // drain conversion buffer of partial page, if any
-  int32_t remaining_bytes = fifo_size(dfu_fifo);
-  // TODO - this assumes that fifo is page sized.
-  // If this is not the case, we may need to do multiple dequeues to drain the fifo.
-  if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
-    memset(&page[remaining_bytes], 0xFF, page_size_bytes - remaining_bytes);
-    if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
-      return DFU_errWRITE;
-    }
-  }
-  return DFU_OK;
 }
 
 static enum dfu_api_status upload_block(uint8_t read_block[], int32_t block_size_bytes)
@@ -353,23 +223,17 @@ static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[
 static struct dfu_cmd_response state_dnload_sync(enum dfu_request request, enum dnload_sub_state &sub_state_arg) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, DFU_RESET_TYPE_NONE };
   if (request == DFU_GETSTATUS) {
-    enum dfu_status rqst_status = getstatus_from_dnload(sub_state_arg);
-    if (rqst_status != DFU_OK) {
-      response = error_condition(rqst_status, 0);
-      // poll_timeout = 0;
+    response.reset_type = 0;
+    if (dfufifo_full()) {
+      response = normal_transition(STATE_DFU_DOWNLOAD_BUSY);
+      response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
+      // TODO - use sub_state_arg to switch value.
+      // poll_timeout = POLL_TIMEOUT_DNLOAD_ERASE_MSEC;
+      // poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
 
     } else {
-      if (dfufifo_full()) {
-        response = normal_transition(STATE_DFU_DOWNLOAD_BUSY);
-        response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
-        // TODO - use sub_state_arg to switch value.
-        // poll_timeout = POLL_TIMEOUT_DNLOAD_ERASE_MSEC;
-        // poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
-
-      } else {
-        response = normal_transition(STATE_DFU_DOWNLOAD_IDLE);
-        // poll_timeout = 0;
-      }
+      response = normal_transition(STATE_DFU_DOWNLOAD_IDLE);
+      // poll_timeout = 0;
     }
 
   } else if (request == XMOS_DFU_BUS_RESET) {
@@ -386,7 +250,7 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, enu
   poll_timeout = 0;
 
   if (request == DFU_GETSTATUS) {
-    enum dfu_status rqst_status = getstatus_from_manifest();
+    enum dfu_status rqst_status = sub_sm_process_manifest(dfu_fifo);
     if (rqst_status != DFU_OK) {
       response = error_condition(rqst_status, 0);
 
@@ -396,11 +260,8 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, enu
         response = normal_transition(STATE_DFU_IDLE);
         sub_state_arg = DNLOAD_SYNC;
         flash_deinit();
-
-        printf("DFU: profile results:\n");
-        printf("  Connect time: %u ms\n", t_profile_connect);
-        printf("  First erase time: %u ms\n", t_profile_first_erase);
-        printf("  First write time: %u ms\n", t_profile_first_write);
+        
+        sub_sm_print_profiler();
 
       } else {
         response = normal_transition(STATE_DFU_MANIFEST);
@@ -426,6 +287,7 @@ static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)
   } else {
     if (fifo_block_enqueue(dfu_fifo, write_block, block_size_bytes) != FIFO_OK) {
       response = error_condition(DFU_errFILE, 0);
+      poll_timeout = 0;
     } else {
       response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
       poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
@@ -585,19 +447,30 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
     case STATE_DFU_DOWNLOAD_SYNC:
       if (request == DFU_GETSTATUS) {
         if (sub_state == DNLOAD_SYNC) {
-        poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
+          poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
         } else if (sub_state == DNLOAD_ERASING) {
           poll_timeout = POLL_TIMEOUT_DNLOAD_ERASE_MSEC;
         } else if (sub_state == DNLOAD_WRITING) {
           poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
         }
       }
+      
+      enum dfu_status rqst_status = sub_sm_process_dnload(dfu_fifo, sub_state);
+      if (rqst_status != DFU_OK) {
+        response = error_condition(rqst_status, 0);
+        // poll_timeout = 0;
 
-      response = state_dnload_sync(request, sub_state);
+      } else {
+        response = state_dnload_sync(request, sub_state);
+      }
 
       if (response.status == DFU_API_SUCCESS && request == DFU_GETSTATUS) {
         if (poll_timeout == POLL_TIMEOUT_DNLOAD_ERASE_MSEC && sub_state == DNLOAD_WRITING) {
           poll_timeout = POLL_TIMEOUT_DNLOAD_FIRST_WRITE_MSEC;
+        }
+        if (state != STATE_DFU_DOWNLOAD_SYNC) {
+          // if we have left the sync state, return status with 0 poll timeout, as we will be ready for next request immediately.
+          poll_timeout = 0;
         }
         response = build_status(block, poll_timeout);
       }
@@ -607,6 +480,10 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       response = state_manifest_sync(request, sub_state);
 
       if (response.status == DFU_API_SUCCESS && request == DFU_GETSTATUS) {
+        if (state != STATE_DFU_MANIFEST_SYNC) {
+          // if we have left the manifest sync state, return status with 0 poll timeout, as we will be ready for next request immediately.
+          poll_timeout = 0;
+        }
         response = build_status(block, poll_timeout);
       }
       break;
@@ -655,6 +532,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
     // if bus reset was not handled by state machine handlers, handle it here by resetting to app idle.
     if (state != STATE_APP_IDLE) {
       /* Exit from DFU mode. Send reboot command */
+      flash_deinit();
       timer tmr;
       unsigned now;
       tmr :> now;
