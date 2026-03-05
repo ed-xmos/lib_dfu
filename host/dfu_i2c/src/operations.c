@@ -158,8 +158,9 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
 
   while (byte_count < length) {
     size_t block_bytes = block_size;
-    if (length - byte_count < block_size)
+    if (length - byte_count < block_size) {
       block_bytes = length - byte_count;
+    }
 
     printf("download block %u, %d bytes\n", block_count, (int)block_bytes); // size_t different in xCORE unit test
 
@@ -215,6 +216,9 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
   if (detach_and_bus_reset() != 0) {
     return 1;
   }
+
+  printf("upgrading: image size %d bytes, block size %d, num blocks %d, tail %d bytes\n",
+    (int)inputs.boot.length, block_size, (((unsigned)inputs.boot.length + block_size - 1U) / block_size), ((unsigned)inputs.boot.length % block_size));
 
   if (download_file(inputs.boot.bytes, inputs.boot.length, block_size, 0) != 0) {
     return 2;
