@@ -31,7 +31,7 @@ set (SOURCE_FILES
 
 set (DFUCTRL_LIB dfuctrl_i2c_1.0)
 set (DFUCTRL_APP dfu_i2c)
-add_compile_definitions(nologo USE_I2C RPI)
+add_compile_definitions(nologo CONTROL_USE_I2C CONTROL_RPI)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)

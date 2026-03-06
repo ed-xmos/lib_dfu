@@ -13,9 +13,10 @@
 #define DFU_SUFFIX_IGNORE_ID 0xFFFF
 
 #define I2C_ADDRESS_DEFAULT 0x2C
-#define BLOCK_SIZE_DEFAULT 128
+#define BLOCK_SIZE_DEFAULT 64
 
 extern bool quiet;
+extern bool verbose;
 
 struct options {
   enum {
@@ -23,7 +24,8 @@ struct options {
     WRITE_UPGRADE,
     DETACH_AND_BUS_RESET,
     REBOOT,
-    REVERT_FACTORY
+    REVERT_FACTORY,
+    UPLOAD
   } operation;
   const char *arguments[2];
   struct device_id device_id;

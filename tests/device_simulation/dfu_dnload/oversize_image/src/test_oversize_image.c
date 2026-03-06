@@ -156,11 +156,20 @@ static struct dfu_getstatus get_status()
   return ret;
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 static enum dfu_status single_dnload_block(int block_num, size_t block_size, const char block[])
 {
   struct dfu_getstatus ret;
 
-  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, block_size, block_num);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, block_size, &block_num);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_DNLOAD_SYNC);
 
@@ -236,15 +245,14 @@ void dnload(int partitions, int block_size, int block_count)
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 
   for (int p = 0; p < 2; p++) {
     if (partitions & (1 << p)) {
       const unsigned marker = DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
       for (int i = 0; i < block_count; i++) {
-        debug_printf("dnload block %d 0x%04X (%d bytes)\n",
-                     i, marker | i, block_size);
+        debug_printf("dnload block %d 0x%04X (%d bytes)\n", i, marker | i, block_size);
 
         status = single_dnload_block(marker | i, block_size, block);
         if (status != DFU_OK) {
@@ -255,11 +263,9 @@ void dnload(int partitions, int block_size, int block_count)
           break;
         }
       }
-      get_state_and_check(STATE_DFU_DOWNLOAD_IDLE); // DNLOAD-IDLE state indicates no error
-      if (state == STATE_DFU_DOWNLOAD_IDLE) {
-        debug_printf("dnload zero\n");
-        dnload_zero();
-      }
+      get_state_and_check(STATE_DFU_DOWNLOAD_IDLE);
+      debug_printf("dnload zero\n");
+      dnload_zero();
     }
   }
 }

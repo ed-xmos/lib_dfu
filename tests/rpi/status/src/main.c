@@ -9,13 +9,12 @@
 #include "operations.h"
 #include "hal.h"
 #include "dfu_utils.h"
+#include "app_types.h"
 
 int main(int argc, char **argv)
 {
   struct options options = parse_arguments(argc, argv);
   int ret = 0;
-
-  printf("op: %d\n", options.operation)
 
   switch (options.operation) {
     case WRITE_UPGRADE: {
@@ -32,7 +31,7 @@ int main(int argc, char **argv)
         return 1;
       }
 
-      if (hal_connect(options.device_id) != 0) // will do a check that suffix IDs
+      if (hal_connect(options.device_id) != APP_OK) // will do a check that suffix IDs
         return 1;                              // match the running target
 
       ret = write_upgrade(inputs, options.block_size);
@@ -46,7 +45,7 @@ int main(int argc, char **argv)
     }
 
     case DETACH_AND_BUS_RESET: {
-      if (hal_connect(options.device_id) != 0)
+      if (hal_connect(options.device_id) != APP_OK)
         return 1;
 
       ret = detach_and_bus_reset();
@@ -56,7 +55,7 @@ int main(int argc, char **argv)
     }
 
     case REBOOT: {
-      if (hal_connect(options.device_id) != 0)
+      if (hal_connect(options.device_id) != APP_OK)
         return 1;
 
       ret = hal_reboot();
@@ -67,7 +66,7 @@ int main(int argc, char **argv)
 
     case REVERT_FACTORY: {
         printf("revert\n");
-      if (hal_connect(options.device_id) != 0) {
+      if (hal_connect(options.device_id) != APP_OK) {
         printf("connect failed\n");
         return 1;
       }

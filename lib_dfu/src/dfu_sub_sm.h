@@ -16,7 +16,6 @@ struct dfu_sub_request {
 
 struct dfu_sub_response {
   enum dfu_status status;
-  int32_t poll_timeout_msec;
 };
 
 enum dnload_sub_state {
@@ -25,8 +24,11 @@ enum dnload_sub_state {
   DNLOAD_WRITING
 };
 
-enum dfu_status sub_sm_process_dnload(struct fifo &dfu_fifo, enum dnload_sub_state &sub_state_arg);
-enum dfu_status sub_sm_process_manifest(struct fifo &dfu_fifo);
+void sub_sm_clear(void);
+int32_t sub_sm_get_poll_timeout(void);
+
+struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo);
+struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo);
 
 void sub_sm_print_profiler(void);
 

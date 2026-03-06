@@ -5,10 +5,11 @@
 #include <platform.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <string.h>
+#include <stdint.h>
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
-// #include <quadflashlib.h>
 
 #include <unity.h>
 
@@ -33,13 +34,25 @@ static void get_state_and_check(enum dfu_state expected_state)
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
-static struct dfu_getstatus get_status()
+static struct dfu_getstatus get_status(enum dfu_request *deferred_request)
 {
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request != 0 && deferred_request != NULL) {
+    *deferred_request = response.deferred_request;
+  }
 
   struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
   return ret;
+}
+
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
 }
 
 void detach()
@@ -49,47 +62,63 @@ void detach()
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 }
 
 FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
 {
   struct dfu_getstatus ret;
-  int block_count = 0;
-  size_t read;
+  int32_t block_count = 0;
+  int32_t read;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
   while (!feof(bin_file)) {
     printintln(block_count);
 
-    read = fread(block, 1, (size_t)block_size, bin_file);
-    assert(read <= (size_t)block_size);
+    read = (int32_t)fread(block, 1, (size_t)block_size, bin_file);
+    assert(read <= (int32_t)block_size);
 
     if (read == 0)
       break;
 
-    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, block_count);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, &block_count);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
+    enum dfu_request deferred_request = 0;
     do {
-      ret = get_status();
-      assert(ret.status == DFU_OK);
+      ret = get_status(&deferred_request);
+      TEST_ASSERT_EQUAL(DFU_OK, ret.status);
+
+      if (deferred_request != 0) {
+        response = dfu_request(deferred_request);
+        TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+        deferred_request = 0;
+      }
       delay_microseconds(1);
     } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
 
-    assert(ret.state == STATE_DFU_DOWNLOAD_IDLE);
+    TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_IDLE, ret.state);
 
     block_count++;
   }
 
-  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  /* zero length packet to end download */
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
-  ret = get_status();
-  assert(ret.state == STATE_DFU_IDLE);
-  assert(ret.status == DFU_OK);
+  do {
+    enum dfu_request deferred_request = 0;
+    ret = get_status(&deferred_request);
+    TEST_ASSERT_EQUAL(DFU_OK, ret.status);
+
+    if (deferred_request != 0) {
+      response = dfu_request(deferred_request);
+      printf("deferred request %d, response status %d\n", deferred_request, response.status);
+      TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+    }
+  } while (ret.state != STATE_DFU_IDLE);
 
   *upgrade_size = block_count * block_size;
 
@@ -122,7 +151,7 @@ FILE * verify(FILE * bin_file, int block_size)
     if (ret == 0)
       break;
 
-    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, actual, (size_t)block_size, NULL);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, actual, block_size, NULL);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_LESS_OR_EQUAL_INT32(block_size, response.return_data_len);
 

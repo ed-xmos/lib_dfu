@@ -89,7 +89,6 @@ int read(hwtimer_t runtime, uint8_t* mem, int length) {
   return rd_status;
 }
 
-// TODO - Ideally test with factory-only and upgrade image present
 #include <stdio.h>
 
 void test_dfu_image_analysis(void) {

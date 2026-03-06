@@ -12,6 +12,7 @@
 #include "dfu_utils.h"
 
 extern bool quiet;
+extern bool verbose;
 
 static size_t file_size(FILE *handle, const char *name)
 {
@@ -21,14 +22,14 @@ static size_t file_size(FILE *handle, const char *name)
 
   if (fseek(handle, 0, SEEK_END) != 0) {
     PRINT_ERROR("fseek failed on %s (errno %d)\n", name, errno);
-    exit(1);
+    return 0;
   }
 
   long length = ftell(handle);
 
   if (fseek(handle, 0, SEEK_SET) != 0) {
     PRINT_ERROR("fseek failed on %s (errno %d)\n", name, errno);
-    exit(1);
+    return 0;
   }
 
   return (size_t)length;
@@ -43,7 +44,7 @@ static size_t verify_suffix(const unsigned char *bytes, size_t num_bytes, struct
   ret = verify_dfu_suffix(bytes, num_bytes, device_id.vendor, device_id.product, device_id.bcddevice, &suffix_length, msg);
   if (ret != 0) {
     PRINT_ERROR("Failed DFU suffix verification (code %d): %s\n", ret, msg);
-    exit(1);
+    return 0;
   }
 
   return num_bytes - suffix_length;
@@ -56,44 +57,44 @@ static size_t load_file(const char *file_name, unsigned char **bytes)
   }
 
   FILE *handle = fopen(file_name, "rb");
-  size_t length = file_size(handle, file_name);
 
   if (handle == NULL) {
     PRINT_ERROR("Problem opening file %s\n", file_name);
-    exit(1);
+    return 0;
   }
+  size_t length = file_size(handle, file_name);
+  if (length == 0) {
+    PRINT_ERROR("Problem finding file length for file %s\n", file_name);
+    return 0;
+  }
+
   *bytes = malloc(length + 1);
-  if (fread(*bytes, 1, length, handle) != length) {
-    PRINT_ERROR("Problem reading file %s (errno %d)\n", file_name, errno);
-    exit(1);
+  if (*bytes == NULL) {
+    PRINT_ERROR("Problem allocating memory of %zu bytes\n", length);
+    fclose(handle);
+    return 0;
+  } else {
+    if (fread(*bytes, 1, length, handle) != length) {
+      PRINT_ERROR("Problem reading file %s (errno %d)\n", file_name, errno);
+      fclose(handle);
+      return 0;
+    }
   }
 
   fclose(handle);
 
-  if (!quiet) {
+  if (verbose) {
     printf("opened %s, %lu bytes\n", file_name, length);
   }
 
   return length;
 }
 
-static size_t call_verify_suffix(const unsigned char *bytes, size_t length, struct device_id device_id)
-{
-  size_t stripped_length = verify_suffix(bytes, length, device_id);
-
-  if (!quiet) {
-    printf("no problem found with suffix\n");
-  }
-
-  return stripped_length;
-}
-
 struct inputs read_write_upgrade_inputs(const char *boot_file_name, struct device_id device_id)
 {
-  struct inputs inputs;
-  memset(&inputs, 0, sizeof(struct inputs));
+  struct inputs inputs = { 0 };
   inputs.boot.length = load_file(boot_file_name, &inputs.boot.bytes);
-  inputs.boot.length = call_verify_suffix(inputs.boot.bytes, inputs.boot.length, device_id);
+  inputs.boot.length = verify_suffix(inputs.boot.bytes, inputs.boot.length, device_id);
   return inputs;
 }
 

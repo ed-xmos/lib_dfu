@@ -16,8 +16,6 @@ static void get_state_and_check(enum dfu_state expected_state)
 
 void test_clrstatus(void)
 {
-  enum dfu_state state;
-
   get_state_and_check(STATE_APP_IDLE);
 
   struct dfu_cmd_response response = dfu_request(DFU_DETACH);
