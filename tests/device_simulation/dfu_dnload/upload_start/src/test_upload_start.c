@@ -84,4 +84,10 @@ void test_upload_start(void) {
   TEST_ASSERT_EQUAL_INT(1, flash_open);
   TEST_ASSERT_EQUAL_HEX8(FIRST_READ_BYTE, block[0]);
   TEST_ASSERT_EQUAL_HEX8(SECOND_READ_BYTE, block[1]);
+  
+  // Finally abort from upload
+  response = dfu_request_with_arguments(DFU_ABORT, block, sizeof(block), NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  
+  get_status_and_check(DFU_OK, STATE_DFU_IDLE);
 }

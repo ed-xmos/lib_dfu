@@ -481,6 +481,9 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       if (request == DFU_UPLOAD) {
         response = state_upload_idle(block, block_size_bytes, read_length);
 
+      } else if (request == DFU_ABORT) {
+        response = normal_transition(STATE_DFU_IDLE);
+
       } else if ((request != DFU_GETSTATUS) && (request != DFU_GETSTATE) && (request != XMOS_DFU_BUS_RESET)) {
         // no other requests expected, defined as error
         response = error_condition(DFU_errSTALLED_PKT, request);
