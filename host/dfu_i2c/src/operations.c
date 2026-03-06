@@ -93,10 +93,10 @@ static int check_status(struct dfu_getstatus *getstatus)
 
   static unsigned last_timeout = -1;
   if (!quiet) {
-    printf("poll timeout %u msec\n", getstatus->poll_timeout_msec);
-  } else if (getstatus->poll_timeout_msec != last_timeout) {
-    last_timeout = getstatus->poll_timeout_msec;
-    printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
+    if (getstatus->poll_timeout_msec != last_timeout) {
+      last_timeout = getstatus->poll_timeout_msec;
+      printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
+    }
   }
 
   return 0;
