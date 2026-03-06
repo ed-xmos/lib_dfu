@@ -20,17 +20,9 @@ enum dfu_api_status {
   DFU_API_BAD_PARAM = 3
 };
 
-enum dfu_reset_type
-{
-    DFU_RESET_TYPE_NONE,
-    DFU_RESET_TYPE_RESET_TO_DFU,
-    DFU_RESET_TYPE_RESET_TO_APP
-};
-
 struct dfu_cmd_response {
   enum dfu_api_status status;
   int32_t return_data_len;
-  enum dfu_reset_type reset_type; // TODO - remove
   enum dfu_request deferred_request;
 };
 
