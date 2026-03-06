@@ -42,3 +42,17 @@ int main(void)
   }
   return 0;
 }
+
+/* TODO list 
+ * 
+ * Timings to fix:
+ * write of first 128 bytes, pauses/clock stretch of 1ms - could this be flash_connect()? profile (105537) -> 1.05ms
+ * get status following first packet, pauses 111ms - first erase?
+ * - could this be fl_startImageReplace()? profile (11138915) -> 111.3ms
+ * - or fl_startImageAdd()? profile.
+ * get status on transition to DOWNLOAD-IDLE, pauses 38ms - could this be fl_writeImagePage()? profile. Why is first write is slow? (3751599) -> 37.5ms
+ * get status after each page downloaded, pauses 0.5ms - could this be fl_writeImagePage()? profile.
+ * 
+ * bus-reset also does not return so holds the clock for 50ms.
+ * 
+ */
