@@ -35,6 +35,55 @@ pipeline {
     }
 
     stages {
+        stage('🔧 I2C HW Tests') {
+            agent {
+                label 'xvf3610_int'
+            }
+
+            stages {
+                stage('Checkout') {
+                    steps {
+                        script {
+                            def (server, user, repo) = extractFromScmUrl()
+                            env.REPO_NAME = repo
+                        }
+
+                        println "Stage running on ${env.NODE_NAME}"
+
+                        dir(REPO_NAME){
+                            checkoutScmShallow()
+                        }
+                        // TODO remove - use cmake to get deps
+                        sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
+                        sh 'tree'
+                    }
+                }
+                stage('I2C DFU tests') {
+                    steps {
+                        dir ("${REPO_NAME}/tests") {
+                            withTools(params.TOOLS_VERSION) {
+                                createVenv(reqFile: "requirements.txt")
+                                withVenv {
+                                    dir("i2c_rpi_hardware") {
+                                        withXTAG(["XVF3610_INT"]) {  xtagIds ->
+                                            sh "echo ${xtagIds}"
+                                            runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            post {
+                cleanup {
+                    xcoreCleanSandbox()
+                }
+            }
+        } // stage "🔧 I2C HW Tests"
+
         stage('🏗️ Build and test') {
             agent {
                 label 'x86_64 && linux && documentation'
@@ -52,6 +101,7 @@ pipeline {
                         }
 
                         dir(REPO_NAME){
+                            sh ""
                             checkoutScmShallow()
                         }
                     }
@@ -266,47 +316,47 @@ pipeline {
             }
         }  // Build host apps
 
-        stage('🔧 I2C HW Tests') {
-            agent {
-                label 'xvf3610_int'
-            }
+        // stage('🔧 I2C HW Tests') {
+        //     agent {
+        //         label 'xvf3610_int'
+        //     }
 
-            stages {
-                stage('Checkout') {
-                    steps {
+        //     stages {
+        //         stage('Checkout') {
+        //             steps {
 
-                        println "Stage running on ${env.NODE_NAME}"
+        //                 println "Stage running on ${env.NODE_NAME}"
 
-                        dir(REPO_NAME){
-                            checkoutScmShallow()
-                        }
-                    }
-                }
-                stage('I2C DFU tests') {
-                    steps {
-                        dir ("${REPO_NAME}/tests") {
-                            withTools(params.TOOLS_VERSION) {
-                                createVenv(reqFile: "requirements.txt")
-                                withVenv {
-                                    dir("i2c_rpi_hardware") {
-                                        withXTAG(["XVF3610_INT", "XVF3610_INT", "XVF3610_INT"]) {  xtagIds ->
-                                            sh "echo ${xtagIds}"
-                                            runPytest("-n=1 --adapter-id ${xtagIds[0]}")
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        //                 dir(REPO_NAME){
+        //                     checkoutScmShallow()
+        //                 }
+        //             }
+        //         }
+        //         stage('I2C DFU tests') {
+        //             steps {
+        //                 dir ("${REPO_NAME}/tests") {
+        //                     withTools(params.TOOLS_VERSION) {
+        //                         createVenv(reqFile: "requirements.txt")
+        //                         withVenv {
+        //                             dir("i2c_rpi_hardware") {
+        //                                 withXTAG(["XVF3610_INT"]) {  xtagIds ->
+        //                                     sh "echo ${xtagIds}"
+        //                                     runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+        //                                 }
+        //                             }
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     }
             
-            post {
-                cleanup {
-                    xcoreCleanSandbox()
-                }
-            }
-        } // stage "Test on hardware"
+        //     post {
+        //         cleanup {
+        //             xcoreCleanSandbox()
+        //         }
+        //     }
+        // } // stage "🔧 I2C HW Tests"
 
         stage('🔧 Hardware Tests') {
             agent {
