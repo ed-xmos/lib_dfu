@@ -202,6 +202,11 @@ static struct dfu_getstatus get_status()
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
+  if (response.deferred_request != 0) {
+    response = dfu_request_with_arguments(response.deferred_request, payload, 0, NULL);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+
   struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
   return ret;
 }

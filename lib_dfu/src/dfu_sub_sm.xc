@@ -7,7 +7,7 @@
 #include <string.h>
 
 #define DEBUG_UNIT DFU_PROFILER
-#define DEBUG_PRINT_ENABLE_DFU_PROFILER 1
+#define DEBUG_PRINT_ENABLE_DFU_PROFILER 0
 #include "debug_print.h"
 #include "xassert.h"
 
@@ -98,6 +98,7 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
       t_profile_first_erase = t_profiler_end - t_profiler_start;
 
       sub_transition_dnload(DNLOAD_ERASING);
+      response.status = DFU_OK;
 
       break;
 
@@ -121,12 +122,14 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
           t_profiler :> t_profiler_end;
           t_profile_first_write = t_profiler_end - t_profiler_start;
         }
+        response.status = DFU_OK;
 
       } else if (erase_status == DFU_FLASH_BUSY) {
         // still erasing, remain in this state and wait for next poll
+        response.status = DFU_OK;
+
       } else {
         response.status = DFU_errERASE;
-        return response;
       }
       break;
 
@@ -137,6 +140,9 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
         if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
           response.status = DFU_errWRITE;
           return response;
+        } else {
+          // remain in this state and wait for next page to write
+          response.status = DFU_OK;
         }
       }
       break;
@@ -144,10 +150,9 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
       default:
         sub_state = DNLOAD_SYNC;
         response.status = DFU_errUNKNOWN;
-        return response;
+        break;
   }
 
-  response.status = DFU_OK;
   return response;
 }
 
@@ -157,6 +162,7 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
   int32_t page_size_bytes = flash_get_page_size();
   uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
 
+  sub_state = DNLOAD_SYNC;
   poll_timeout = POLL_TIMEOUT_DNLOAD_MANIFEST_MSEC;
 
   if (page_size_bytes > DFU_FLASH_PAGE_SIZE_BYTES) {
