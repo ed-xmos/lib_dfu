@@ -77,23 +77,12 @@ static size_t load_file(const char *file_name, unsigned char **bytes)
   return length;
 }
 
-static size_t call_verify_suffix(const unsigned char *bytes, size_t length, struct device_id device_id)
-{
-  size_t stripped_length = verify_suffix(bytes, length, device_id);
-
-  if (!quiet) {
-    printf("no problem found with suffix\n");
-  }
-
-  return stripped_length;
-}
-
 struct inputs read_write_upgrade_inputs(const char *boot_file_name, struct device_id device_id)
 {
   struct inputs inputs;
   memset(&inputs, 0, sizeof(struct inputs));
   inputs.boot.length = load_file(boot_file_name, &inputs.boot.bytes);
-  inputs.boot.length = call_verify_suffix(inputs.boot.bytes, inputs.boot.length, device_id);
+  inputs.boot.length = verify_suffix(inputs.boot.bytes, inputs.boot.length, device_id);
   return inputs;
 }
 
