@@ -7,6 +7,7 @@
 #include "input_reader.h"
 
 int write_upgrade(struct inputs inputs, unsigned block_size);
+int read_upload(unsigned char *buffer, int size, unsigned block_size);
 
 int detach_and_bus_reset(void);
 

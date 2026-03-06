@@ -241,3 +241,33 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
 
   return 0;
 }
+
+static int upload_file(const unsigned char *buffer, size_t length, unsigned block_size)
+{
+  size_t byte_count = 0;
+  unsigned block_count = 0;
+  struct dfu_getstatus getstatus;
+
+  if (!quiet) {
+    printf("start upload of %d bytes, block size %d\n", length, block_size);
+  }
+}
+
+int read_upload(unsigned char *buffer, int size, unsigned block_size)
+{
+  if (!quiet) {
+    printf("read upload %d bytes\n", size);
+  }
+
+  if (detach_and_bus_reset() != 0) {
+    return 1;
+  }
+
+  if (upload_file(buffer, size, block_size) != 0) {
+    return 2;
+  }
+
+  printf("upload read successful\n");
+
+  return 1;
+}

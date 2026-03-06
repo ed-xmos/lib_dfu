@@ -17,4 +17,6 @@ struct inputs read_write_upgrade_inputs(const char *boot_file_name, struct devic
 
 void cleanup_inputs(struct inputs *inputs);
 
+int write_upload_file_to_disk();
+
 #endif

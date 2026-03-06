@@ -25,27 +25,49 @@ int main(int argc, char **argv)
       const size_t max_dnload_size = fifteen_bits_max * options.block_size;
 
       if (inputs.boot.length > max_dnload_size) {
-        PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n",
-                        inputs.boot.length, max_dnload_size);
+        PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n", inputs.boot.length, max_dnload_size);
         return 1;
       }
 
-      if (hal_connect(options.device_id) != 0) // will do a check that suffix IDs
-        return 1;                              // match the running target
+      if (hal_connect(options.device_id) != 0) {
+        return 1;
+      }
 
       ret = write_upgrade(inputs, options.block_size);
 
-      if (ret == 0)
+      if (ret == 0) {
         hal_reboot();
+      }
 
       hal_disconnect();
       cleanup_inputs(&inputs);
       break;
     }
 
-    case DETACH_AND_BUS_RESET: {
-      if (hal_connect(options.device_id) != 0)
+    case UPLOAD: {
+      printf("Uploading\n");
+
+      if (hal_connect(options.device_id) != 0) {
         return 1;
+      }
+
+      unsigned char *buffer;
+      int size;
+      ret = read_upload(buffer, size, options.block_size);
+
+      hal_disconnect();
+
+      ret = write_upload_file_to_disk();
+      if (ret != 0) {
+        printf("write binary upload file to disk failed\n");
+      }
+      break;
+    }
+
+    case DETACH_AND_BUS_RESET: {
+      if (hal_connect(options.device_id) != 0) {
+        return 1;
+      }
 
       ret = detach_and_bus_reset();
 
@@ -95,8 +117,9 @@ int main(int argc, char **argv)
       break;
   }
 
-  if (ret != 0)
+  if (ret != 0) {
     return 1;
+  }
 
   return 0;
 }
