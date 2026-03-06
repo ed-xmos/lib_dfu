@@ -5,10 +5,11 @@
 #include <platform.h>
 #include <stdio.h>
 #include <stddef.h>
+#include <string.h>
+#include <stdint.h>
 #include <print.h>
 #include <string.h>
 #include <quadflash.h>
-// #include <quadflashlib.h>
 
 #include <unity.h>
 
@@ -56,20 +57,20 @@ void detach()
 FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
 {
   struct dfu_getstatus ret;
-  int block_count = 0;
-  size_t read;
+  int32_t block_count = 0;
+  int32_t read;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
   while (!feof(bin_file)) {
     printintln(block_count);
 
-    read = fread(block, 1, (size_t)block_size, bin_file);
-    assert(read <= (size_t)block_size);
+    read = (int32_t)fread(block, 1, (size_t)block_size, bin_file);
+    assert(read <= (int32_t)block_size);
 
     if (read == 0)
       break;
 
-    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, block_count);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, &block_count);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
     do {
@@ -83,7 +84,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     block_count++;
   }
 
-  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
@@ -122,7 +123,7 @@ FILE * verify(FILE * bin_file, int block_size)
     if (ret == 0)
       break;
 
-    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, actual, (size_t)block_size, NULL);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, actual, block_size, NULL);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_LESS_OR_EQUAL_INT32(block_size, response.return_data_len);
 

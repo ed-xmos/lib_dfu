@@ -33,6 +33,7 @@ static unsigned t_profile_first_erase = 0;
 static unsigned t_profile_first_write = 0;
 // static unsigned t_profile_second_write = 0;
 
+#if DEBUG_PRINT_ENABLE_DFU_PROFILER
 static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
 {
   unsafe {
@@ -44,6 +45,7 @@ static const char * unsafe dnload_sub_state_str(enum dnload_sub_state s)
     }
   }
 }
+#endif
 
 static void sub_transition_dnload(enum dnload_sub_state new)
 {
