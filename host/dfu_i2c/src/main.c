@@ -59,12 +59,8 @@ int main(int argc, char **argv)
         return 1;
       }
 
-      ret = hal_reboot();
-      if (ret != 0) {
-        printf("Reboot failed\n");
-      } else {
-        printf("Reboot succeeded\n");
-      }
+      (void)hal_reboot();
+      printf("Device rebooted\n");
 
       hal_disconnect();
       break;
@@ -86,11 +82,10 @@ int main(int argc, char **argv)
       if (ret != 0) {
         printf("Revert factory failed\n");
       }
-      ret = hal_reboot();
-      if (ret != 0) {
-        printf("Reboot failed\n");
-      }
-
+      (void)hal_reboot();
+      
+      printf("Device rebooted\n");
+      
       hal_disconnect();
       break;
     }

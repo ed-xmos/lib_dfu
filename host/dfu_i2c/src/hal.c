@@ -160,6 +160,9 @@ int hal_reboot(void)
     return 1;
   }
 
+  /* Allow device turn-around time are reboot */
+  sleep_milliseconds(500);
+
   return 0;
 }
 #endif
