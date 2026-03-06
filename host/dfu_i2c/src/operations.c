@@ -91,15 +91,30 @@ static int check_status(struct dfu_getstatus *getstatus)
     return 2;
   }
 
-  static unsigned last_timeout = 0;
+  static unsigned last_timeout = -1;
   if (!quiet) {
-    printf("poll timeout %u msec\n", getstatus->poll_timeout_msec);
-  } else if (getstatus->poll_timeout_msec != last_timeout) {
-    last_timeout = getstatus->poll_timeout_msec;
-    printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
+    if (getstatus->poll_timeout_msec != last_timeout) {
+      last_timeout = getstatus->poll_timeout_msec;
+      printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
+    }
   }
 
   return 0;
+}
+
+static void fetch_descriptor(void)
+{
+  uint8_t descriptor_payload[DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES];
+  if (hal_read_command(XMOS_DFU_GET_DESCRIPTOR, descriptor_payload, DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) != 0) {
+    printf("Fetch descriptor failed\n");
+
+  } else {
+    printf("device descriptor: bcdDevice 0x%04X, bmAttributes 0x%02X, mode 0x%02X (%s)\n",
+           le32toh((descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] << 8) | descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX]),
+           descriptor_payload[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX],
+           descriptor_payload[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX],
+           descriptor_payload[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX] == DFU_MODE_DFU ? "DFU" : "Runtime");
+  }
 }
 
 int detach_and_bus_reset(void)
@@ -108,17 +123,10 @@ int detach_and_bus_reset(void)
     printf("detach and bus reset\n");
   }
 
-  uint8_t descriptor_payload[DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES];
-  if (hal_read_command(XMOS_DFU_GET_DESCRIPTOR, descriptor_payload, DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) != 0) {
-    return 1;
-  } else {
-    printf("device descriptor: bcdDevice 0x%04X, bmAttributes 0x%02X, mode 0x%02X\n",
-           le32toh((descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] << 8) | descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX]),
-           descriptor_payload[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX],
-           descriptor_payload[DFU_GETDESCRIPTOR_MODE_FLAG_INDEX]);
-  }
-
   if (check_state(STATE_APP_IDLE) == 0) {
+    
+    fetch_descriptor();
+
     if (hal_write_command(DFU_DETACH, NULL, 0) != 0) {
       return 2;
     }
@@ -142,6 +150,8 @@ int detach_and_bus_reset(void)
   }
 
   printf("detach and bus reset successful\n");
+
+  fetch_descriptor();
 
   return 0;
 }
@@ -175,6 +185,9 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
 
       if (getstatus.state == STATE_DFU_DOWNLOAD_IDLE && getstatus.poll_timeout_msec != 0) {
         printf("Warning: unexpected non-zero timeout when in Download idle: %d ms\n", getstatus.poll_timeout_msec);
+      }
+      if (getstatus.state == STATE_DFU_DOWNLOAD_BUSY && getstatus.poll_timeout_msec == 0) {
+        printf("Warning: unexpected zero timeout when in Download busy: %d ms\n", getstatus.poll_timeout_msec);
       }
 
       sleep_milliseconds(getstatus.poll_timeout_msec);

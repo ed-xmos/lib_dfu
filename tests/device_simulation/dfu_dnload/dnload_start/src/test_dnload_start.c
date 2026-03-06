@@ -80,9 +80,9 @@ void test_dnload_start(void) {
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
   get_state_and_check(STATE_DFU_DOWNLOAD_SYNC);
-
   get_status_and_check(DFU_OK, STATE_DFU_DOWNLOAD_IDLE);
 
-  TEST_ASSERT_EQUAL_INT(1, flash_open);
-  TEST_ASSERT_EQUAL_INT(expected, erase_requested_size);
+  /* flash is still not open as we now wait for a full page before flash access, as we need get-status request for deferred tasks */
+  TEST_ASSERT_EQUAL_INT(0, flash_open);
+  TEST_ASSERT_EQUAL_INT(0, erase_requested_size);
 }

@@ -197,10 +197,14 @@ static void get_state_and_check(enum dfu_state expected_state)
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
-static struct dfu_getstatus get_status()
+static struct dfu_getstatus get_status(enum dfu_request *deferred_request)
 {
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  if (response.deferred_request != 0 && deferred_request != NULL) {
+    *deferred_request = response.deferred_request;
+  }
 
   struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
   return ret;
@@ -214,8 +218,14 @@ void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t bl
   get_state_and_check(STATE_DFU_DOWNLOAD_SYNC);
 
   do {
-    ret = get_status();
+    enum dfu_request deferred_request = 0;
+    ret = get_status(&deferred_request);
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
+
+    if (deferred_request != 0) {
+      response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+      TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+    }
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_DOWNLOAD_BUSY);
 
@@ -231,8 +241,14 @@ void dnload_zero(void) {
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
-    ret = get_status();
+    enum dfu_request deferred_request = 0;
+    ret = get_status(&deferred_request);
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
+    
+    if (deferred_request != 0) {
+      response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+      TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+    }
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_MANIFEST);
 
