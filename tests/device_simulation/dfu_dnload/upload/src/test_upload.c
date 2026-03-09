@@ -9,9 +9,6 @@
 #include <xclib.h>
 #include <xs1.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #define DEBUG_UNIT TEST
 #define DEBUG_PRINT_ENABLE_TEST 1
 #include "debug_print.h"
