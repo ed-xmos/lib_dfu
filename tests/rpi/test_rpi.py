@@ -50,6 +50,18 @@ def detach_and_check(app, expected):
     assert expected in value, f"Unexpected device value, expected {expected}, but got {value}"
 
 
+def revert_factory_and_check(host_app, expected):
+    proc = subprocess.run(f"{host_app} revert_factory".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0
+
+    time.sleep(0.5) # TODO - remove
+
+    detach_and_check(host_app, expected)
+
+
 def test_rpi():
     # Check for dfu_utility
     host_file_path =  pathlib.Path(__file__).parent / "../../host/dfu_i2c/bin/dfu_i2c"
@@ -66,7 +78,6 @@ def test_rpi():
     # Check that the test file is not empty
     assert test_bin_file.stat().st_size > 0, f"Test file {test_bin_file} is empty."
 
-    # If we reach this point, the test file exists and is not empty
     print(f"Found host app {host_file_path}.")
     print(f"Found suffix app {suffix_file_path}.")
     print(f"Found test file {test_bin_file}.")
@@ -74,6 +85,9 @@ def test_rpi():
     target_dfu_file = "i2c_update.dfu"
 
     subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_bin_file} {target_dfu_file}".split(), text=True)
+
+    # Clear device is needed, as we don't have "xflash --erase-all ..." available
+    revert_factory_and_check(host_file_path, factory_device)
 
     # Test #1 - detach
     detach_and_check(host_file_path, factory_device)
@@ -93,14 +107,7 @@ def test_rpi():
     # TODO - run upload, check file == i2c_update.dfu
 
     # Test
-    # TODO - run revert, detach and check (value == factory_device)
-    proc = subprocess.run(f"{host_file_path} revert_factory".split(), text=True, capture_output=True)
-    if proc.returncode != 0:
-        print(proc.stdout)
-        print(proc.stderr)
-    assert proc.returncode == 0
+    # TODO - run download overwriting image, (value == overwrite_device)
 
-    # Hold-off to alow teh device to reboot
-    time.sleep(0.5)
-
-    detach_and_check(host_file_path, factory_device)
+    # Test
+    revert_factory_and_check(host_file_path, factory_device)
