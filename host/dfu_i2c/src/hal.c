@@ -157,10 +157,12 @@ int hal_reboot(void)
   }
 
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
+    /* Allow device turn-around time after reboot */
+    sleep_milliseconds(500);
     return 1;
   }
 
-  /* Allow device turn-around time are reboot */
+  /* Allow device turn-around time after reboot */
   sleep_milliseconds(500);
 
   return 0;

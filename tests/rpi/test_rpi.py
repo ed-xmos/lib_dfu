@@ -57,8 +57,6 @@ def revert_factory_and_check(host_app, expected):
         print(proc.stderr)
     assert proc.returncode == 0
 
-    time.sleep(0.5) # TODO - remove
-
     detach_and_check(host_app, expected)
 
 
@@ -98,8 +96,6 @@ def test_rpi():
         print(proc.stdout)
         print(proc.stderr)
     assert proc.returncode == 0
-
-    time.sleep(0.5)
 
     detach_and_check(host_file_path, upgrade_device)
 
