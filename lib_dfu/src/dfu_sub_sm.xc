@@ -78,16 +78,6 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
   switch (sub_state) {
     case DNLOAD_SYNC:
       poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
-      if (!flash_is_connected()) {
-        t_profiler :> t_profiler_start;
-        if (flash_init() != DFU_FLASH_OK) {
-          // response = error_condition(DFU_errTARGET, 0);
-          response.status = DFU_errWRITE;
-          return response;
-        }
-        t_profiler :> t_profiler_end;
-        t_profile_connect = t_profiler_end - t_profiler_start;
-      }
 
       t_profiler :> t_profiler_start;
       // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
@@ -190,7 +180,7 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
 void sub_sm_print_profiler(void)
 {
   debug_printf("DFU: profile results:\n");
-  debug_printf("  Connect time: %u ms\n", t_profile_connect);
-  debug_printf("  First erase time: %u ms\n", t_profile_first_erase);
-  debug_printf("  First write time: %u ms\n", t_profile_first_write);
+  debug_printf("  Connect time: %u ms (target %d ms)\n", t_profile_connect, POLL_TIMEOUT_DNLOAD_ENTRY_MSEC);
+  debug_printf("  First erase time: %u ms (target %d ms)\n", t_profile_first_erase, POLL_TIMEOUT_DNLOAD_ERASE_MSEC);
+  debug_printf("  First write time: %u ms (target %d ms)\n", t_profile_first_write, POLL_TIMEOUT_DNLOAD_FIRST_WRITE_MSEC);
 }

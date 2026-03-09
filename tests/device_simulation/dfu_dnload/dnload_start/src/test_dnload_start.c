@@ -50,6 +50,7 @@ static void get_state_and_check(enum dfu_state expected_state)
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
+
 static void get_status_and_check(enum dfu_status expected_status, enum dfu_state expected_state)
 {
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
@@ -58,6 +59,14 @@ static void get_status_and_check(enum dfu_status expected_status, enum dfu_state
   TEST_ASSERT_EQUAL_UINT8(expected_state, payload[DFU_GETSTATUS_STATE_INDEX]);
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
 
 void test_dnload_start(void) {
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
@@ -70,10 +79,11 @@ void test_dnload_start(void) {
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
+
   get_state_and_check(STATE_DFU_IDLE);
 
-  TEST_ASSERT_EQUAL_INT(0, flash_open);
+  TEST_ASSERT_EQUAL_INT(1, flash_open);
 
   int32_t block_num = 0;
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, sizeof(block), &block_num);
@@ -82,7 +92,6 @@ void test_dnload_start(void) {
   get_state_and_check(STATE_DFU_DOWNLOAD_SYNC);
   get_status_and_check(DFU_OK, STATE_DFU_DOWNLOAD_IDLE);
 
-  /* flash is still not open as we now wait for a full page before flash access, as we need get-status request for deferred tasks */
-  TEST_ASSERT_EQUAL_INT(0, flash_open);
+  TEST_ASSERT_EQUAL_INT(1, flash_open);
   TEST_ASSERT_EQUAL_INT(0, erase_requested_size);
 }

@@ -1,32 +1,66 @@
+# Copyright 2026 XMOS LIMITED.
+# This Software is subject to the terms of the XMOS Public Licence: Version 1.
 
 import pytest
 import os
 import pathlib
 import subprocess
+import re
+import time
 
-def parse_descriptor(line):
-    device_value = ""
-    attribute = ""
-    mode = ""
-    for token in line.split(" "):
-        token = token.strip(",")
-        if token.startswith("0x"):
-            if not device_value:
-                device_value = token
-            elif not attribute:
-                attribute = token
-            elif not mode:
-                mode = token
+factory_device = "0x0101"
+upgrade_device = "0x0200"
+runtime_mode = "0x01"
+dfu_mode = "0x02"
 
-    return (device_value, attribute, mode)
+def parse_descriptor(output):
+    group_values = []
+    descriptor_pattern = r"[a-zA-Z\s]+: bcdDevice (?P<value>[0-9A-Fx]+), [a-zA-Z]+ (?P<attributes>[0-9A-Fx]+), [a-zA-Z]+ (?P<mode>[0-9A-Fx]+) [(](?P<modename>[a-zA-Z]+)[)]"
+    for line in output.splitlines():
+        result = re.finditer(descriptor_pattern, line)
+        for match in result:
+            group_values.append(match.group("value", "attributes", "mode", "modename"))
+
+    return group_values
+
+
+def detach_and_check(app, expected):
+    proc = subprocess.run(f"{app} detach_and_bus_reset".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0, "Host DFU app failed comms"
+
+    group_values = parse_descriptor(proc.stdout)
+    # print(group_values)
+    assert len(group_values) > 0
+
+    (value, attributes, mode, modename) = group_values[0]
+    if len(group_values) == 2:
+        if runtime_mode in mode:
+            print(f"Device started in runtime mode {mode}")
+
+        (value, attributes, mode, modename) = group_values[1]
+        if dfu_mode in mode:
+            print("Device transition to DFU mode")
+    else:
+        if dfu_mode in mode:
+            print("Device already in DFU mode")
+
+    assert expected in value, f"Unexpected device value, expected {expected}, but got {value}"
+
+
+def revert_factory_and_check(host_app, expected):
+    proc = subprocess.run(f"{host_app} revert_factory".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0
+
+    detach_and_check(host_app, expected)
 
 
 def test_rpi():
-    factory_device = "0x0101"
-    upgrade_device = "0x0200"
-    runtime_mode = "0x001"
-    dfu_mode = "0x02"
-
     # Check for dfu_utility
     host_file_path =  pathlib.Path(__file__).parent / "../../host/dfu_i2c/bin/dfu_i2c"
     assert host_file_path.exists(), f"Host file path {host_file_path} does not exist"
@@ -36,50 +70,40 @@ def test_rpi():
     assert suffix_file_path.exists(), f"Test file {suffix_file_path} does not exist."
 
     # Check that the test file exists
-    test_file_path = pathlib.Path(__file__).parent / "i2c_update.bin"
-    assert test_file_path.exists(), f"Test file {test_file_path} does not exist."
+    test_bin_file = pathlib.Path(__file__).parent / "i2c_update.bin"
+    assert test_bin_file.exists(), f"Test file {test_bin_file} does not exist."
 
     # Check that the test file is not empty
-    assert test_file_path.stat().st_size > 0, f"Test file {test_file_path} is empty."
+    assert test_bin_file.stat().st_size > 0, f"Test file {test_bin_file} is empty."
 
-    # If we reach this point, the test file exists and is not empty
-    print(f"Test file {test_file_path} exists and is not empty.")
+    print(f"Found host app {host_file_path}.")
+    print(f"Found suffix app {suffix_file_path}.")
+    print(f"Found test file {test_bin_file}.")
 
     target_dfu_file = "i2c_update.dfu"
 
-    subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_file_path} {target_dfu_file}".split(), text=True)
+    subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_bin_file} {target_dfu_file}".split(), text=True)
 
-    # Test #1
-    proc = subprocess.run(f"{host_file_path} detach_and_bus_reset".split(), text=True, capture_output=True)
-    print(proc.stdout)
-    assert proc.returncode == 0, "Host DFU app failed comms"
+    # Clear device is needed, as we don't have "xflash --erase-all ..." available
+    revert_factory_and_check(host_file_path, factory_device)
 
-#    print(len(proc.stdout))
+    # Test #1 - detach
+    detach_and_check(host_file_path, factory_device)
 
-    lines = proc.stdout.splitlines()
-    (fw_value, fw_attr, fw_mode) = parse_descriptor(lines[0])
-    (fw_dfu_value, fw_dfu_attr, fw_dfu_mode) = parse_descriptor(lines[-1])
-    print(f"desc: {fw_value}, {fw_attr}, {fw_mode}")
-    print(f"desc: {fw_dfu_value}, {fw_dfu_attr}, {fw_dfu_mode}")
+    # Test - run upgrade, detech and check (value == upgrade_device)
+    proc = subprocess.run(f"{host_file_path} write_upgrade {target_dfu_file}".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0
 
-    if runtime_mode in fw_mode:
-        print(f"Device started in runtime mode {fw_mode}")
-        if dfu_mode in [fw_dfu_mode, fw_mode]:
-            print("Device transition to DFU mode")
-    elif dfu_mode in fw_dfu_mode:
-        print("Device already in DFU mode")
+    detach_and_check(host_file_path, upgrade_device)
 
-    assert factory_device in fw_dfu_value, f"Unexpected device value, expected factory ({factory_device}), got {fw_dfu_value}"
-
-    proc = subprocess.run(f"{host_file_path} write_upgrade {test_file_path}".split(), text=True, capture_output=True)
-    assert proc.returncode
-
-    # Test #2
-    # TODO - run upgrade, detech, check value == dfu_device
-
-    # Test #3
+    # Test
     # TODO - run upload, check file == i2c_update.dfu
 
-    # Test #4
-    # TODO - run revert, detach, check value == facotry_device
+    # Test
+    # TODO - run download overwriting image, (value == overwrite_device)
 
+    # Test
+    revert_factory_and_check(host_file_path, factory_device)

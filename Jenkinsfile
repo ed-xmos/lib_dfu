@@ -374,7 +374,7 @@ pipeline {
                         }
                     }
                 }
-                stage('Prepare upgrade slot test') {
+                stage('System Hardware Test') {
                     steps {
                         dir ("${REPO_NAME}/tests") {
                             withTools(params.TOOLS_VERSION) {

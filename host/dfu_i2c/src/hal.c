@@ -157,8 +157,13 @@ int hal_reboot(void)
   }
 
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
+    /* Allow device turn-around time after reboot */
+    sleep_milliseconds(500);
     return 1;
   }
+
+  /* Allow device turn-around time after reboot */
+  sleep_milliseconds(500);
 
   return 0;
 }
@@ -175,8 +180,12 @@ int hal_revert_factory(void)
   }
 
   if (hal_write_command(XMOS_DFU_REVERTFACTORY, NULL, 0) != 0) {
+    /* Allow time for deferred task to action the revert request */
+    sleep_milliseconds(500);
     return 1;
   }
+  /* Allow time for deferred task to action the revert request */
+  sleep_milliseconds(500);
   return 0;
 }
 

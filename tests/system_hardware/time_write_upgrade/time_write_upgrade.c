@@ -71,6 +71,15 @@ static struct dfu_getstatus get_status()
   return ret;
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 void write_begin(void)
 {
   enum dfu_state state;
@@ -99,7 +108,7 @@ void write_begin(void)
   assert(ret == 0);
 
   t_start(4);
-  dfu_bus_reset();
+  bus_reset();
   t_end();
   t_start(5);
   state = get_state();

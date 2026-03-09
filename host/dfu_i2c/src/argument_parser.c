@@ -19,6 +19,7 @@ usage:      dfu_i2c --help\n\
             dfu_i2c OPTIONS detach_and_bus_reset\n\
             dfu_i2c OPTIONS reboot\n\
             dfu_i2c OPTIONS revert_factory\n\
+            dfu_i2c OPTIONS upload <file.bin>\n\
 \n\
 OPTIONS:    --quiet\n\
             --i2c-address 0x%02X (default)\n\
@@ -30,17 +31,18 @@ OPTIONS:    --quiet\n\
 const char *operation_str(int operation)
 {
   switch (operation) {
-    case WRITE_UPGRADE:        return "write_upgrade";
-    case DETACH_AND_BUS_RESET: return "detach_and_bus_reset";
-    case REBOOT:               return "reboot";
-    case REVERT_FACTORY:       return "revert_factory";
+    case WRITE_UPGRADE:         return "write_upgrade";
+    case DETACH_AND_BUS_RESET:  return "detach_and_bus_reset";
+    case REBOOT:                return "reboot";
+    case REVERT_FACTORY:        return "revert_factory";
+    case UPLOAD:                return "upload";
     default: return "?";
   }
 }
 
 int parse_operation(const char *arg)
 {
-  const int operations[] = {WRITE_UPGRADE, DETACH_AND_BUS_RESET, REBOOT, REVERT_FACTORY, UNKNOWN};
+  const int operations[] = {WRITE_UPGRADE, DETACH_AND_BUS_RESET, REBOOT, REVERT_FACTORY, UPLOAD, UNKNOWN};
   for (int i = 0; operations[i] != UNKNOWN; i++) {
     if (strcmp(arg, operation_str(operations[i])) == 0)
       return operations[i];
@@ -104,6 +106,20 @@ struct options parse_arguments(int argc, char **argv)
           o.arguments[1] = NULL;
           break;
 
+        case UPLOAD:
+          if (argc != optind + 2) {
+            if (argc < optind + 2)
+              PRINT_ERROR("Not enough command line arguments\n");
+            else
+              PRINT_ERROR("Too many command line arguments\n");
+
+            print_usage(stderr);
+            exit(1);
+          }
+          o.arguments[0] = argv[optind + 1];
+          o.arguments[1] = NULL;
+          break;
+
         case DETACH_AND_BUS_RESET:
           if (argc != optind + 1) {
             print_usage(stderr);
@@ -154,6 +170,10 @@ struct options parse_arguments(int argc, char **argv)
             break;
 
           case REVERT_FACTORY:
+            printf("%s\n", operation_str(o.operation));
+            break;
+
+          case UPLOAD:
             printf("%s\n", operation_str(o.operation));
             break;
 

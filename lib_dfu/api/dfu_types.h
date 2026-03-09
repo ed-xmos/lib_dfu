@@ -63,10 +63,11 @@ enum dfu_request {
   // Not actual requests, used internally to indicate deferred actions to be taken after responding to a request.
   DFU_DEFERRED_ACTION_REBOOT = 20,
   DFU_DEFERRED_ACTION_REBOOT_TO_DFU = 21,
-  // DFU_DEFERRED_ACTION_FLASH_CONNECT = 22,
-  DFU_DEFERRED_ACTION_FLASH_WRITE = 22,
-  DFU_DEFERRED_ACTION_FLASH_MANIFEST = 23,
-  // DFU_DEFERRED_ACTION_FLASH_DISCONNECT = 24,
+  DFU_DEFERRED_ACTION_REVERT_FACTORY = 22,  // Triggered from REVERTFACTORY in DFU_IDLE
+
+  DFU_DEFERRED_ACTION_FLASH_CONNECT = 30,   // Triggered from bus reset in APP_DETACH
+  DFU_DEFERRED_ACTION_FLASH_WRITE = 31,     // Triggered from get-status request
+  DFU_DEFERRED_ACTION_FLASH_MANIFEST = 32,  // Triggered from get-status request
 
   /* For lib_device_control access this will be 0x71 due to read bit */
   XMOS_DFU_REVERTFACTORY = 0xF1,
