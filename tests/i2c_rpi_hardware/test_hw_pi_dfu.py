@@ -3,6 +3,8 @@
 
 
 def test_dfu_commands(dfu_app_rpi):
+    """Test that the DFU app on the Raspberry Pi can be run and responds to --help."""
+
     result = dfu_app_rpi.run("--help")
     assert result.return_code == 2  # --help exits with 2 by design
     print(result.stdout + result.stderr)

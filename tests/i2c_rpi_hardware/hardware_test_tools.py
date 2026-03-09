@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Collection, Union
 from xtagctl import XtagctlDeviceNotConnected
 
+
 class RPiController:
     def __init__(self, conn, binary_path):
         self.conn = conn
@@ -18,6 +19,31 @@ class RPiController:
 
 
 def load_test_settings(adapter_ids):
+    """
+    Loads test settings from a local JSON file if it exists, otherwise uses defaults suitable for running in XMOS CI
+    To run locally, create a file at tests/i2c_rpi_hardware/local_test_settings.json with the following format:
+
+    {
+        "test settings": [
+            {
+                "adapter_id": "xxxxxxx",
+                "comment": "Adapter ID of the xTAG connected to the device, if not defined xtagctl is used. Default value is empty string"
+            },
+            {
+                "pi_server_ip": "192.168.1.xxx",
+                "comment": "IP address of the Raspberry Pi connected to the device. Default is empty"
+            },
+            {
+                "pi_server_login": "mylogin",
+                "comment": "Login username for the Raspberry Pi connected to the device. Default is empty"
+            },
+            {
+                "pi_server_password": "mypassword",
+                "comment": "Login password for the Raspberry Pi connected to the device. Default is empty"
+            }
+        ]
+    }
+    """
     settings_path = Path(__file__).parent / 'local_test_settings.json'
     settings = {}
     if settings_path.is_file():
@@ -32,7 +58,6 @@ def load_test_settings(adapter_ids):
         print(
             f"Using local test settings: {json.dumps(settings, sort_keys=True, indent=4)}"
         )
-    
     else:
         print(adapter_ids, adapter_ids[0])
         settings["adapter_id"] = adapter_ids[0]

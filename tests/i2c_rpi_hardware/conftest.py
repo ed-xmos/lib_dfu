@@ -32,6 +32,7 @@ def parse_adapter_ids(config):
 
 @pytest.fixture(scope="session")
 def adapter_ids(request):
+    # Parses the --adapter-id command line option and returns a list of adapter IDs or None if not provided
     return parse_adapter_ids(request.config)
 
 
@@ -42,6 +43,12 @@ def settings(adapter_ids):
 
 @pytest.fixture(scope="session")
 def dfu_app_rpi(settings):
+    """
+    Fixture to provide a DFU app controller for the Raspberry Pi.
+    Includes file copy of local sandbox code to the Pi, and building the DFU app on the Pi using cmake.
+    This is needed to allow for local build which is not dependent on Pi version (32b vs 64 etc.)
+    
+    """
     connect_kwargs = {}
     password = settings.get("pi_server_password")
     if password:

@@ -52,10 +52,13 @@ pipeline {
 
                         dir(REPO_NAME){
                             checkoutScmShallow()
+                            // Get dependencies (lib_device_control) for the I2C host tests on RPi
+                            dir("examples/i2c/device") {
+                                withTools(params.TOOLS_VERSION) {
+                                    sh 'cmake -G "Unix Makefiles" -B build'
+                                }
+                            }
                         }
-                        // TODO remove - use cmake to get deps
-                        sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
-                        sh 'tree'
                     }
                 }
                 stage('I2C DFU tests') {
