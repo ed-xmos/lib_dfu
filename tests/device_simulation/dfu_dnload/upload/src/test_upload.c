@@ -148,6 +148,15 @@ static void get_status_and_check(enum dfu_status expected_status, enum dfu_state
   TEST_ASSERT_EQUAL_UINT8(expected_state, payload[DFU_GETSTATUS_STATE_INDEX]);
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 void detach() {
   // TODO pass if we are already in DFU_IDLE from previous test.
 
@@ -156,14 +165,14 @@ void detach() {
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 }
 
 void reboot() {
   get_state_and_check(STATE_DFU_IDLE);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_APP_IDLE);
 }
 
@@ -189,8 +198,8 @@ void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_coun
   get_state_and_check(STATE_DFU_IDLE);
 
   /* Sanity checks */
+  TEST_ASSERT_TRUE(fl.flash_open);
   TEST_ASSERT_FALSE(fl.state_reading);
-  TEST_ASSERT_FALSE(fl.flash_open);
 }
 
 void verify(const uint8_t images[MAX_IMAGE_SIZE]) {
@@ -252,4 +261,6 @@ void test_upload_with_tail(void) {
   }
   
   reboot();
+
+  TEST_ASSERT_FALSE(fl.flash_open);
 }

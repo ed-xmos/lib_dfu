@@ -156,6 +156,15 @@ static struct dfu_getstatus get_status()
   return ret;
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 static enum dfu_status single_dnload_block(int block_num, size_t block_size, const char block[])
 {
   struct dfu_getstatus ret;
@@ -236,7 +245,7 @@ void dnload(int partitions, int block_size, int block_count)
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 
   for (int p = 0; p < 2; p++) {

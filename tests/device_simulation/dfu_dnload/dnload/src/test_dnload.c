@@ -223,7 +223,7 @@ void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t bl
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 
     if (deferred_request != 0) {
-      response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+      response = dfu_request(deferred_request);
       TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     }
     delay_microseconds(1);
@@ -246,7 +246,7 @@ void dnload_zero(void) {
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
     
     if (deferred_request != 0) {
-      response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+      response = dfu_request(deferred_request);
       TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     }
     delay_microseconds(1);
@@ -256,20 +256,29 @@ void dnload_zero(void) {
   TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 void detach() {
   get_state_and_check(STATE_APP_IDLE);
 
   dfu_request(DFU_DETACH);
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_request(XMOS_DFU_BUS_RESET);
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 }
 
 void reboot() {
   get_state_and_check(STATE_DFU_IDLE);
 
-  dfu_request(XMOS_DFU_BUS_RESET);
+  bus_reset();
   get_state_and_check(STATE_APP_IDLE);
 }
 
@@ -293,7 +302,7 @@ void dnload(const uint8_t images[MAX_IMAGE_SIZE], int32_t block_size, int32_t bl
     /* Sanity checks */
     TEST_ASSERT_FALSE(fl.state_erasing);
     TEST_ASSERT_FALSE(fl.state_writing);
-    TEST_ASSERT_FALSE(fl.flash_open);
+    TEST_ASSERT_TRUE(fl.flash_open);
     
     if (r != (repeats - 1)) {
       memset(fl.page_erased, 0, sizeof(fl.page_erased));
@@ -341,4 +350,6 @@ void test_dnload(void) {
   verify((const uint8_t *)images);
   
   reboot();
+  
+  TEST_ASSERT_FALSE(fl.flash_open);
 }

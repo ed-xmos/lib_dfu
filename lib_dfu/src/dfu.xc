@@ -189,6 +189,8 @@ static struct dfu_cmd_response state_detach(enum dfu_request request) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
   if (request == XMOS_DFU_BUS_RESET) {
     response = normal_transition(STATE_DFU_IDLE);
+    // TODO - USB DFU entry should send detach request from app init. After reboot triggered from DETACH.
+    response.deferred_request = DFU_DEFERRED_ACTION_FLASH_CONNECT;
 
   } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
     // no other requests expected, return to appIDLE, but respond with STALL.
@@ -200,6 +202,9 @@ static struct dfu_cmd_response state_detach(enum dfu_request request) {
 
 static struct dfu_cmd_response state_entry_dnload(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
+  // TOTO - use this
+  UNUSED(block_num);
+
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
   if (block_size_bytes <= 0) {
     response = error_condition(DFU_errADDRESS, 0);
@@ -273,7 +278,6 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, uin
       if (fifo_is_empty(dfu_fifo)) {
         flash_finalise_write();
         response = normal_transition(STATE_DFU_IDLE);
-        flash_deinit();
         
         sub_sm_print_profiler();
 
@@ -296,6 +300,9 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, uin
 }
 static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?block_num) {
+  // TOTO - use this
+  UNUSED(block_num);
+
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
   if (block_size_bytes <= 0) {
       response = normal_transition(STATE_DFU_MANIFEST_SYNC);
@@ -313,34 +320,24 @@ static struct dfu_cmd_response state_download_idle(const uint8_t (&?write_block)
 static struct dfu_cmd_response state_entry_upload(uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?read_length) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
-  if (!flash_is_connected()) {
-    // TODO - figure out how to defer the flash init.
-    if (flash_init() != DFU_FLASH_OK) {
-      response = error_condition(DFU_errTARGET, 0);
-      return response;
-    }
+  fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
+  
+  // TODO - profile this.
+  struct flash_data_status start_status = flash_start_read();
+  if (start_status.status != DFU_FLASH_OK) {
+    response = error_condition(DFU_errFILE, 0);
 
-    fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
-    
-    struct flash_data_status start_status = flash_start_read();
-    if (start_status.status != DFU_FLASH_OK) {
-      response = error_condition(DFU_errFILE, 0);
-
-    } else {
-      read_length = start_status.data;
-      // TODO - for no-clock-stretching we may have to read out-of-band
-      enum dfu_api_status upload = upload_block(read_block, block_size_bytes);
-      if (upload != DFU_API_SUCCESS) {
-        response = error_condition(DFU_errFILE, upload);
-      } else {
-        response = normal_transition(STATE_DFU_UPLOAD_IDLE);;
-        response.return_data_len = (read_length < block_size_bytes) ? read_length : block_size_bytes;
-        read_length -= block_size_bytes;
-      }
-    }
   } else {
-    // it is an error if flash is aready connected. Something has not cleaned up.
-    response = error_condition(DFU_errTARGET, 0);
+    read_length = start_status.data;
+    // TODO - for no-clock-stretching we may have to read out-of-band
+    enum dfu_api_status upload = upload_block(read_block, block_size_bytes);
+    if (upload != DFU_API_SUCCESS) {
+      response = error_condition(DFU_errFILE, upload);
+    } else {
+      response = normal_transition(STATE_DFU_UPLOAD_IDLE);;
+      response.return_data_len = (read_length < block_size_bytes) ? read_length : block_size_bytes;
+      read_length -= block_size_bytes;
+    }
   }
   return response;
 }
@@ -352,17 +349,17 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
     // Terminate read
     response = normal_transition(STATE_DFU_IDLE);
     response.return_data_len = 0;
-    flash_deinit();
 
   } else {
     enum dfu_api_status upload = upload_block(read_block, block_size_bytes);
     if (upload != DFU_API_SUCCESS) {
       response = error_condition(DFU_errFILE, upload);
+      
     } else {
       if (read_length < block_size_bytes) {
         response = normal_transition(STATE_DFU_IDLE);
         response.return_data_len = read_length;
-        flash_deinit();
+        
       } else {
         response.status = DFU_API_SUCCESS;
         response.return_data_len = block_size_bytes;
@@ -376,19 +373,14 @@ static struct dfu_cmd_response state_upload_idle(uint8_t (&?read_block)[DFU_TRAN
 static struct dfu_cmd_response action_revert_factory(void) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
 
-  if (flash_init() == DFU_FLASH_OK) {
-    int32_t sector_size = flash_get_sector_size();
-    enum flash_status erase_status = flash_erase_sector_async(sector_size);
-    if (erase_status != DFU_FLASH_BUSY) {
-      debug_printf("Factory revert: failed to start sector erase\n");
-    } else {
-      while (flash_erase_sector_async(sector_size) == DFU_FLASH_BUSY) {
-        // Wait
-      }
-    }
-    flash_deinit();
+  int32_t sector_size = flash_get_sector_size();
+  enum flash_status erase_status = flash_erase_sector_async(sector_size);
+  if (erase_status != DFU_FLASH_BUSY) {
+    debug_printf("Factory revert: failed to start sector erase\n");
   } else {
-    debug_printf("Factory revert: failed to init flash\n");
+    while (flash_erase_sector_async(sector_size) == DFU_FLASH_BUSY) {
+      // Wait
+    }
   }
   // We always succeed for now, is there a case to report error if there is no upgrade image to delete?
   response.status = DFU_API_SUCCESS;
@@ -448,7 +440,15 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       } else if (request == DFU_UPLOAD) {
         response = state_entry_upload(block, block_size_bytes, read_length);
 
+      } else if (request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+        if (flash_init() != DFU_FLASH_OK) {
+          response = error_condition(DFU_errTARGET, 0);
+        } else {
+          response.status = DFU_API_SUCCESS;
+        }
+
       } else if (request == XMOS_DFU_REVERTFACTORY) {
+        // TOD make deferred action for this.
         response = action_revert_factory();
         
       } else if (request == DFU_ABORT) {

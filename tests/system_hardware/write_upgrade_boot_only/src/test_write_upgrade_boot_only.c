@@ -46,6 +46,15 @@ static struct dfu_getstatus get_status(enum dfu_request *deferred_request)
   return ret;
 }
 
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
 void detach()
 {
   get_state_and_check(STATE_APP_IDLE);
@@ -53,7 +62,7 @@ void detach()
   dfu_detach();
   get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
+  bus_reset();
   get_state_and_check(STATE_DFU_IDLE);
 }
 
@@ -82,7 +91,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
       assert(ret.status == DFU_OK);
 
       if (deferred_request != 0) {
-        response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+        response = dfu_request(deferred_request);
         TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
         deferred_request = 0;
       }
@@ -105,7 +114,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
   assert(ret.status == DFU_OK);
 
   if (deferred_request != 0) {
-    response = dfu_request_with_arguments(deferred_request, payload, 0, NULL);
+    response = dfu_request(deferred_request);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   }
 
