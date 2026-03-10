@@ -217,6 +217,15 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
     return 6;
   }
 
+  uint8_t payload[sizeof(struct dfu_profile_data)];
+  printf("profile data size: %d\n", sizeof(struct dfu_profile_data));
+  if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != 0) {
+    printf("get profile failed\n");
+  } else {
+    struct dfu_profile_data *profile = (struct dfu_profile_data *)payload;
+    printf("profile data: %u, %u/%u, %u\n", profile->command_time, profile->command_index, profile->index_total, profile->cmd);
+  }
+
   return 0;
 }
 
