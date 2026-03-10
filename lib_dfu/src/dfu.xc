@@ -351,10 +351,7 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, uin
 
     } else {
       if (fifo_is_empty(dfu_fifo)) {
-        flash_finalise_write();
         response = normal_transition(STATE_DFU_IDLE);
-        
-        sub_sm_print_profiler();
 
       } else {
         response = normal_transition(STATE_DFU_MANIFEST);

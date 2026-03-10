@@ -177,15 +177,25 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
 
   // drain conversion buffer of partial page, if any
   int32_t remaining_bytes = fifo_size(dfu_fifo);
-  // this assumes that fifo is at least page sized.
+  if (remaining_bytes > page_size_bytes) {
+    remaining_bytes = page_size_bytes;
+  }
+  
   if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
-    memset(&page[remaining_bytes], 0xFF, page_size_bytes - remaining_bytes);
+    memset(&page[remaining_bytes], 0xFF, (page_size_bytes - remaining_bytes));
     if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
       response.status = DFU_errWRITE;
-      return response;
+    } else {
+      response.status = DFU_OK;
     }
+  } else {
+    response.status = DFU_errNOTDONE;
   }
-  response.status = DFU_OK;
+
+  if (fifo_is_empty(dfu_fifo)) {
+    flash_finalise_write();    
+    sub_sm_print_profiler();
+  }
   return response;
 }
 
