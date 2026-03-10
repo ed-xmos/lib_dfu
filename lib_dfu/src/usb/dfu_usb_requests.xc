@@ -130,6 +130,7 @@ int DFUProcessResetState(client interface i_dfu i)
          */
         inDFU = 1;
         // TODO - flag is sticky at the moment to ride through multiple resets from the host (Windows).
+        // Consider clearing flag on detection of enumeration.
     }
 
     struct dfu_request_params request = { XMOS_DFU_BUS_RESET, 0, 0, 0 };

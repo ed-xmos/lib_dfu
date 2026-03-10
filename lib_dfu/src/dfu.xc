@@ -119,11 +119,9 @@ static struct dfu_cmd_response error_condition(enum dfu_status code, int32_t ext
   return response;
 }
 
-static int32_t dfufifo_full(void)
+static int32_t dfufifo_is_page_ready(void)
 {
-  // TODO - check whether fifo_is_full is sensible check, if fifo size and transfer size are not multiples of each 
-  // other there could be some edge cases where this doesn't work as expected
-  return fifo_is_full(dfu_fifo);
+  return (fifo_size(dfu_fifo) >= DFU_FLASH_PAGE_SIZE_BYTES);
 }
 
 static struct dfu_cmd_response build_status(uint8_t block[], uint32_t timeout, struct dfu_cmd_response response) {
@@ -314,7 +312,7 @@ static struct dfu_cmd_response state_dnload_sync(enum dfu_request request, uint8
       response = error_condition(DFU_errUNKNOWN, 0);
 
     } else {
-      if (dfufifo_full()) {
+      if (dfufifo_is_page_ready()) {
         normal_transition(STATE_DFU_DOWNLOAD_BUSY);
         response = normal_transition(STATE_DFU_DOWNLOAD_SYNC);
         response.deferred_request = DFU_DEFERRED_ACTION_FLASH_WRITE;

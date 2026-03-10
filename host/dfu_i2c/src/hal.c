@@ -96,7 +96,6 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 int hal_write_command(int command, const unsigned char payload[], size_t num_bytes)
 #endif
 {
-  /* TODO - check this, block_num increments for every write */
   static uint16_t block_num = 0;
 
   if (!quiet) {

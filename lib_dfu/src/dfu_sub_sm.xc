@@ -140,6 +140,7 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
     case DNLOAD_WRITING:
       poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
       int32_t page_size_bytes = flash_get_page_size();
+      // TODO add fifo function to access pointer to memory to avoid this copy, if performance of this is an issue.
       if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
         if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
           response.status = DFU_errWRITE;
@@ -176,8 +177,7 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
 
   // drain conversion buffer of partial page, if any
   int32_t remaining_bytes = fifo_size(dfu_fifo);
-  // TODO - this assumes that fifo is page sized.
-  // If this is not the case, we may need to do multiple dequeues to drain the fifo.
+  // this assumes that fifo is at least page sized.
   if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
     memset(&page[remaining_bytes], 0xFF, page_size_bytes - remaining_bytes);
     if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
