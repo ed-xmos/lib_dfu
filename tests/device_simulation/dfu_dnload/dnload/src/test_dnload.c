@@ -210,7 +210,7 @@ static struct dfu_getstatus get_status(enum dfu_request *deferred_request)
   return ret;
 }
 
-void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t block[]) {
+static void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t block[]) {
   struct dfu_getstatus ret;
 
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, (uint8_t *)block, block_size, &block_num);
@@ -232,7 +232,7 @@ void single_dnload_block(int32_t block_num, int32_t block_size, const uint8_t bl
   TEST_ASSERT_EQUAL(STATE_DFU_DOWNLOAD_IDLE, ret.state);
 }
 
-void dnload_zero(void) {
+static void dnload_zero(void) {
   struct dfu_getstatus ret;
   uint8_t block[DFU_TRANSFER_SIZE_BYTES];
 
@@ -265,7 +265,7 @@ static void bus_reset() {
   }
 }
 
-void detach() {
+static void detach() {
   get_state_and_check(STATE_APP_IDLE);
 
   dfu_request(DFU_DETACH);
@@ -275,7 +275,7 @@ void detach() {
   get_state_and_check(STATE_DFU_IDLE);
 }
 
-void reboot() {
+static void reboot() {
   get_state_and_check(STATE_DFU_IDLE);
 
   bus_reset();

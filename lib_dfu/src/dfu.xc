@@ -529,6 +529,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
       tmr :> now;
       debug_printf("Rebooting out of DFU mode\n");
       tmr when timerafter(now + (DELAY_BEFORE_REBOOT_FROM_DFU_MS * XS1_TIMER_KHZ)) :> void;
+      // TODO - should this be deferred?
       device_reboot();
       // Note: testing will fall through to app idle without reboot, which is fine.
     }
