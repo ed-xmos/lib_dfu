@@ -250,7 +250,7 @@ static void dnload_zero(void) {
       TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     }
     delay_microseconds(1);
-  } while (ret.state == STATE_DFU_MANIFEST);
+  } while (ret.state != STATE_DFU_IDLE);
 
   TEST_ASSERT_EQUAL(STATE_DFU_IDLE, ret.state);
   TEST_ASSERT_EQUAL(DFU_OK, ret.status);
@@ -338,6 +338,31 @@ void test_dnload(void) {
   block_size = 64;  // bytes
   block_count = 64; // blocks
   tail_size = 63;   // bytes, ideally less than block_size
+  repeats = 2;
+
+  layout_flash(block_count, block_size, tail_size);
+
+  make_test_data(images, fl.partitions.u_size);
+
+  detach();
+  dnload((const uint8_t *)images, block_size, block_count, tail_size, repeats);
+
+  verify((const uint8_t *)images);
+  
+  reboot();
+  
+  TEST_ASSERT_FALSE(fl.flash_open);
+}
+
+void test_dnload_no_tail(void) {
+  int block_size = 0;
+  int block_count = 0;
+  int tail_size = 0;
+  int repeats = 0;
+
+  block_size = 64;  // bytes
+  block_count = 64; // blocks
+  tail_size = 0;   // bytes, ideally less than block_size
   repeats = 2;
 
   layout_flash(block_count, block_size, tail_size);

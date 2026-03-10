@@ -335,6 +335,7 @@ static struct dfu_cmd_response state_dnload_sync(enum dfu_request request, uint8
 
 static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, uint8_t (&?block)[DFU_TRANSFER_SIZE_BYTES], int32_t block_size_bytes) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
+  static int32_t manifest_deferred = 0;
 
   if (request == DFU_DEFERRED_ACTION_FLASH_MANIFEST) {
     struct dfu_sub_response rqst_status = sub_sm_process_manifest(dfu_fifo);
@@ -350,10 +351,12 @@ static struct dfu_cmd_response state_manifest_sync(enum dfu_request request, uin
       response = error_condition(DFU_errUNKNOWN, 0);
 
     } else {
-      if (fifo_is_empty(dfu_fifo)) {
+      if (fifo_is_empty(dfu_fifo) && manifest_deferred) {
         response = normal_transition(STATE_DFU_IDLE);
+        manifest_deferred = 0;
 
       } else {
+        manifest_deferred = 1;
         response = normal_transition(STATE_DFU_MANIFEST);
         response = normal_transition(STATE_DFU_MANIFEST_SYNC);
         response.deferred_request = DFU_DEFERRED_ACTION_FLASH_MANIFEST;
