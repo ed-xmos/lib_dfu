@@ -236,7 +236,12 @@ static struct dfu_cmd_response action_entry_upload(uint8_t (&?read_block)[DFU_TR
   
   // TODO - profile this.
   struct flash_data_status start_status = flash_start_read();
-  if (start_status.status != DFU_FLASH_OK) {
+  if (start_status.status == DFU_FLASH_READ_NO_IMAGE) {
+    read_length = 0;
+    response = normal_transition(STATE_DFU_UPLOAD_IDLE);
+    response.return_data_len = 0;
+
+  } else if (start_status.status != DFU_FLASH_OK) {
     response = error_condition(DFU_errFILE, 0);
 
   } else {
@@ -246,7 +251,7 @@ static struct dfu_cmd_response action_entry_upload(uint8_t (&?read_block)[DFU_TR
     if (upload != DFU_API_SUCCESS) {
       response = error_condition(DFU_errFILE, upload);
     } else {
-      response = normal_transition(STATE_DFU_UPLOAD_IDLE);;
+      response = normal_transition(STATE_DFU_UPLOAD_IDLE);
       response.return_data_len = (read_length < block_size_bytes) ? read_length : block_size_bytes;
       read_length -= block_size_bytes;
     }
