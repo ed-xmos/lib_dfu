@@ -126,6 +126,7 @@ struct dfu_getstatus {
 struct dfu_profile_data {
     unsigned command_time;
     unsigned command_index;
+    unsigned index_total;
     unsigned cmd;
 };
 
