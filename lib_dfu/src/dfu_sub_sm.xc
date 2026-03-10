@@ -78,6 +78,18 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
   switch (sub_state) {
     case DNLOAD_SYNC:
       poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
+#if defined(DFU_CONFIG_USB_INBAND_FUNCTIONS) && (DFU_CONFIG_USB_INBAND_FUNCTIONS == 1)
+      if (!flash_is_connected()) {
+        t_profiler :> t_profiler_start;
+        if (flash_init() != DFU_FLASH_OK) {
+          // response = error_condition(DFU_errTARGET, 0);
+          response.status = DFU_errWRITE;
+          return response;
+        }
+        t_profiler :> t_profiler_end;
+        t_profile_connect = t_profiler_end - t_profiler_start;
+      }
+#endif
 
       t_profiler :> t_profiler_start;
       // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded

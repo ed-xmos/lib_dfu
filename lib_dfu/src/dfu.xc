@@ -190,7 +190,9 @@ static struct dfu_cmd_response state_detach(enum dfu_request request) {
   if (request == XMOS_DFU_BUS_RESET) {
     response = normal_transition(STATE_DFU_IDLE);
     // TODO - USB DFU entry should send detach request from app init. After reboot triggered from DETACH.
+#if defined(DFU_CONFIG_USB_INBAND_FUNCTIONS) && (DFU_CONFIG_USB_INBAND_FUNCTIONS == 0)
     response.deferred_request = DFU_DEFERRED_ACTION_FLASH_CONNECT;
+#endif
 
   } else if (request != DFU_GETSTATUS && request != DFU_GETSTATE) {
     // no other requests expected, return to appIDLE, but respond with STALL.
@@ -223,6 +225,15 @@ static struct dfu_cmd_response action_entry_dnload(const uint8_t (&?write_block)
 static struct dfu_cmd_response action_entry_upload(uint8_t (&?read_block)[DFU_TRANSFER_SIZE_BYTES],
                                                   int32_t block_size_bytes, int32_t &?read_length) {
   struct dfu_cmd_response response = { DFU_API_BAD_PARAM, 0, 0 };
+
+#if defined(DFU_CONFIG_USB_INBAND_FUNCTIONS) && (DFU_CONFIG_USB_INBAND_FUNCTIONS == 1)
+  if (!flash_is_connected()) {
+    if (flash_init() != DFU_FLASH_OK) {
+      response = error_condition(DFU_errTARGET, 0);
+      return response;
+    }
+  }
+#endif
   fifo_init(dfu_fifo, dfu_fifo_storage, sizeof(dfu_fifo_storage));
   
   // TODO - profile this.

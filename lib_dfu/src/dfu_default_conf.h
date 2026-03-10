@@ -76,6 +76,10 @@
 #error DFU_FLASH_PAGE_SIZE_BYTES should be a multiple of DFU_TRANSFER_SIZE_BYTES
 #endif
 
+#ifndef DFU_CONFIG_USB_INBAND_FUNCTIONS
+#define DFU_CONFIG_USB_INBAND_FUNCTIONS 0
+#endif
+
 /* TODO - can we use the DFU image size from download or block 0? 
  * And remove this or convert it to a ceiling value, sensible max rather than actual erase size */
 
