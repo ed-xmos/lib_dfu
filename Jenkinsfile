@@ -101,7 +101,7 @@ pipeline {
                     }
                 } // stage 'Build and docs'
 
-                stage('Sim tests') {
+                stage('🔧 Sim tests') {
                     agent {
                         label 'x86_64 && linux'
                     }
