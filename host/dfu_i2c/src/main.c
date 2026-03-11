@@ -25,7 +25,12 @@ int main(int argc, char **argv)
       const size_t fifteen_bits_max = 32768;
       const size_t max_dnload_size = fifteen_bits_max * options.block_size;
 
-      if (inputs.boot.length > max_dnload_size) {
+      if (inputs.boot.length == 0) {
+        PRINT_ERROR("Boot image size reported %lu\n", inputs.boot.length);
+        cleanup_inputs(&inputs);
+        return APP_WARNING;
+
+      } else if (inputs.boot.length > max_dnload_size) {
         PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n", inputs.boot.length, max_dnload_size);
         cleanup_inputs(&inputs);
         return APP_WARNING;
@@ -34,6 +39,7 @@ int main(int argc, char **argv)
       if (hal_connect(options.device_id) == APP_OK) {
         ret = write_upgrade(inputs, options.block_size);
         if (ret == 0) {
+          // TODO - should we always reboot after write?
           hal_reboot();
         }
 

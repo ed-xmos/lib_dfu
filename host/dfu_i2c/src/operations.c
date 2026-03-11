@@ -93,7 +93,7 @@ static int check_status(struct dfu_getstatus *getstatus)
     return 2;
   }
 
-  static unsigned last_timeout = -1;
+  static unsigned last_timeout = UINT32_MAX;
   if (!quiet) {
     if (getstatus->poll_timeout_msec != last_timeout) {
       last_timeout = getstatus->poll_timeout_msec;
@@ -176,7 +176,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
 
     printf("download block %u, %d bytes, %02X\n", block_count, (int)block_bytes, bytes[byte_count + block_size - 1]);
 
-    if (hal_write_command(DFU_DNLOAD, &bytes[byte_count], block_bytes) != block_bytes) {
+    if (hal_write_command(DFU_DNLOAD, &bytes[byte_count], block_bytes) != (int)block_bytes) {
       return 1;
     }
 
@@ -220,7 +220,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
   }
 
   uint8_t payload[sizeof(struct dfu_profile_data)];
-  printf("profile data size: %d\n", sizeof(struct dfu_profile_data));
+  printf("profile data size: %zu\n", sizeof(struct dfu_profile_data));
   if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != sizeof(struct dfu_profile_data)) {
     printf("get profile failed\n");
   } else {
@@ -257,10 +257,9 @@ static uint8_t sector_buffer[4096];
 
 static int upload_file(FILE *handle, unsigned block_size)
 {
-  int32_t returned_length = block_size;
+  unsigned returned_length = block_size;
   size_t byte_count = 0;
   unsigned block_count = 0;
-  struct dfu_getstatus getstatus;
 
   if (handle == NULL) {
     return APP_BAD_PARAM;
@@ -270,13 +269,13 @@ static int upload_file(FILE *handle, unsigned block_size)
     returned_length = 0;
     
     int read_status = hal_read_command(DFU_UPLOAD, &sector_buffer[byte_count], block_size);
-    if (read_status == block_size) {
+    if (read_status == (int)block_size) {
       returned_length = block_size;
       printf("upload block %u, %u bytes, %02X\n", block_count, block_size, sector_buffer[byte_count + block_size - 1]);
 
     } else if (read_status >= 0) {
       // Normal, short read, exit
-      int extra = read_status;
+      unsigned extra = (unsigned)read_status;
       returned_length = extra;
 
       printf("short-read: upload block %u, %u bytes, %02X\n", block_count, extra, sector_buffer[byte_count + block_size - 1]);

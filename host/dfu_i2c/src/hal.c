@@ -73,7 +73,7 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
 #if USE_I2C && __xcore__
   if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), i_i2c, buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS)
 #else
-  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ(command), buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS)
+  if (control_read_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_READ((control_cmd_t)command), buffer, (num_bytes + sizeof(struct dfu_upload_header))) != CONTROL_SUCCESS)
 #endif
   {
     PRINT_ERROR("Control read command did not return success\n");
@@ -121,14 +121,14 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 #if USE_I2C && __xcore__
   if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), i_i2c, buffer, payload_bytes) != CONTROL_SUCCESS)
 #else
-  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(command), buffer, payload_bytes) != CONTROL_SUCCESS)
+  if (control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE((control_cmd_t)command), buffer, payload_bytes) != CONTROL_SUCCESS)
 #endif
   {
     PRINT_ERROR("Control write command did not return success\n");
     return APP_BAD_COMMS;
   }
 
-  return num_bytes;
+  return (int)num_bytes;
 }
 
 #if USE_I2C && __xcore__
