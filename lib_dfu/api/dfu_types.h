@@ -69,6 +69,8 @@ enum dfu_request {
   DFU_DEFERRED_ACTION_FLASH_WRITE = 31,     // Triggered from get-status request
   DFU_DEFERRED_ACTION_FLASH_MANIFEST = 32,  // Triggered from get-status request
 
+  XMOS_DFU_GETPROFILE = 40, // For getting DFU profile data such as command execution time, for profiling and testing purposes.
+
   /* For lib_device_control access this will be 0x71 due to read bit */
   XMOS_DFU_REVERTFACTORY = 0xF1,
 };
@@ -119,6 +121,13 @@ struct dfu_getstatus {
   enum dfu_status status; /**< DFU Status code */
   enum dfu_state state; /**< DFU Current state */
   unsigned poll_timeout_msec; /**< Poll timeout in milliseconds */
+};
+
+struct dfu_profile_data {
+    unsigned command_time;
+    unsigned command_index;
+    unsigned index_total;
+    unsigned cmd;
 };
 
 /* TODO - lib_xua types, remove in time */

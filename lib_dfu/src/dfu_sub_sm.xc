@@ -78,6 +78,18 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
   switch (sub_state) {
     case DNLOAD_SYNC:
       poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
+#if defined(DFU_CONFIG_USB_INBAND_FUNCTIONS) && (DFU_CONFIG_USB_INBAND_FUNCTIONS == 1)
+      if (!flash_is_connected()) {
+        t_profiler :> t_profiler_start;
+        if (flash_init() != DFU_FLASH_OK) {
+          // response = error_condition(DFU_errTARGET, 0);
+          response.status = DFU_errWRITE;
+          return response;
+        }
+        t_profiler :> t_profiler_end;
+        t_profile_connect = t_profiler_end - t_profiler_start;
+      }
+#endif
 
       t_profiler :> t_profiler_start;
       // TODO - replace FLASH_MAX_UPGRADE_SIZE with image size from first page downloaded
@@ -128,6 +140,7 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
     case DNLOAD_WRITING:
       poll_timeout = POLL_TIMEOUT_DNLOAD_WRITE_MSEC;
       int32_t page_size_bytes = flash_get_page_size();
+      // TODO add fifo function to access pointer to memory to avoid this copy, if performance of this is an issue.
       if (fifo_block_dequeue(dfu_fifo, page, page_size_bytes) == FIFO_OK) {
         if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
           response.status = DFU_errWRITE;
@@ -150,7 +163,7 @@ struct dfu_sub_response sub_sm_process_dnload(struct fifo &dfu_fifo)
 
 struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
 {
-  struct dfu_sub_response response = { DFU_errUNKNOWN };
+  struct dfu_sub_response sub_sm = { DFU_errUNKNOWN };
   int32_t page_size_bytes = flash_get_page_size();
   uint8_t page[DFU_FLASH_PAGE_SIZE_BYTES];
 
@@ -159,22 +172,40 @@ struct dfu_sub_response sub_sm_process_manifest(struct fifo &dfu_fifo)
 
   if (page_size_bytes > DFU_FLASH_PAGE_SIZE_BYTES) {
     // sanity check - this should never happen
-    return response;
+    return sub_sm;
   }
 
   // drain conversion buffer of partial page, if any
   int32_t remaining_bytes = fifo_size(dfu_fifo);
-  // TODO - this assumes that fifo is page sized.
-  // If this is not the case, we may need to do multiple dequeues to drain the fifo.
-  if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
-    memset(&page[remaining_bytes], 0xFF, page_size_bytes - remaining_bytes);
-    if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
-      response.status = DFU_errWRITE;
-      return response;
+  if (remaining_bytes > page_size_bytes) {
+    remaining_bytes = page_size_bytes;
+    
+  }
+  
+  if (remaining_bytes != 0) {
+    if (fifo_block_dequeue(dfu_fifo, page, remaining_bytes) == FIFO_OK) {
+      memset(&page[remaining_bytes], 0xFF, (page_size_bytes - remaining_bytes));
+      if (flash_write_page(page, page_size_bytes) != DFU_FLASH_OK) {
+        sub_sm.status = DFU_errWRITE;
+      } else {
+        sub_sm.status = DFU_OK;
+      }
+    } else {
+      sub_sm.status = DFU_errNOTDONE;
     }
   }
-  response.status = DFU_OK;
-  return response;
+
+  if (fifo_is_empty(dfu_fifo)) {
+    enum flash_status status = flash_finalise_write();
+    if (status != DFU_FLASH_OK) {
+      debug_printf("DFU: flash_finalise_write status: %d\n", status);
+      sub_sm.status = DFU_errPROG;
+    } else {
+      sub_sm.status = DFU_OK;
+    }
+    sub_sm_print_profiler();
+  }
+  return sub_sm;
 }
 
 void sub_sm_print_profiler(void)

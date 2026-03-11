@@ -35,12 +35,31 @@ add_compile_definitions(nologo USE_I2C RPI)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/../bin)
 
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+set(FLAGS /O2 /W4)
+else()
+set(FLAGS 
+            -g
+            -O2
+            -Wall
+            -Wextra
+            -Wpedantic
+            -Wconversion
+            -Wdiv-by-zero
+            -Wfloat-equal
+            -Wsign-compare
+            -Wshadow)
+endif()
+
+
 add_library(${DFUCTRL_LIB} STATIC ${SOURCE_FILES})
 target_include_directories(${DFUCTRL_LIB} PUBLIC ${INCLUDE_DIRS})
+target_compile_options(${DFUCTRL_LIB} PUBLIC ${FLAGS})
 target_link_libraries(${DFUCTRL_LIB} control_i2c_host)
 
 add_executable(${DFUCTRL_APP} src/main.c)
 target_include_directories(${DFUCTRL_APP} PUBLIC "api")
+target_compile_options(${DFUCTRL_APP} PUBLIC ${FLAGS})
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     target_link_libraries(${DFUCTRL_APP} ${DFUCTRL_LIB})
 else()
