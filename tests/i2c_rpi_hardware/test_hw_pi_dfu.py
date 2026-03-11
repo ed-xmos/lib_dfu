@@ -8,10 +8,18 @@ import time
 
 DEVICE_I2C_ADDRESS = 0x2c
 
+# Helper function to run DFU commands with retries, to improve test robustness against transient I2C errors
+# TODO - work out why xvf3610_int is unreliable
+def run_dfu_with_retry(remote_pi, args, hide=True, retries=5):
+    for attempt in range(retries):
+        result = remote_pi.run_dfu(args, hide=hide)
+        if result.return_code == 0:
+            return result
+        print(f"run_dfu attempt {attempt + 1}/{retries} failed: {result.stdout} {result.stderr}")
+    raise Exception(f"run_dfu failed after {retries} attempts: {args}")
+
 def get_bcd_version(remote_pi):
-    result = remote_pi.run_dfu(f"--i2c-address {DEVICE_I2C_ADDRESS} detach_and_bus_reset", hide=True)
-    if result.return_code != 0:
-        raise Exception(f"Failed to run dfu_i2c: {result.stdout} {result.stderr}")
+    result = run_dfu_with_retry(remote_pi, f"--i2c-address {DEVICE_I2C_ADDRESS} detach_and_bus_reset")
     match = re.search(r"bcdDevice\s+(0x[0-9a-fA-F]+)", result.stdout)
     if not match:
         raise Exception(f"Could not find bcdDevice in output: {result.stdout}")
@@ -56,9 +64,7 @@ def test_dfu_rpi(remote_pi, settings):
     # DFU upgrade using RPi
     print("Performing DFU upgrade...")
     args = f"--i2c-address {DEVICE_I2C_ADDRESS} write_upgrade {str(suffixed_upgrade_file)}"
-    result = remote_pi.run_dfu(args, hide=True)
-    if result.return_code != 0:
-        raise Exception(f"Failed to run dfu_i2c: {result.stdout} {result.stderr}")
+    run_dfu_with_retry(remote_pi, args)
 
     # Check BCD version is correct after upgrade
     bcd_version = get_bcd_version(remote_pi)
@@ -69,9 +75,7 @@ def test_dfu_rpi(remote_pi, settings):
     # Revert to factory image
     print("Reverting to factory image...")
     args = f"--i2c-address {DEVICE_I2C_ADDRESS} revert_factory"
-    result = remote_pi.run_dfu(args, hide=True)
-    if result.return_code != 0:
-        raise Exception(f"Failed to run dfu_i2c: {result.stdout} {result.stderr}")
+    run_dfu_with_retry(remote_pi, args)
 
     # Check BCD version is correct after revert
     bcd_version = get_bcd_version(remote_pi)

@@ -35,170 +35,140 @@ pipeline {
     }
 
     stages {
-        stage('🔧 I2C HW Tests') {
-            agent {
-                label 'xvf3610_int'
+        stage('Init') {
+            agent { label 'x86_64 && linux' }
+            steps {
+                script {
+                    def (server, user, repo) = extractFromScmUrl()
+                    env.REPO_NAME = repo
+                }
             }
+        }
+        stage('Parallel Stages') {
+            parallel {
+                stage('🏗️ Build and docs') {
+                    agent {
+                        label 'x86_64 && linux && documentation'
+                    }
 
-            stages {
-                stage('Checkout') {
-                    steps {
-                        script {
-                            def (server, user, repo) = extractFromScmUrl()
-                            env.REPO_NAME = repo
+                    stages {
+                        stage('Checkout') {
+                            steps {
+
+                                println "Stage running on ${env.NODE_NAME}"
+
+                                dir(REPO_NAME){
+                                    sh ""
+                                    checkoutScmShallow()
+                                }
+                            }
                         }
 
-                        println "Stage running on ${env.NODE_NAME}"
+                        stage('Examples build') {
+                            steps {
+                                dir("${REPO_NAME}/examples") {
+                                    dir("i2c/device") {
+                                        xcoreBuild()
+                                    }
+                                    dir("i2c/host_xcore") {
+                                        xcoreBuild()
+                                    }
+                                }
+                            }
+                        }
+                        
+                        stage('Repo checks') {
+                            steps {
+                                warnError("Repo checks failed")
+                                {
+                                    runRepoChecks("${WORKSPACE}/${REPO_NAME}")
+                                }
+                            }
+                        }
 
-                        dir(REPO_NAME){
-                            checkoutScmShallow()
-                            // Get dependencies (lib_device_control) for the I2C host tests on RPi and build example for test
-                            dir("examples/i2c/device") {
-                                withTools(params.TOOLS_VERSION) {
-                                    xcoreBuild()
+                        stage('Doc build') {
+                            steps {
+                                dir(REPO_NAME) {
+                                    buildDocs()
                                 }
                             }
                         }
                     }
-                }
-                stage('I2C DFU tests') {
-                    steps {
-                        dir ("${REPO_NAME}/tests") {
-                            withTools(params.TOOLS_VERSION) {
-                                createVenv(reqFile: "requirements.txt")
-                                withVenv {
-                                    dir("i2c_rpi_hardware") {
-                                        withXTAG(["XVF3610_INT"]) {  xtagIds ->
-                                            sh "echo ${xtagIds}"
-                                            runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                } // stage 'Build and docs'
+
+                stage('Sim tests') {
+                    agent {
+                        label 'x86_64 && linux'
+                    }
+                    stages {
+                        stage('Checkout') {
+                            steps {
+                                dir(REPO_NAME) {
+                                    checkoutScmShallow()
+                                }
+                            }
+                        }
+
+                        stage('Build Linux host app') {
+                            steps {
+                                dir(REPO_NAME) {
+                                    dir("host") {
+                                        sh "cmake -B build"
+                                        sh "cmake --build build"
+
+                                        println "We will run pytest from here"
+                                    }
+                                    archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                                    archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                                    archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                                }
+                            }
+                        }
+
+                        stage('Run sim tests') {
+                            steps {
+                                dir("${REPO_NAME}/tests") {
+                                    withTools(params.TOOLS_VERSION) {
+                                        createVenv(reqFile: "requirements.txt")
+                                        withVenv {
+                                            dir("dummy") {
+                                                xcoreBuild(archiveBins: false)
+                                            }
+                                            dir("host") {
+                                                sh "cmake -B build"
+                                                sh "cmake --build build"
+                                                runPytest("--level=${params.TEST_LEVEL}")
+                                            }
+                                            dir("device_simulation/dfu") {
+                                                runPytest("--level=${params.TEST_LEVEL}")
+                                            }
+                                            dir("device_simulation/modules") {
+                                                runPytest("--level=${params.TEST_LEVEL}")
+                                            }
+                                            dir("device_simulation/dfu_flash") {
+                                                runPytest("--level=${params.TEST_LEVEL}")
+                                            }
+                                            dir("device_simulation/dfu_dnload") {
+                                                runPytest("--level=${params.TEST_LEVEL}")
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-            }
-            
-            post {
-                cleanup {
-                    xcoreCleanSandbox()
-                }
-            }
-        } // stage "🔧 I2C HW Tests"
-
-        stage('🏗️ Build and test') {
-            agent {
-                label 'x86_64 && linux && documentation'
-            }
-
-            stages {
-                stage('Checkout') {
-                    steps {
-
-                        println "Stage running on ${env.NODE_NAME}"
-
-                        script {
-                            def (server, user, repo) = extractFromScmUrl()
-                            env.REPO_NAME = repo
-                        }
-
-                        dir(REPO_NAME){
-                            sh ""
-                            checkoutScmShallow()
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
                         }
                     }
-                }
+                }  // Sim tests
 
-                stage('Examples build') {
-                    steps {
-                        dir("${REPO_NAME}/examples") {
-                            dir("i2c/device") {
-                                xcoreBuild()
-                            }
-                            dir("i2c/host_xcore") {
-                                xcoreBuild()
-                            }
-                        }
-                    }
-                }
-                  
-                stage('Build Linux host app') {
-                    steps {
-                        dir(REPO_NAME) {
-                            dir("host") {
-                                sh "cmake -B build"
-                                sh "cmake --build build"
-
-                                println "We will run pytest from here"
-                            }
-                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
-                        }
-                    }
-                }
-                
-                stage('Repo checks') {
-                    steps {
-                        warnError("Repo checks failed")
-                        {
-                            runRepoChecks("${WORKSPACE}/${REPO_NAME}")
-                        }
-                    }
-                }
-
-                stage('Doc build') {
-                    steps {
-                        dir(REPO_NAME) {
-                            buildDocs()
-                        }
-                    }
-                }
-
-                stage('Tests') {
-                    steps {
-                        dir("${REPO_NAME}/tests") {
-                            withTools(params.TOOLS_VERSION) {
-                                createVenv(reqFile: "requirements.txt")
-                                withVenv {
-                                    dir("dummy") {
-                                        xcoreBuild(archiveBins: false)
-                                    }
-                                    // Host tests
-                                    dir("host") {
-                                        sh "cmake -B build"
-                                        sh "cmake --build build"
-                                        runPytest("--level=${params.TEST_LEVEL}")
-                                    }
-
-                                    dir("device_simulation/dfu") {
-                                        runPytest("--level=${params.TEST_LEVEL}")
-                                    }
-                                    dir("device_simulation/modules") {
-                                        runPytest("--level=${params.TEST_LEVEL}")
-                                    }
-                                    dir("device_simulation/dfu_flash") {
-                                        runPytest("--level=${params.TEST_LEVEL}")
-                                    }
-                                    dir("device_simulation/dfu_dnload") {
-                                        runPytest("--level=${params.TEST_LEVEL}")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            post {
-                cleanup {
-                    xcoreCleanSandbox()
-                }
-            }
-        } // stage 'Build and test'
-
-        stage('Build host apps') {
-            parallel {
                 stage('Build Mac x86 host app') {
                     agent {
                         label 'x86_64 && macOS'
@@ -253,42 +223,42 @@ pipeline {
                 }  // Build Mac arm host app
 
                 stage('Build Pi host app') {
-                agent {
-                    label 'pi'
-                }
-                steps {
-                    println "Stage running on ${env.NODE_NAME}"
+                    agent {
+                        label 'pi'
+                    }
+                    steps {
+                        println "Stage running on ${env.NODE_NAME}"
 
-                    // Bring in device control code to test the I2C host app on RPi
-                    // sh 'git clone --depth 1 git@github.com:xmos/lib_device_control.git'
-                    // TODO - return to the above...
-                    sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
-                
-                    dir(REPO_NAME) {
-                        checkoutScmShallow()
-                        dir("host/xmosdfu") {
-                            sh 'cmake -B build'
-                            sh 'make -C build'
-                            sh 'mkdir -p RPi'
-                            sh 'mv bin/xmosdfu RPi/xmosdfu'
-                            archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
-                        }
+                        // Bring in device control code to test the I2C host app on RPi
+                        // sh 'git clone --depth 1 git@github.com:xmos/lib_device_control.git'
+                        // TODO - return to the above...
+                        sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
 
-                        dir("host/dfu_i2c") {
-                            sh "cmake -B build"
-                            sh "cmake --build build"
-                            sh 'mkdir -p RPi/dfu_i2c'
-                            sh 'mv bin RPi/dfu_i2c'
-                            sh 'mv lib RPi/dfu_i2c'
-                            archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
+                        dir(REPO_NAME) {
+                            checkoutScmShallow()
+                            dir("host/xmosdfu") {
+                                sh 'cmake -B build'
+                                sh 'make -C build'
+                                sh 'mkdir -p RPi'
+                                sh 'mv bin/xmosdfu RPi/xmosdfu'
+                                archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
+                            }
+
+                            dir("host/dfu_i2c") {
+                                sh "cmake -B build"
+                                sh "cmake --build build"
+                                sh 'mkdir -p RPi/dfu_i2c'
+                                sh 'mv bin RPi/dfu_i2c'
+                                sh 'mv lib RPi/dfu_i2c'
+                                archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
+                            }
                         }
                     }
-                }
-                post {
-                    cleanup {
-                        xcoreCleanSandbox()
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
                     }
-                }
                 }  // Build Pi host app
 
                 stage('Build Windows host app') {
@@ -316,101 +286,102 @@ pipeline {
                         }
                     }
                 }  // Build Windows host app
-            }
-        }  // Build host apps
 
-        // stage('🔧 I2C HW Tests') {
-        //     agent {
-        //         label 'xvf3610_int'
-        //     }
-
-        //     stages {
-        //         stage('Checkout') {
-        //             steps {
-
-        //                 println "Stage running on ${env.NODE_NAME}"
-
-        //                 dir(REPO_NAME){
-        //                     checkoutScmShallow()
-        //                 }
-        //             }
-        //         }
-        //         stage('I2C DFU tests') {
-        //             steps {
-        //                 dir ("${REPO_NAME}/tests") {
-        //                     withTools(params.TOOLS_VERSION) {
-        //                         createVenv(reqFile: "requirements.txt")
-        //                         withVenv {
-        //                             dir("i2c_rpi_hardware") {
-        //                                 withXTAG(["XVF3610_INT"]) {  xtagIds ->
-        //                                     sh "echo ${xtagIds}"
-        //                                     runPytest("-n=1 --adapter-id ${xtagIds[0]}")
-        //                                 }
-        //                             }
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     }
-            
-        //     post {
-        //         cleanup {
-        //             xcoreCleanSandbox()
-        //         }
-        //     }
-        // } // stage "🔧 I2C HW Tests"
-
-        stage('🔧 Hardware Tests') {
-            agent {
-                label 'sw-hw-xcai-exp0 || sw-hw-xcai-exp1 || sw-hw-xcai-exp2 || sw-hw-xcai-exp3'
-            }
-
-            stages {
-                stage('Checkout') {
-                    steps {
-
-                        println "Stage running on ${env.NODE_NAME}"
-
-                        dir(REPO_NAME){
-                            checkoutScmShallow()
-                        }
+                stage('🔧 I2C HW Tests') {
+                    agent {
+                        label 'xvf3610_int'
                     }
-                }
-                stage('System Hardware Test') {
-                    steps {
-                        dir ("${REPO_NAME}/tests") {
-                            withTools(params.TOOLS_VERSION) {
-                                createVenv(reqFile: "requirements.txt")
-                                withVenv {
-                                    dir("dummy") {
-                                        xcoreBuild(archiveBins: false)
-                                    }
-                                    dir("flash_hardware/prepare_upgrade_slot") {
-                                        withXTAG(["XCORE-AI-EXPLORER"]) {
-                                            xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+
+                    stages {
+                        stage('Checkout') {
+                            steps {
+                                println "Stage running on ${env.NODE_NAME}"
+
+                                dir(REPO_NAME){
+                                    checkoutScmShallow()
+                                    // Get dependencies (lib_device_control) for the I2C host tests on RPi and build example for test
+                                    dir("examples/i2c/device") {
+                                        withTools(params.TOOLS_VERSION) {
+                                            xcoreBuild()
                                         }
                                     }
-                                    dir("system_hardware/write_upgrade_boot_only") {
-                                        withXTAG(["XCORE-AI-EXPLORER"]) {
-                                            xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                }
+                            }
+                        }
+                        stage('I2C DFU tests') {
+                            steps {
+                                dir ("${REPO_NAME}/tests") {
+                                    withTools(params.TOOLS_VERSION) {
+                                        createVenv(reqFile: "requirements.txt")
+                                        withVenv {
+                                            dir("i2c_rpi_hardware") {
+                                                withXTAG(["XVF3610_INT"]) {  xtagIds ->
+                                                    sh "echo ${xtagIds}"
+                                                    runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                }
-            }
-            
-            post {
-                cleanup {
-                    xcoreCleanSandbox()
-                }
-            }
-        } // stage "Test on hardware"
-        
-        stage('🚀 Release') {
+                    
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                } // stage "🔧 I2C HW Tests"
+
+                stage('🔧 Hardware Tests') {
+                    agent {
+                        label 'sw-hw-xcai-exp0 || sw-hw-xcai-exp1 || sw-hw-xcai-exp2 || sw-hw-xcai-exp3'
+                    }
+                    stages {
+                        stage('Checkout') {
+                            steps {
+                                println "Stage running on ${env.NODE_NAME}"
+                                dir(REPO_NAME){
+                                    checkoutScmShallow()
+                                }
+                            }
+                        }
+                        stage('System Hardware Test') {
+                            steps {
+                                dir ("${REPO_NAME}/tests") {
+                                    withTools(params.TOOLS_VERSION) {
+                                        createVenv(reqFile: "requirements.txt")
+                                        withVenv {
+                                            dir("dummy") {
+                                                xcoreBuild(archiveBins: false)
+                                            }
+                                            dir("flash_hardware/prepare_upgrade_slot") {
+                                                withXTAG(["XCORE-AI-EXPLORER"]) {
+                                                    xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                                }
+                                            }
+                                            dir("system_hardware/write_upgrade_boot_only") {
+                                                withXTAG(["XCORE-AI-EXPLORER"]) {
+                                                    xtagIds -> runPytest("-n=1 --adapter-id ${xtagIds[0]}")
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
+                    }
+                } // stage "🔧 Hardware Tests"
+            } // parallel
+        } // stage Parallel Stages
+
+        stage(' Release') {
             when {
                 expression { triggerRelease.isReleasable() }
             }
