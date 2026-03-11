@@ -158,6 +158,17 @@ int detach_and_bus_reset(void)
   return 0;
 }
 
+static void get_profile_data(void) {
+  uint8_t payload[sizeof(struct dfu_profile_data)];
+  printf("profile data size: %zu\n", sizeof(struct dfu_profile_data));
+  if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != sizeof(struct dfu_profile_data)) {
+    printf("get profile failed\n");
+  } else {
+    struct dfu_profile_data *profile = (struct dfu_profile_data *)payload;
+    printf("profile data: %u, %u/%u, %u\n", profile->command_time, profile->command_index, profile->index_total, profile->cmd);
+  }
+}
+
 static int download_file(const unsigned char *bytes, size_t length, unsigned block_size, unsigned short marker)
 {
   size_t byte_count = 0;
@@ -219,14 +230,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
     return 6;
   }
 
-  uint8_t payload[sizeof(struct dfu_profile_data)];
-  printf("profile data size: %zu\n", sizeof(struct dfu_profile_data));
-  if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != sizeof(struct dfu_profile_data)) {
-    printf("get profile failed\n");
-  } else {
-    struct dfu_profile_data *profile = (struct dfu_profile_data *)payload;
-    printf("profile data: %u, %u/%u, %u\n", profile->command_time, profile->command_index, profile->index_total, profile->cmd);
-  }
+  get_profile_data();
 
   return APP_OK;
 }
@@ -305,6 +309,9 @@ static int upload_file(FILE *handle, unsigned block_size)
       byte_count = 0;
     }
   }
+  
+  get_profile_data();
+
   return APP_OK;
 }
 
