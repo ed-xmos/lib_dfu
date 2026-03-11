@@ -10,6 +10,7 @@ import time
 
 factory_device = "0x0101"
 upgrade_device = "0x0200"
+overwrite_device = "0x0300"
 runtime_mode = "0x01"
 dfu_mode = "0x02"
 
@@ -70,27 +71,32 @@ def test_rpi():
     assert suffix_file_path.exists(), f"Test file {suffix_file_path} does not exist."
 
     # Check that the test file exists
-    test_bin_file = pathlib.Path(__file__).parent / "i2c_update.bin"
-    assert test_bin_file.exists(), f"Test file {test_bin_file} does not exist."
+    test_update_file = pathlib.Path(__file__).parent / "i2c_update.bin"
+    assert test_update_file.exists(), f"Test file {test_update_file} does not exist."
+    # test_overwrite_file = pathlib.Path(__file__).parent / "i2c_overwrite.bin"
+    # assert test_overwrite_file.exists(), f"Test file {test_overwrite_file} does not exist."
 
     # Check that the test file is not empty
-    assert test_bin_file.stat().st_size > 0, f"Test file {test_bin_file} is empty."
+    assert test_update_file.stat().st_size > 0, f"Test file {test_update_file} is empty."
 
     print(f"Found host app {host_file_path}.")
     print(f"Found suffix app {suffix_file_path}.")
-    print(f"Found test file {test_bin_file}.")
+    print(f"Found test file {test_update_file}.")
 
     target_dfu_file = "i2c_update.dfu"
+    target_overwrite_dfu_file = "i2c_overwrite.dfu"
 
-    subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_bin_file} {target_dfu_file}".split(), text=True)
+    subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_update_file} {target_dfu_file}".split(), text=True)
+    # subprocess.check_call(f"{suffix_file_path} 0x20b1 0x1234 {test_overwrite_file} {target_overwrite_dfu_file}".split(), text=True)
 
     # Clear device is needed, as we don't have "xflash --erase-all ..." available
     revert_factory_and_check(host_file_path, factory_device)
 
-    # Test #1 - detach
+    # Test - detach
     detach_and_check(host_file_path, factory_device)
 
     # Test - run upgrade, detech and check (value == upgrade_device)
+    test_update_file
     proc = subprocess.run(f"{host_file_path} write_upgrade {target_dfu_file}".split(), text=True, capture_output=True)
     if proc.returncode != 0:
         print(proc.stdout)
@@ -99,11 +105,32 @@ def test_rpi():
 
     detach_and_check(host_file_path, upgrade_device)
 
-    # Test
-    # TODO - run upload, check file == i2c_update.dfu
+    # Test - run upload, check (file == i2c_update.bin)
+    upload_bin_file = "upload.bin"
+    proc = subprocess.run(f"{host_file_path} upload {upload_bin_file}".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0
 
-    # Test
-    # TODO - run download overwriting image, (value == overwrite_device)
+    uploaded = pathlib.Path(upload_bin_file)
+    assert uploaded.exists()
+    compare_length = uploaded.stat().st_size
+    assert compare_length > 20000 and compare_length < 60000, "Unexpected lnegth of Uploaded file"
+    proc = subprocess.run(f"cmp -b -n {compare_length} {upload_bin_file} {test_update_file}".split(), text=True, capture_output=True)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        print(proc.stderr)
+    assert proc.returncode == 0
 
-    # Test
+    # Test - run download overwriting image, (value == overwrite_device)
+    # proc = subprocess.run(f"{host_file_path} write_upgrade {target_overwrite_dfu_file}".split(), text=True, capture_output=True)
+    # if proc.returncode != 0:
+    #     print(proc.stdout)
+    #     print(proc.stderr)
+    # assert proc.returncode == 0
+
+    # detach_and_check(host_file_path, overwrite_device)
+
+    # # Test
     revert_factory_and_check(host_file_path, factory_device)
