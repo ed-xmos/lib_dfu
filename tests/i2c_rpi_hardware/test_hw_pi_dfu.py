@@ -4,6 +4,7 @@
 import re
 import subprocess
 from pathlib import Path
+import time
 
 DEVICE_I2C_ADDRESS = 0x2c
 
@@ -43,6 +44,8 @@ def test_dfu_rpi(remote_pi, settings):
     adapter_id = settings.get("adapter_id")
     cmd = f"xflash --force --adapter-id {adapter_id} --factory {factory_bin}"
     subprocess.run(cmd, shell=True, check=True)
+
+    time.sleep(2)  # Wait for device to reboot after factory flash
 
     # Check BCD version is correct before upgrade
     bcd_version = get_bcd_version(remote_pi)
