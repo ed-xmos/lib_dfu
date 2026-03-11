@@ -7,36 +7,36 @@
 
 #include "control_host.h"
 #include "device_id.h"
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 #include <xccompat.h>
 #include "i2c.h"
 #endif
 
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 int hal_connect(struct device_id device_id, CLIENT_INTERFACE(i2c_master_if, i_i2c));
 #else
 int hal_connect(struct device_id device_id);
 #endif
 
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 int hal_read_command(int command, unsigned char payload[], size_t num_bytes, CLIENT_INTERFACE(i2c_master_if, i_i2c));
 #else
 int hal_read_command(int command, unsigned char payload[], size_t num_bytes);
 #endif
 
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 int hal_write_command(int command, const unsigned char payload[], size_t num_bytes, CLIENT_INTERFACE(i2c_master_if, i_i2c));
 #else
 int hal_write_command(int command, const unsigned char payload[], size_t num_bytes);
 #endif
 
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c));
 #else
 int hal_reboot(void);
 #endif
 
-#if USE_I2C && __xcore__
+#if CONTROL_USE_I2C && __xcore__
 int hal_revert_factory(CLIENT_INTERFACE(i2c_master_if, i_i2c));
 #else
 int hal_revert_factory(void);
