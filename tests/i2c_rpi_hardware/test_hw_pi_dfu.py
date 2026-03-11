@@ -41,7 +41,7 @@ def test_dfu_rpi(remote_pi, settings):
     # Flash factory image
     print("Flashing factory image...")
     adapter_id = settings.get("adapter_id")
-    cmd = f"xflash --adapter-id {adapter_id} --factory {factory_bin}"
+    cmd = f"xflash --force --adapter-id {adapter_id} --factory {factory_bin}"
     subprocess.run(cmd, shell=True, check=True)
 
     # Check BCD version is correct before upgrade
