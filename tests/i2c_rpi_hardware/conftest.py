@@ -10,7 +10,7 @@ from hardware_test_tools import load_test_settings, RPiController
 
 
 def pytest_addoption(parser):
-    parser.addoption("--adapter-id", action="store", default=None, help="XTAG adapter ID(s) - optional")
+    parser.addoption("--adapter-id", action="store", default=None, help="XTAG adapter ID(s) - for Jenkins use. Use local_test_settings.json locally")
 
 
 def parse_adapter_ids(config):
@@ -42,7 +42,7 @@ def settings(adapter_ids):
 
 
 @pytest.fixture(scope="session")
-def dfu_app_rpi(settings):
+def remote_pi(settings):
     """
     Fixture to provide a DFU app controller for the Raspberry Pi.
     Includes file copy of local sandbox code to the Pi, and building the DFU app on the Pi using cmake.
@@ -91,11 +91,16 @@ def dfu_app_rpi(settings):
         cd lib_dfu/host/dfu_i2c/ &&
         cmake -B build &&
         cmake --build build -j 4
+        cd {REMOTE_DIR} &&
+        cd lib_dfu/host/suffix_generator/ &&
+        cmake -B build &&
+        cmake --build build -j 4
     """, in_stream=False, hide=True)
 
-    binary = f"{REMOTE_DIR}/lib_dfu/host/dfu_i2c/bin/dfu_i2c"
+    binary_dfu = f"{REMOTE_DIR}/lib_dfu/host/dfu_i2c/bin/dfu_i2c"
+    binary_suffix_generator = f"{REMOTE_DIR}/lib_dfu/host/suffix_generator/bin/dfu_suffix_generator"
     print("RPi ready!")
 
-    yield RPiController(conn, binary)
+    yield RPiController(conn, binary_dfu, binary_suffix_generator, REMOTE_DIR)
 
     conn.run(f"rm -rf {REMOTE_DIR}", in_stream=False)

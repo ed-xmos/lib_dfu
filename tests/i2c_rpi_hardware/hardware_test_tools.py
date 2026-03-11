@@ -3,19 +3,28 @@
 
 import json
 from pathlib import Path
-from typing import Collection, Union
-from xtagctl import XtagctlDeviceNotConnected
 
 
 class RPiController:
-    def __init__(self, conn, binary_path):
+    def __init__(self, conn, binary_dfu, binary_suffix_generator, REMOTE_DIR):
         self.conn = conn
-        self.binary_path = binary_path
+        self.binary_dfu = binary_dfu
+        self.binary_suffix_generator = binary_suffix_generator
+        self.REMOTE_DIR = REMOTE_DIR
 
-    def run(self, args="", hide=False):
-        cmd = f"{self.binary_path} {args}"
+    def run_dfu(self, args="", hide=False):
+        cmd = f"{self.binary_dfu} {args}"
         result = self.conn.run(cmd, hide=hide, warn=True, in_stream=False)
         return result
+
+    def run_suffix_generator(self, args="", hide=False):
+        cmd = f"{self.binary_suffix_generator} {args}"
+        result = self.conn.run(cmd, hide=hide, warn=True, in_stream=False)
+        return result
+
+    def send_file(self, local_path):
+        remote_path = str(Path(self.REMOTE_DIR) / Path(local_path).name)
+        self.conn.put(local_path, remote_path)
 
 
 def load_test_settings(adapter_ids):

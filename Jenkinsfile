@@ -52,10 +52,10 @@ pipeline {
 
                         dir(REPO_NAME){
                             checkoutScmShallow()
-                            // Get dependencies (lib_device_control) for the I2C host tests on RPi
+                            // Get dependencies (lib_device_control) for the I2C host tests on RPi and build example for test
                             dir("examples/i2c/device") {
                                 withTools(params.TOOLS_VERSION) {
-                                    sh 'cmake -G "Unix Makefiles" -B build'
+                                    xcoreBuild()
                                 }
                             }
                         }
