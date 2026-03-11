@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18)
+cmake_minimum_required(VERSION 3.16) # Note older version to support Buster
 
 enable_language(CXX C)
 set(CMAKE_CXX_STANDARD 14)

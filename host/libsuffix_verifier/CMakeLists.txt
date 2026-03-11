@@ -1,6 +1,5 @@
-cmake_minimum_required(VERSION 3.21)
-
-project(suffix_verifier C)
+cmake_minimum_required(VERSION 3.16) # Note older version to support Buster
+project("suffix_verifier")
 
 # Force release mode so that all the DLLs are statically linked
 set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Only Release mode is allowed" FORCE)

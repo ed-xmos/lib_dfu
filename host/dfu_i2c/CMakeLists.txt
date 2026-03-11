@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16) # Note older version to support Buster
 
 project("dfu_i2c")
 
