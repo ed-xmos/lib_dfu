@@ -94,8 +94,3 @@ void cleanup_inputs(struct inputs *inputs)
   }
   inputs->boot.length = 0;
 }
-
-int write_upload_file_to_disk()
-{
-  return 0;
-}

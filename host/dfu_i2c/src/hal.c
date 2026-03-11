@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
+#include "app_types.h"
 #include "control_host.h"
 #include "device_id.h"
 #include "dfu_utils.h"
@@ -28,7 +29,7 @@ int hal_connect(struct device_id device_id)
   const int shift = 0;
   if (control_init_i2c(device_id.i2c_address << shift) != CONTROL_SUCCESS) {
     PRINT_ERROR("Control initialisation over I2C failed\n");
-    return 1;
+    return APP_ERROR;
   }
   if (!quiet) {
     printf("I2C connected (slave address 0x%X)\n", device_id.i2c_address);
@@ -42,17 +43,17 @@ int hal_connect(struct device_id device_id)
 #endif
   {
     PRINT_ERROR("Control query version failed\n");
-    return 2;
+    return APP_BAD_COMMS;
   }
   if (version != CONTROL_VERSION) {
     PRINT_ERROR("Mismatch of the control version between host and device. Expected 0x%X, received 0x%X\n", CONTROL_VERSION, version);
-    return 3;
+    return APP_WARNING;
   }
   if (!quiet) {
     printf("control version query successful\n");
   }
 
-  return 0;
+  return APP_OK;
 }
 
 #if USE_I2C && __xcore__
@@ -66,7 +67,7 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
   }
   if (num_bytes == 0 || payload == NULL) {
     PRINT_ERROR("Payload pointer is NULL for non-zero payload length\n");
-    return 1;
+    return APP_BAD_PARAM;
   }
 
 #if USE_I2C && __xcore__
@@ -76,18 +77,13 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
 #endif
   {
     PRINT_ERROR("Control read command did not return success\n");
-    return 1;
+    return APP_BAD_COMMS;
   }
   struct dfu_upload_header header;
   memcpy(&header, buffer, sizeof(header));
-  if (header.read_length != num_bytes) {
-    PRINT_ERROR("Received %u bytes, expected %zu bytes\n", header.read_length, num_bytes);
-    return 1;
-  } else {
-    memcpy(payload, buffer + sizeof(header), num_bytes);
-  }
+  memcpy(payload, buffer + sizeof(header), num_bytes);
 
-  return 0;
+  return header.read_length;
 }
 
 #if USE_I2C && __xcore__
@@ -103,13 +99,13 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
   }
   if (num_bytes != 0 && payload == NULL) {
     PRINT_ERROR("Payload pointer is NULL for non-zero payload length\n");
-    return 1;
+    return APP_BAD_PARAM;
   }
   size_t payload_bytes = 0;
 
   if (num_bytes > ((sizeof(buffer) - sizeof(struct dfu_dnload_header)))) {
     PRINT_ERROR("Payload size %zu is too large. Maximum supported is %zu bytes\n", num_bytes, (sizeof(buffer) - sizeof(struct dfu_dnload_header)));
-    return 1;
+    return APP_ERROR;
 
   } else if (num_bytes != 0)  {
     struct dfu_dnload_header header = { 0, 0 };
@@ -129,10 +125,10 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 #endif
   {
     PRINT_ERROR("Control write command did not return success\n");
-    return 1;
+    return APP_BAD_COMMS;
   }
 
-  return 0;
+  return num_bytes;
 }
 
 #if USE_I2C && __xcore__
@@ -143,10 +139,14 @@ int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c))
   }
 
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0, i_i2c) != 0) {
-    return 1;
+    /* Allow device turn-around time after reboot */
+    sleep_milliseconds(500);
+    return APP_BAD_COMMS;
   }
+  /* Allow device turn-around time after reboot */
+  sleep_milliseconds(500);
 
-  return 0;
+  return APP_OK;
 }
 #else
 int hal_reboot(void)
@@ -158,13 +158,13 @@ int hal_reboot(void)
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
     /* Allow device turn-around time after reboot */
     sleep_milliseconds(500);
-    return 1;
+    return APP_BAD_COMMS;
   }
 
   /* Allow device turn-around time after reboot */
   sleep_milliseconds(500);
 
-  return 0;
+  return APP_OK;
 }
 #endif
 
@@ -181,18 +181,18 @@ int hal_revert_factory(void)
   if (hal_write_command(XMOS_DFU_REVERTFACTORY, NULL, 0) != 0) {
     /* Allow time for deferred task to action the revert request */
     sleep_milliseconds(500);
-    return 1;
+    return APP_BAD_COMMS;
   }
   /* Allow time for deferred task to action the revert request */
   sleep_milliseconds(500);
-  return 0;
+  return APP_OK;
 }
 
 int hal_disconnect(void)
 {
   if (control_cleanup_i2c() != CONTROL_SUCCESS) {
-    return 1;
+    return APP_WARNING;
   }
 
-  return 0;
+  return APP_OK;
 }

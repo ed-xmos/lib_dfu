@@ -9,6 +9,7 @@
 #include "operations.h"
 #include "hal.h"
 #include "dfu_utils.h"
+#include "app_types.h"
 
 int main(int argc, char **argv)
 {
@@ -26,20 +27,18 @@ int main(int argc, char **argv)
 
       if (inputs.boot.length > max_dnload_size) {
         PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n", inputs.boot.length, max_dnload_size);
-        return 1;
+        cleanup_inputs(&inputs);
+        return APP_WARNING;
       }
 
-      if (hal_connect(options.device_id) != 0) {
-        return 1;
+      if (hal_connect(options.device_id) == APP_OK) {
+        ret = write_upgrade(inputs, options.block_size);
+        if (ret == 0) {
+          hal_reboot();
+        }
+
+        hal_disconnect();
       }
-
-      ret = write_upgrade(inputs, options.block_size);
-
-      if (ret == 0) {
-        hal_reboot();
-      }
-
-      hal_disconnect();
       cleanup_inputs(&inputs);
       break;
     }
@@ -47,26 +46,23 @@ int main(int argc, char **argv)
     case UPLOAD: {
       printf("Uploading\n");
 
-      if (hal_connect(options.device_id) != 0) {
-        return 1;
+      if (hal_connect(options.device_id) != APP_OK) {
+        return APP_WARNING;
       }
 
-      unsigned char *buffer;
-      int size;
-      ret = read_upload(buffer, size, options.block_size);
+      ret = read_upload(options.arguments[0], options.block_size);
+      if (ret != 0) {
+        printf("upload failed, %d\n", ret);
+      }
+      // TODO check result...
 
       hal_disconnect();
-
-      ret = write_upload_file_to_disk();
-      if (ret != 0) {
-        printf("write binary upload file to disk failed\n");
-      }
       break;
     }
 
     case DETACH_AND_BUS_RESET: {
-      if (hal_connect(options.device_id) != 0) {
-        return 1;
+      if (hal_connect(options.device_id) != APP_OK) {
+        return APP_WARNING;
       }
 
       ret = detach_and_bus_reset();
@@ -76,9 +72,9 @@ int main(int argc, char **argv)
     }
 
     case REBOOT: {
-      if (hal_connect(options.device_id) != 0) {
+      if (hal_connect(options.device_id) != APP_OK) {
         printf("Connect failed\n");
-        return 1;
+        return APP_WARNING;
       }
 
       (void)hal_reboot();
@@ -90,9 +86,9 @@ int main(int argc, char **argv)
 
     case REVERT_FACTORY: {
       printf("Revert factory\n");
-      if (hal_connect(options.device_id) != 0) {
+      if (hal_connect(options.device_id) != APP_OK) {
         printf("Connect failed\n");
-        return 1;
+        return APP_WARNING;
       }
 
       ret = detach_and_bus_reset();
@@ -118,8 +114,8 @@ int main(int argc, char **argv)
   }
 
   if (ret != 0) {
-    return 1;
+    return APP_WARNING;
   }
 
-  return 0;
+  return APP_OK;
 }
