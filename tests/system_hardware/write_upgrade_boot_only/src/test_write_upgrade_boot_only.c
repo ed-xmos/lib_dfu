@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <print.h>
-#include <string.h>
 #include <quadflash.h>
 
 #include <unity.h>

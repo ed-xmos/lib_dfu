@@ -152,7 +152,7 @@ FILE * movable write(FILE * movable bin_file, int block_size, int marker)
   }
 
   t_start(8);block_count
-  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
   t_end();
   state = get_state();

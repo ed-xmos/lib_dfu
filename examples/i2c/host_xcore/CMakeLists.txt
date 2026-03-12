@@ -10,7 +10,10 @@ include("${XMOS_SANDBOX_DIR}/lib_device_control/host/host_build_i2c.cmake")
 # target: choose the target platform
 set(APP_HW_TARGET           XK-EVK-XU316)
 
-set(APP_INCLUDES            src ../shared)
+set(APP_INCLUDES            src ../shared ../../../host/common)
+
+set(APP_XC_SRCS             src/host.xc)
+set(APP_C_SRCS              ../../../host/common/dfu_utils.c)
 
 set(APP_COMPILER_FLAGS      -O2
                             -g

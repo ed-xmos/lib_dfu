@@ -11,10 +11,10 @@
 
 #include "control.h"
 #include "dfu.h"
+#include "dfu_utils.h"
 #include "i2c.h"
 #include "control_host.h"
 #include "resource.h"
-#include "control_host_util.h"
 
 port p_scl = on tile[0]: XS1_PORT_1N; // Can be accessed via signal SCL_3V3, TP13
 port p_sda = on tile[0]: XS1_PORT_1O; // Can be accessed via signal SDA_3V3, TP14
@@ -126,7 +126,7 @@ int main(void)
       printf("Sent bus reset command\n");
 
       /* Allow device to reboot */
-      pause_long();
+      sleep_milliseconds(1000);
 
       host_getStatus(i_i2c[0], &status, &state, &timeout, NULL);
       printf("DFU status: %d, timeout: %d ms, next state: %d\n", status, timeout, state);
@@ -139,14 +139,14 @@ int main(void)
           exit(1);
         }
 
-        pause_short();
+        sleep_milliseconds(1000);
 
         if (control_read_command(RESOURCE_ID, CONTROL_CMD_SET_READ(0), i_i2c[0], payload, 1) != CONTROL_SUCCESS) {
           printf("control read command failed\n");
           exit(1);
         }
 
-        pause_long();
+        sleep_milliseconds(1000);
 
         if (payload[0] != i) {
           printf("control read command returned the wrong value, expected %d, returned %d\n", i, payload[0]);

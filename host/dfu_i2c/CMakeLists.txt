@@ -11,6 +11,7 @@ include(../../../lib_device_control/host/host_build_i2c.cmake)
 
 set (INCLUDE_DIRS
         "../api"
+        "../common"
         "../../lib_dfu/api"
         "../../lib_dfu/src"
         "../libsuffix_verifier/src"
@@ -22,7 +23,7 @@ set (SOURCE_FILES
         src/hal.c
         src/input_reader.c
         src/operations.c
-        src/dfu_utils.c
+        ../common/dfu_utils.c
         src/labels.c
         ../libsuffix_verifier/src/crc.c
         ../libsuffix_verifier/src/suffix_verifier.c
@@ -58,7 +59,6 @@ target_compile_options(${DFUCTRL_LIB} PUBLIC ${FLAGS})
 target_link_libraries(${DFUCTRL_LIB} control_i2c_host)
 
 add_executable(${DFUCTRL_APP} src/main.c)
-target_include_directories(${DFUCTRL_APP} PUBLIC "api")
 target_compile_options(${DFUCTRL_APP} PUBLIC ${FLAGS})
 if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
     target_link_libraries(${DFUCTRL_APP} ${DFUCTRL_LIB})

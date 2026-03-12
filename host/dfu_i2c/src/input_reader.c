@@ -65,6 +65,7 @@ static size_t load_file(const char *file_name, unsigned char **bytes)
   size_t length = file_size(handle, file_name);
   if (length == 0) {
     PRINT_ERROR("Problem finding file length for file %s\n", file_name);
+    fclose(handle);
     return 0;
   }
 
