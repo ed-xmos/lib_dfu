@@ -57,7 +57,7 @@ static void sub_transition_dnload(enum dnload_sub_state new)
 
 void sub_sm_clear(void)
 {
-  poll_timeout = 0;
+  poll_timeout = POLL_TIMEOUT_DNLOAD_ENTRY_MSEC;
   sub_state = DNLOAD_SYNC;
 
   t_profile_connect = 0;
