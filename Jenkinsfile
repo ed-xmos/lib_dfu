@@ -153,12 +153,15 @@ pipeline {
 
                         dir(REPO_NAME) {
                             checkoutScmShallow()
-                            dir("host/xmosdfu") {
+                            dir("host") {
                                 sh 'cmake -B build'
                                 sh 'make -C build'
-                                sh 'mkdir -p OSX/x86'
-                                sh 'mv bin/xmosdfu OSX/x86/xmosdfu'
-                                archiveArtifacts artifacts: "OSX/x86/xmosdfu", fingerprint: true
+
+                                dir("xmosdfu") {
+                                    sh 'mkdir -p OSX/x86'
+                                    sh 'mv bin/xmosdfu OSX/x86/xmosdfu'
+                                    archiveArtifacts artifacts: "OSX/x86/xmosdfu", fingerprint: true
+                                }
                             }
                         }
                     }
@@ -178,14 +181,17 @@ pipeline {
 
                         dir(REPO_NAME) {
                             checkoutScmShallow()
-                            dir("host/xmosdfu") {
+                            dir("host") {
                                 sh 'cmake -B build'
                                 sh 'make -C build'
-                                sh 'mkdir -p OSX/arm64'
-                                sh 'mv bin/xmosdfu OSX/arm64/xmosdfu'
-                                archiveArtifacts artifacts: "OSX/arm64/xmosdfu", fingerprint: true
-                                dir("OSX/arm64") {
-                                    stash includes: 'xmosdfu', name: 'macos_xmosdfu'
+
+                                dir("xmosdfu") {
+                                    sh 'mkdir -p OSX/arm64'
+                                    sh 'mv bin/xmosdfu OSX/arm64/xmosdfu'
+                                    archiveArtifacts artifacts: "OSX/arm64/xmosdfu", fingerprint: true
+                                    dir("OSX/arm64") {
+                                        stash includes: 'xmosdfu', name: 'macos_xmosdfu'
+                                    }
                                 }
                             }
                         }
@@ -198,40 +204,41 @@ pipeline {
                 }  // Build Mac arm host app
 
                 stage('Build Pi host app') {
-                agent {
-                    label 'pi'
-                }
-                steps {
-                    println "Stage running on ${env.NODE_NAME}"
+                    agent {
+                        label 'pi'
+                    }
+                    steps {
+                        println "Stage running on ${env.NODE_NAME}"
 
-                    // Bring in device control code to test the I2C host app on RPi
-                    sh 'git clone --depth 1 -b develop git@github.com:xmos/lib_device_control.git'
-                
-                    dir(REPO_NAME) {
-                        checkoutScmShallow()
-                        dir("host/xmosdfu") {
-                            sh 'cmake -B build'
-                            sh 'make -C build'
-                            sh 'mkdir -p RPi'
-                            sh 'mv bin/xmosdfu RPi/xmosdfu'
-                            archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
-                        }
+                        // Bring in device control code to test the I2C host app on RPi
+                        sh 'git clone --depth 1 -b develop git@github.com:xmos/lib_device_control.git'
+                    
+                        dir(REPO_NAME) {
+                            checkoutScmShallow()
+                            dir("host") {
+                                sh 'cmake -B build'
+                                sh 'make -C build'
 
-                        dir("host/dfu_i2c") {
-                            sh "cmake -B build"
-                            sh "cmake --build build"
-                            sh 'mkdir -p RPi/dfu_i2c'
-                            sh 'mv bin RPi/dfu_i2c'
-                            sh 'mv lib RPi/dfu_i2c'
-                            archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
+                                dir("xmosdfu") {
+                                    sh 'mkdir -p RPi'
+                                    sh 'mv bin/xmosdfu RPi/xmosdfu'
+                                    archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
+                                }
+
+                                dir("dfu_i2c") {
+                                    sh 'mkdir -p RPi/dfu_i2c'
+                                    sh 'mv bin RPi/dfu_i2c'
+                                    sh 'mv lib RPi/dfu_i2c'
+                                    archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
+                                }
+                            }
                         }
                     }
-                }
-                post {
-                    cleanup {
-                        xcoreCleanSandbox()
+                    post {
+                        cleanup {
+                            xcoreCleanSandbox()
+                        }
                     }
-                }
                 }  // Build Pi host app
 
                 stage('Build Windows host app') {
@@ -244,11 +251,14 @@ pipeline {
                         dir(REPO_NAME) {
                             checkoutScmShallow()
                             withVS() {
-                                dir("host/xmosdfu") {
+                                dir("host") {
                                     bat "cmake -B build -G Ninja"
                                     bat "ninja -C build"
-                                    bat 'mkdir win64 && cp bin/xmosdfu.exe win64/'
-                                    archiveArtifacts artifacts: "win64/xmosdfu.exe", fingerprint: true
+
+                                    dir("xmosdfu") {
+                                        bat 'mkdir win64 && cp bin/xmosdfu.exe win64/'
+                                        archiveArtifacts artifacts: "win64/xmosdfu.exe", fingerprint: true
+                                    }
                                 }
                             } // withVS()
                         }
