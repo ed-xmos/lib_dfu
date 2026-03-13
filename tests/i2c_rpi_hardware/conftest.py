@@ -59,6 +59,12 @@ def remote_pi(settings):
                       connect_kwargs=connect_kwargs)
     REMOTE_DIR = "/tmp/pytest_rpi_build"
 
+    # For security we now zero the login details
+    settings["pi_server_ip"] = None
+    settings["pi_server_login"] = None
+    settings["pi_server_password"] = None
+    connect_kwargs = None
+
     repo_root = Path(__file__).resolve().parent.parent.parent.parent  # new_afenext/
     lib_dfu_dir = repo_root / "lib_dfu"
     lib_device_control_dir = repo_root / "lib_device_control"

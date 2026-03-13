@@ -80,7 +80,7 @@ void device_reboot(void)
 
 #else
 
-// Testing only - not a real reboot, just simulating bus reset.
+// Testing only - not a real reboot.
 void device_reboot(void)
 {
 }

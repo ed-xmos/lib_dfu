@@ -16,17 +16,6 @@
 #define DFU_ENABLE 1
 #endif
 
-/** Required for using the DFU library as a host machine.
- * When disabled will include empty stubs for the API functions. These stubs are weak and can be overridden locally.
- */
-#ifndef DFU_HOST
-#define DFU_HOST 0
-#else
-#if defined(DFU_ENABLE) && (DFU_ENABLE == 1)
-#warning "DFU_HOST is enabled while DFU_ENABLE is also enabled"
-#endif
-#endif
-
 /** Main control for the USB functionality of the DFU library. 
  * When enabled, the DFU library will include USB support. Build with lib_xud or lib_xua.
  * When disabled, USB support will be excluded. Other transports can be used.

@@ -58,7 +58,6 @@ pipeline {
                                 println "Stage running on ${env.NODE_NAME}"
 
                                 dir(REPO_NAME){
-                                    sh ""
                                     checkoutScmShallow()
                                 }
                             }
@@ -93,6 +92,12 @@ pipeline {
                                 }
                             }
                         }
+
+                        stage("Archive sandbox") {
+                            steps {
+                                archiveSandbox(REPO_NAME)
+                            }
+                        }
                     }
                     post {
                         cleanup {
@@ -114,14 +119,13 @@ pipeline {
                             }
                         }
 
-                        stage('Build Linux host app') {
+                        stage('Build Linux host apps') {
                             steps {
                                 dir(REPO_NAME) {
                                     dir("host") {
                                         sh "cmake -B build"
                                         sh "cmake --build build"
 
-                                        println "We will run pytest from here"
                                     }
                                     archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
                                     archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
@@ -178,13 +182,14 @@ pipeline {
 
                         dir(REPO_NAME) {
                             checkoutScmShallow()
-                            dir("host/xmosdfu") {
-                                sh 'cmake -B build'
-                                sh 'make -C build'
-                                sh 'mkdir -p OSX/x86'
-                                sh 'mv bin/xmosdfu OSX/x86/xmosdfu'
-                                archiveArtifacts artifacts: "OSX/x86/xmosdfu", fingerprint: true
-                            }
+                            dir("host") {
+                                    sh "cmake -B build"
+                                    sh "cmake --build build"
+
+                                }
+                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                         }
                     }
                     post {
@@ -203,16 +208,14 @@ pipeline {
 
                         dir(REPO_NAME) {
                             checkoutScmShallow()
-                            dir("host/xmosdfu") {
-                                sh 'cmake -B build'
-                                sh 'make -C build'
-                                sh 'mkdir -p OSX/arm64'
-                                sh 'mv bin/xmosdfu OSX/arm64/xmosdfu'
-                                archiveArtifacts artifacts: "OSX/arm64/xmosdfu", fingerprint: true
-                                dir("OSX/arm64") {
-                                    stash includes: 'xmosdfu', name: 'macos_xmosdfu'
-                                }
+                            dir("host") {
+                                sh "cmake -B build"
+                                sh "cmake --build build"
+
                             }
+                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                         }
                     }
                     post {
@@ -236,22 +239,14 @@ pipeline {
 
                         dir(REPO_NAME) {
                             checkoutScmShallow()
-                            dir("host/xmosdfu") {
-                                sh 'cmake -B build'
-                                sh 'make -C build'
-                                sh 'mkdir -p RPi'
-                                sh 'mv bin/xmosdfu RPi/xmosdfu'
-                                archiveArtifacts artifacts: "RPi/xmosdfu", fingerprint: true
-                            }
-
-                            dir("host/dfu_i2c") {
+                            dir("host") {
                                 sh "cmake -B build"
                                 sh "cmake --build build"
-                                sh 'mkdir -p RPi/dfu_i2c'
-                                sh 'mv bin RPi/dfu_i2c'
-                                sh 'mv lib RPi/dfu_i2c'
-                                archiveArtifacts artifacts: "RPi/dfu_i2c/bin/dfu_i2c, RPi/dfu_i2c/lib/*.a", fingerprint: true
+
                             }
+                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                         }
                     }
                     post {
@@ -271,12 +266,14 @@ pipeline {
                         dir(REPO_NAME) {
                             checkoutScmShallow()
                             withVS() {
-                                dir("host/xmosdfu") {
-                                    bat "cmake -B build -G Ninja"
-                                    bat "ninja -C build"
-                                    bat 'mkdir win64 && cp bin/xmosdfu.exe win64/'
-                                    archiveArtifacts artifacts: "win64/xmosdfu.exe", fingerprint: true
+                                dir("host") {
+                                    sh "cmake -B build"
+                                    sh "cmake --build build"
+
                                 }
+                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                             } // withVS()
                         }
                     }
