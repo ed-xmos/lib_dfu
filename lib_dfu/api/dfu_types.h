@@ -28,6 +28,21 @@
 #define DFU_GETSTATUS_POLL_TIMEOUT_BYTES 3
 #define DFU_GETSTATUS_STATE_INDEX 4
 
+#define DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES 4
+#define DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX 0
+#define DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX 2
+#define DFU_GETDESCRIPTOR_MODE_FLAG_INDEX 3
+
+#define DFU_MODE_RUNTIME 1
+#define DFU_MODE_DFU 2
+
+#define DFU_ATTR_CAN_DOWNLOAD              (1u << 0)
+#define DFU_ATTR_CAN_UPLOAD                (1u << 1)
+#define DFU_ATTR_MANIFESTATION_TOLERANT    (1u << 2)
+#define DFU_ATTR_WILL_DETACH               (1u << 3)
+// DFU functional attributes
+#define DFU_FUNC_ATTRS (DFU_ATTR_CAN_UPLOAD | DFU_ATTR_CAN_DOWNLOAD | DFU_ATTR_WILL_DETACH | DFU_ATTR_MANIFESTATION_TOLERANT)
+
 /**
  * DFU request types
  */
@@ -39,12 +54,25 @@ enum dfu_request {
   DFU_GETSTATUS = 3,
   DFU_CLRSTATUS = 4,
   DFU_GETSTATE = 5,
-  DFU_ABORT = 6,
+  DFU_ABORT = 6, // TODO - fully support
 
   // XMOS custom DFU commands - values chosen to avoid conflict with standard DFU requests
-  XMOS_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+  XMOS_DFU_BUS_RESET = 9,       // For simulating bus/device reset on transports other than USB.
+  XMOS_DFU_GET_DESCRIPTOR = 10, // For simulating getting a descriptor on transports other than USB.
 
-  XMOS_DFU_REVERTFACTORY = 0xf1,
+  // Not actual requests, used internally to indicate deferred actions to be taken after responding to a request.
+  DFU_DEFERRED_ACTION_REBOOT = 20,
+  DFU_DEFERRED_ACTION_REBOOT_TO_DFU = 21,
+  DFU_DEFERRED_ACTION_REVERT_FACTORY = 22,  // Triggered from REVERTFACTORY in DFU_IDLE
+
+  DFU_DEFERRED_ACTION_FLASH_CONNECT = 30,   // Triggered from bus reset in APP_DETACH
+  DFU_DEFERRED_ACTION_FLASH_WRITE = 31,     // Triggered from get-status request
+  DFU_DEFERRED_ACTION_FLASH_MANIFEST = 32,  // Triggered from get-status request
+
+  XMOS_DFU_GETPROFILE = 40, // For getting DFU profile data such as command execution time, for profiling and testing purposes.
+
+  /* For lib_device_control access this will be 0x71 due to read bit */
+  XMOS_DFU_REVERTFACTORY = 0xF1,
 };
 
 /**
@@ -95,9 +123,16 @@ struct dfu_getstatus {
   unsigned poll_timeout_msec; /**< Poll timeout in milliseconds */
 };
 
+struct dfu_profile_data {
+    unsigned command_time;
+    unsigned command_index;
+    unsigned index_total;
+    unsigned cmd;
+};
+
 /* TODO - lib_xua types, remove in time */
 #define _DFU_TRANSFER_SIZE_BYTES (64)   // bMaxPacketSize0 in DFU device descriptor
-#define _DFU_TRANSFER_SIZE_WORDS (_DFU_TRANSFER_SIZE_BYTES/4)
+// #define _DFU_TRANSFER_SIZE_WORDS (_DFU_TRANSFER_SIZE_BYTES/4)
 #define _FLASH_PAGE_SIZE_BYTES    (256)
 #define _NUM_DFU_PAGES_PER_FLASH_PAGE (_FLASH_PAGE_SIZE_BYTES/_DFU_TRANSFER_SIZE_BYTES)
 

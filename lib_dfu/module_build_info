@@ -8,17 +8,6 @@ MODULE_XCC_FLAGS = $(XCC_FLAGS)
 
 EXPORT_INCLUDE_DIRS = api
 
-SOURCE_DIRS = src
-
-// TODO
-// if (DFU_FLASH_UNIT_TEST)
-//    SOURCE_DIRS += flash/test
-// else
-// if (NO_DATA_PARTITION)
-//    SOURCE_DIRS += flash/quad
-// else
-//    SOURCE_DIRS += flash/partition
-// endif()
-// endif()
+SOURCE_DIRS = src flash
 
 INCLUDE_DIRS = $(EXPORT_INCLUDE_DIRS) $(SOURCE_DIRS)

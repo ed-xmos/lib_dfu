@@ -7,6 +7,7 @@
 #include <stddef.h>
 #include <quadflash.h>
 #include <stdint.h>
+#include <xccompat.h>
 
 #include "dfu_default_conf.h"
 #include "dfu_types.h"
@@ -22,6 +23,7 @@ enum dfu_api_status {
 struct dfu_cmd_response {
   enum dfu_api_status status;
   int32_t return_data_len;
+  enum dfu_request deferred_request;
 };
 
 /* From USB DFU spec v1.1 
@@ -37,44 +39,44 @@ struct dfu_cmd_response {
  * DFU_ABORT      Zero      Interface Zero      None
  */
 
- /** DFU host write request handling
-  *
-  * \param cmd - the DFU command (bRequest)
-  * \param value - the wValue field of the request, usage depends on command, either block-num for download or timeout for detach
-  * \param payload - pointer to the data payload of the request, usage depends on command
-  * \param payload_len - length of the data payload in bytes
+ /**
+  * DFU request handling with arguments
   * 
-  * \return struct dfu_cmd_response containing status and any return value
-  * \retval DFU_API_SUCCESS if command was handled successfully, the value will mark whether device needs a reboot
+  * \param request the DFU request to handle
+  * \param write_block pointer to the data payload of the request for write operations, usage depends on command, for download it's
+  * the data block to write, for other commands it's unused and can be null
+  * \param read_block pointer to the data payload buffer for read operations, usage depends on command, for upload it's the buffer
+  * to fill with the data block to upload, for other commands it's unused and can be null
+  * \param block_size_bytes the size of the data block to read/write for upload/download commands, for other commands it's unused and can be 0
+  * \param block_num for download command, the block number to write, for other commands it's unused and can be null
+  * 
+  * \return struct dfu_cmd_response containing status and any return value, usage depends on command, for upload the return_data_len is the size of the block to upload, for other commands it's unused and can be 0
+  * \retval DFU_API_SUCCESS if command was handled successfully, the value is the upload block-number for upload command, 0 otherwise.
   * \retval DFU_API_ERROR if there was an error handling the command
   * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
   */
-struct dfu_cmd_response dfu_handle_write_command(int32_t cmd, int32_t value, const uint8_t payload[], size_t payload_len);
+struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
+                                                    NULLABLE_ARRAY_OF(uint8_t, block),
+                                                    int32_t block_size_bytes,
+                                                    NULLABLE_REFERENCE_PARAM(int32_t, block_num));
 
-/** DFU host read request handling
+/**
+ * Send request to DFU with no data
  * 
- * \param cmd - the DFU command (bRequest)
- * \param payload - pointer to the data payload buffer to be filled by the command handler, usage depends on command
- * \param payload_len - length of the data payload buffer in bytes
+ * \param request the DFU request to send
  * 
- * \return struct dfu_cmd_response containing status and any return value
- * \retval DFU_API_SUCCESS if command was handled successfully, the value is the upload block-number, 0 otherwise.
- * \retval DFU_API_ERROR if there was an error handling the command
- * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
+ * \return struct dfu_cmd_response containing status
+ * \retval DFU_API_SUCCESS for status, if command was handled successfully
+ * \retval DFU_API_ERROR for status, if there was an error handling the command
+ * \retval DFU_API_BAD_PARAM for status, if the command or parameters were invalid
+ *
  */
-struct dfu_cmd_response dfu_handle_read_command(int32_t cmd, uint8_t payload[], size_t payload_len);
+struct dfu_cmd_response dfu_request(enum dfu_request request);
 
 /**
  * \defgroup lib_dfu_api API
  * \{
  */
-
-/**
- * DFU GETSTATE request
- *
- * \return Current interface state
- */
-enum dfu_state dfu_getstate(void);
 
 /**
  * DFU DETACH request
@@ -104,61 +106,6 @@ void dfu_bus_reset(void);
  * for specification compliance (like the bus reset).
  */
 void dfu_timeout_detach(void);
-
-/**
- * DFU DNLOAD request
- *
- * Block size can vary, but normally doesn't. Typical use is a sequence of fixed
- * size blocks until the end of an image, then one zero-size block to finish.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library. While DNLOAD request does no erasing or writing work, it
- * needs to know the page size to being converting blocks to pages.
- *
- * \param block_num          Block number
- * \param block_size_bytes   Block size in bytes
- * \param block              Block contents
- */
-void dfu_dnload(int32_t block_num, int32_t block_size_bytes,
-                const uint8_t block[DFU_TRANSFER_SIZE_BYTES]);
-
-/**
- * DFU  UPLOAD request
- *
- * Block size can vary, but normally doesn't. Typical use is a sequence of fixed
- * size blocks until the end of an image, then one zero-size block to finish.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library. While UPLOAD request does no erasing or writing work, it
- * needs to know the page size to being converting blocks to pages.
- *
- * \param block_size_bytes   Block size in bytes
- * \param block              Block contents
- * 
- * \return Block number of the block returned in the block parameter. This is useful for the caller to track the progress of the upload.
- */
-int32_t dfu_upload(int32_t block_size_bytes, uint8_t read_block[DFU_TRANSFER_SIZE_BYTES]);
-
-/**
- * DFU GETSTATUS request
- *
- * At time of writing, all flash programming work is done as part of GETSTATUS.
- * This means that a DNLOAD request completes immediately and does not cause
- * any flash erasing or writing.
- *
- * Note that at this point the caller must have connected to the flash using
- * quadflash library.
- *
- * \return Status code, poll timeout value and current interface state
- */
-struct dfu_getstatus dfu_getstatus(void);
-
-/**
- * DFU CLRSTATUS request
- */
-void dfu_clrstatus(void);
-
-struct dfu_cmd_response dfu_abort(void);
 
 /** \} */
 

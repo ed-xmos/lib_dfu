@@ -138,25 +138,50 @@ void layout_flash(int block_size, int block_count)
   memset(fl.page_written, 0, sizeof(fl.page_written));
 }
 
-static enum dfu_status
-  single_dnload_block(int block_num, size_t block_size, const char block[])
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
+
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+static struct dfu_getstatus get_status()
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  struct dfu_getstatus ret = { .status = payload[DFU_GETSTATUS_STATUS_INDEX], .state = payload[DFU_GETSTATUS_STATE_INDEX] };
+  return ret;
+}
+
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
+static enum dfu_status single_dnload_block(int block_num, size_t block_size, const char block[])
 {
   struct dfu_getstatus ret;
-  enum dfu_state state;
 
-  dfu_dnload(block_num, block_size, block);
-  state = dfu_getstate();
-  assert(state == STATE_DFU_DNLOAD_SYNC);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, block_size, &block_num);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  get_state_and_check(STATE_DFU_DNLOAD_SYNC);
 
   do {
-    ret = dfu_getstatus();
+    ret = get_status();
     if (ret.status != DFU_OK)
       return ret.status;
 
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_DNBUSY);
 
-  assert(ret.state == STATE_DFU_DNLOAD_IDLE);
+  get_state_and_check(STATE_DFU_DNLOAD_IDLE);
 
   return DFU_OK;
 }
@@ -167,18 +192,17 @@ void dnload_zero(void)
   enum dfu_state state;
   char block[DFU_TRANSFER_SIZE_BYTES];
 
-  dfu_dnload(0, 0, block);
-  state = dfu_getstate();
-  assert(state == STATE_DFU_MANIFEST_SYNC);
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, 0, 0);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
-    ret = dfu_getstatus();
+    ret = get_status();
     assert(ret.status == DFU_OK);
     delay_microseconds(1);
   } while (ret.state == STATE_DFU_MANIFEST);
 
-  assert(ret.state == STATE_DFU_IDLE);
-  assert(ret.status == DFU_OK);
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 void verify(void)
@@ -210,45 +234,38 @@ void verify(void)
 
 void dnload(int partitions, int block_size, int block_count)
 {
-  enum dfu_state state;
   enum dfu_status status;
   char block[DFU_TRANSFER_SIZE_BYTES] = {0};
 
   int ret = dfu_locate_upgrade_slots();
   assert(ret == 0);
 
-  state = dfu_getstate();
-  assert(state == STATE_APP_IDLE);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  assert(state == STATE_APP_DETACH);
+  get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
-  state = dfu_getstate();
-  assert(state == STATE_DFU_IDLE);
+  bus_reset();
+  get_state_and_check(STATE_DFU_IDLE);
 
   for (int p = 0; p < 2; p++) {
     if (partitions & (1 << p)) {
       const unsigned marker = DFU_BLOCK_NUM_DATA_IMAGE_MARKER * p;
       for (int i = 0; i < block_count; i++) {
-        debug_printf("dnload block %d 0x%04X (%d bytes)\n",
-                     i, marker | i, block_size);
+        debug_printf("dnload block %d 0x%04X (%d bytes)\n", i, marker | i, block_size);
 
         status = single_dnload_block(marker | i, block_size, block);
         if (status != DFU_OK) {
           assert(status == DFU_errADDRESS);
-          dfu_clrstatus();
-          state = dfu_getstate();
-          assert(state == STATE_DFU_IDLE);
+          struct dfu_cmd_response response = dfu_request(DFU_CLRSTATUS);
+          TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+          get_state_and_check(STATE_DFU_IDLE);
           break;
         }
       }
-      state = dfu_getstate();
-      if (state == STATE_DFU_DOWNLOAD_IDLE) { // DNLOAD-IDLE state indicates no error
-        debug_printf("dnload zero\n");
-        dnload_zero();
-      }
+      get_state_and_check(STATE_DFU_DOWNLOAD_IDLE);
+      debug_printf("dnload zero\n");
+      dnload_zero();
     }
   }
 }

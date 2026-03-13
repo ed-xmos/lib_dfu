@@ -6,8 +6,9 @@
 
 #include <xccompat.h>
 
-#include "xua.h"
+// #include "xua.h"
 #include "xud_device.h"
+#include "dfu.h"
 #include "dfu_types.h"
 
 #ifndef __XC__
@@ -28,6 +29,10 @@
 #error DFU_MANUFACTURER_STR_INDEX not defined!!
 #endif
 
+#ifndef DFU_SERIAL_NUMBER_STR_INDEX
+#define DFU_SERIAL_NUMBER_STR_INDEX 0
+#endif
+
 USB_Descriptor_Device_t DFUdevDesc =
 {
     .bLength                        = sizeof(USB_Descriptor_Device_t),
@@ -40,22 +45,15 @@ USB_Descriptor_Device_t DFUdevDesc =
     .bDeviceClass                   = 0, /* See interface */
     .bDeviceSubClass                = 0, /* See interface */
     .bDeviceProtocol                = 0, /* See interface */
-    .bMaxPacketSize0                = _DFU_TRANSFER_SIZE_BYTES,
+    .bMaxPacketSize0                = DFU_TRANSFER_SIZE_BYTES,
     .idVendor                       = DFU_VENDOR_ID,
     .idProduct                      = DFU_PID,
     .bcdDevice                      = BCD_DEVICE,
     .iManufacturer                  = DFU_MANUFACTURER_STR_INDEX,
     .iProduct                       = DFU_PRODUCT_STR_INDEX,
-    .iSerialNumber                  = 0, /* Set to None by default */
+    .iSerialNumber                  = DFU_SERIAL_NUMBER_STR_INDEX,
     .bNumConfigurations             = 0x01
 };
-
-#define DFU_ATTR_CAN_DOWNLOAD              (1u << 0)
-#define DFU_ATTR_CAN_UPLOAD                (1u << 1)
-#define DFU_ATTR_MANIFESTATION_TOLERANT    (1u << 2)
-#define DFU_ATTR_WILL_DETACH               (1u << 3)
-// DFU functional attributes
-#define DFU_FUNC_ATTRS (DFU_ATTR_CAN_UPLOAD | DFU_ATTR_CAN_DOWNLOAD | DFU_ATTR_WILL_DETACH | DFU_ATTR_MANIFESTATION_TOLERANT)
 
 typedef struct
 {
@@ -111,8 +109,8 @@ USB_Config_Descriptor_DFU_t DFUcfgDesc = {
         .bLength = sizeof(USB_DFU_Functional_Descriptor_t),
         .bDescriptorType = 0x21, //  DFU FUNCTIONAL
         .bmAttributes = DFU_FUNC_ATTRS,
-        .wDetachTimeOut = 0x00FA,
-        .wTransferSize = _DFU_TRANSFER_SIZE_BYTES,
+        .wDetachTimeOut = 250,
+        .wTransferSize = DFU_TRANSFER_SIZE_BYTES,
         .bcdDFUVersion = 0x0110
     }
 };

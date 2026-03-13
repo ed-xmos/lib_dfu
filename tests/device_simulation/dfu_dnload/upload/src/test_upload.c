@@ -9,9 +9,6 @@
 #include <xclib.h>
 #include <xs1.h>
 
-#define _Bool int
-#include <stdbool.h>
-
 #define DEBUG_UNIT TEST
 #define DEBUG_PRINT_ENABLE_TEST 1
 #include "debug_print.h"
@@ -131,32 +128,49 @@ void layout_flash(int block_count, int block_size, int tail_size) {
   fl.busy_countdown = 0;
 }
 
-void detach() {
-  enum dfu_state state;
+static uint8_t payload[DFU_TRANSFER_SIZE_BYTES];
 
+static void get_state_and_check(enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATE, payload, DFU_GET_STATE_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL(expected_state, payload[0]);
+}
+
+static void get_status_and_check(enum dfu_status expected_status, enum dfu_state expected_state)
+{
+  struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  TEST_ASSERT_EQUAL_UINT8(expected_status, payload[DFU_GETSTATUS_STATUS_INDEX]);
+  TEST_ASSERT_EQUAL_UINT8(expected_state, payload[DFU_GETSTATUS_STATE_INDEX]);
+}
+
+static void bus_reset() {
+  struct dfu_cmd_response response = dfu_request(XMOS_DFU_BUS_RESET);
+  TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  if (response.deferred_request == DFU_DEFERRED_ACTION_FLASH_CONNECT) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
+}
+
+void detach() {
   // TODO pass if we are already in DFU_IDLE from previous test.
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  get_state_and_check(STATE_APP_IDLE);
 
   dfu_detach();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_DETACH, state);
+  get_state_and_check(STATE_APP_DETACH);
 
-  dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  bus_reset();
+  get_state_and_check(STATE_DFU_IDLE);
 }
 
 void reboot() {
-  enum dfu_state state;
+  get_state_and_check(STATE_DFU_IDLE);
 
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
-
-  dfu_bus_reset();
-  state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_APP_IDLE, state);
+  bus_reset();
+  get_state_and_check(STATE_APP_IDLE);
 }
 
 void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_count, int tail_size) {
@@ -165,27 +179,24 @@ void upload(unsigned char images[MAX_IMAGE_SIZE], int block_size, int block_coun
   for (int i = 0; i < block_count; i++) {
     debug_printf("upload block %d 0x%04X (%d bytes)\n", i, marker | i, block_size);
 
-    struct dfu_cmd_response response = dfu_handle_read_command(DFU_UPLOAD, &images[i * block_size], (size_t)block_size);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, &images[i * block_size], block_size, NULL);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_EQUAL(block_size, response.return_data_len);
     
-    struct dfu_getstatus status = dfu_getstatus();
-    TEST_ASSERT_EQUAL(DFU_OK, status.status);
-    TEST_ASSERT_EQUAL(STATE_DFU_UPLOAD_IDLE, status.state);
+    get_status_and_check(DFU_OK, STATE_DFU_UPLOAD_IDLE);
   }
   if (tail_size >= 0) {
     debug_printf("upload block %d 0x%04X (tail %d bytes)\n", block_count, marker | block_count, tail_size);
 
-    struct dfu_cmd_response response = dfu_handle_read_command(DFU_UPLOAD, &images[block_count * block_size], (size_t)block_size);
+    struct dfu_cmd_response response = dfu_request_with_arguments(DFU_UPLOAD, &images[block_count * block_size], block_size, NULL);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     TEST_ASSERT_EQUAL(tail_size, response.return_data_len);
   }
-  enum dfu_state state = dfu_getstate();
-  TEST_ASSERT_EQUAL(STATE_DFU_IDLE, state);
+  get_state_and_check(STATE_DFU_IDLE);
 
   /* Sanity checks */
+  TEST_ASSERT_TRUE(fl.flash_open);
   TEST_ASSERT_FALSE(fl.state_reading);
-  TEST_ASSERT_FALSE(fl.flash_open);
 }
 
 void verify(const uint8_t images[MAX_IMAGE_SIZE]) {
@@ -247,4 +258,6 @@ void test_upload_with_tail(void) {
   }
   
   reboot();
+
+  TEST_ASSERT_FALSE(fl.flash_open);
 }

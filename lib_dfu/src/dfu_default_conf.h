@@ -24,6 +24,10 @@
 #define DFU_USB_EN 0
 #endif
 
+#ifndef DFU_BCD_DEVICE
+#define DFU_BCD_DEVICE 0x0100
+#endif
+
 #ifdef __DOXYGEN__
 /** User defined flash device specification for DFU to use.
  * 
@@ -50,34 +54,34 @@
 #endif
 
 /** Number of DFU packets per flash page */
-#ifndef NUM_DFU_PAGES_PER_FLASH_PAGE
-#define NUM_DFU_PAGES_PER_FLASH_PAGE (DFU_FLASH_PAGE_SIZE_BYTES / DFU_TRANSFER_SIZE_BYTES)
-#if DFU_TRANSFER_SIZE_BYTES > DFU_FLASH_PAGE_SIZE_BYTES
-#error "DFU_TRANSFER_SIZE_BYTES must not be greater than DFU_FLASH_PAGE_SIZE_BYTES"
-#endif
+#ifndef NUM_TRANSFER_BLOCKS_PER_FLASH_PAGE
+#define NUM_TRANSFER_BLOCKS_PER_FLASH_PAGE (DFU_FLASH_PAGE_SIZE_BYTES / DFU_TRANSFER_SIZE_BYTES)
 #endif
 
-/* TODO - can we use the DFU image size from download or block 0? 
- * And remove this or convert it to a ceiling value, sensible max rather than actual erase size */
+#if (DFU_TRANSFER_SIZE_BYTES > DFU_FLASH_PAGE_SIZE_BYTES)
+#error "DFU_TRANSFER_SIZE_BYTES must not be greater than DFU_FLASH_PAGE_SIZE_BYTES"
+#endif
+#if (DFU_FLASH_PAGE_SIZE_BYTES % DFU_TRANSFER_SIZE_BYTES)
+#error DFU_FLASH_PAGE_SIZE_BYTES should be a multiple of DFU_TRANSFER_SIZE_BYTES
+#endif
+
+#ifndef DFU_CONFIG_USB_INBAND_FUNCTIONS
+#define DFU_CONFIG_USB_INBAND_FUNCTIONS 0
+#endif
 
 /* Defines flash area to erase on first DFU download request received
  *
  * Flash library will round it up to the nearest sector, e.g. 4KB
  *
- * XS2 internal flash IS25LQ016B takes 70ms to erase one sector
- * 128KB will take over 2 seconds, for instance
- *
- * Your host software might implement a 5sec timeout as per USB spec 9.2.6.1,
- * and 5 seconds is just over 300KB
  */
 #ifndef FLASH_MAX_UPGRADE_SIZE
 #define FLASH_MAX_UPGRADE_SIZE (512 * 1024)
 #endif
 
 /** Clock block for use by DFU flash operations */
-#ifndef CLKBLK_FLASHLIB
+#ifndef CLKBLK_DFU_FLASHLIB
 #ifdef __xcore__
-#define CLKBLK_FLASHLIB XS1_CLKBLK_1
+#define CLKBLK_DFU_FLASHLIB XS1_CLKBLK_1
 #endif
 #endif
 

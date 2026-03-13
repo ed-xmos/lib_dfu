@@ -40,17 +40,9 @@ fl_DeviceSpec flash_devices[] = {DFU_USER_FLASH_DEVICE};
 #endif
 
 #if (DFU_QUAD_SPI_FLASH)
-/*
-typedef struct {
-      out port qspiCS;
-      out port qspiSCLK;
-      out buffered port:32 qspiSIO;
-      clock qspiClkblk;
-} fl_QSPIPorts;
-*/
-static fl_QSPIPorts p_qflash = {PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, CLKBLK_FLASHLIB};
+static fl_QSPIPorts p_qflash = {PORT_SQI_CS, PORT_SQI_SCLK, PORT_SQI_SIO, CLKBLK_DFU_FLASHLIB};
 #else
-static fl_PortHolderStruct p_flash = {XS1_PORT_1A, PORT_SQI_CS, PORT_SQI_SCLK, XS1_PORT_1D, CLKBLK_FLASHLIB};
+static fl_PortHolderStruct p_flash = {XS1_PORT_1A, PORT_SQI_CS, PORT_SQI_SCLK, XS1_PORT_1D, CLKBLK_DFU_FLASHLIB};
 #endif
 
 void DFUCustomFlashEnable() __attribute__((weak));

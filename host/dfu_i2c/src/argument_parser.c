@@ -10,13 +10,17 @@
 #include "dfu_utils.h"
 
 bool quiet = false;
+bool verbose = false;
 
 void print_usage(FILE *stream)
 {
   fprintf(stream, "\
 usage:      dfu_i2c --help\n\
-            dfu_i2c --help-advanced\n\
-            dfu_i2c OPTIONS write_upgrade boot.dfu\n\
+            dfu_i2c OPTIONS write_upgrade <boot.dfu>\n\
+            dfu_i2c OPTIONS detach_and_bus_reset\n\
+            dfu_i2c OPTIONS reboot\n\
+            dfu_i2c OPTIONS revert_factory\n\
+            dfu_i2c OPTIONS upload <file.bin>\n\
 \n\
 OPTIONS:    --quiet\n\
             --i2c-address 0x%02X (default)\n\
@@ -25,28 +29,21 @@ OPTIONS:    --quiet\n\
           BLOCK_SIZE_DEFAULT);
 }
 
-static const char advanced_usage[] =
-"\n\
-advanced:   dfu_i2c OPTIONS override_spispec spispec.bin\n\
-            dfu_i2c OPTIONS detach_and_bus_reset\n\
-            dfu_i2c OPTIONS reboot\n"
-;
-
 const char *operation_str(int operation)
 {
   switch (operation) {
-    case WRITE_UPGRADE:        return "write_upgrade";
-    case OVERRIDE_SPISPEC:     return "override_spispec";
-    case DETACH_AND_BUS_RESET: return "detach_and_bus_reset";
-    case REBOOT:               return "reboot";
+    case WRITE_UPGRADE:         return "write_upgrade";
+    case DETACH_AND_BUS_RESET:  return "detach_and_bus_reset";
+    case REBOOT:                return "reboot";
+    case REVERT_FACTORY:        return "revert_factory";
+    case UPLOAD:                return "upload";
     default: return "?";
   }
 }
 
 int parse_operation(const char *arg)
 {
-  const int operations[] = {WRITE_UPGRADE, OVERRIDE_SPISPEC,
-                            DETACH_AND_BUS_RESET, REBOOT, UNKNOWN};
+  const int operations[] = {WRITE_UPGRADE, DETACH_AND_BUS_RESET, REBOOT, REVERT_FACTORY, UPLOAD, UNKNOWN};
   for (int i = 0; operations[i] != UNKNOWN; i++) {
     if (strcmp(arg, operation_str(operations[i])) == 0)
       return operations[i];
@@ -74,16 +71,12 @@ struct options parse_arguments(int argc, char **argv)
     if ( (strcmp(argv[optind], "--help") == 0 ) || (strcmp(argv[optind], "-h") == 0) ) {
       print_usage(stderr);
       exit(2);
-    } else if ( (strcmp(argv[optind], "--help-advanced") == 0 ) || (strcmp(argv[optind], "-a") == 0) ) {
-      print_usage(stderr);
-      fprintf(stderr, advanced_usage);
-      exit(2);
     } else if ( (strcmp(argv[optind], "--quiet") == 0 ) || (strcmp(argv[optind], "-q") == 0) ) {
       quiet = true;
       continue;
     } else if ( (strcmp(argv[optind], "--i2c-address") == 0 ) || (strcmp(argv[optind], "-i") == 0) ) {
       optind++;
-      o.device_id.i2c_address = strtol(argv[optind], NULL, 0);
+      o.device_id.i2c_address = (uint8_t)strtol(argv[optind], NULL, 0);
       if (o.device_id.i2c_address == 0 && errno == EINVAL) {
         PRINT_ERROR("Invalid I2C address `%s'\n", argv[optind]);
       exit(1);
@@ -91,7 +84,7 @@ struct options parse_arguments(int argc, char **argv)
       continue;
     } else if ( (strcmp(argv[optind], "--block-size") == 0 ) || (strcmp(argv[optind], "-b") == 0) ) {
       optind++;
-      o.block_size = strtoul(argv[optind], NULL, 0);
+      o.block_size = (unsigned)strtoul(argv[optind], NULL, 0);
       if (o.block_size == 0 && errno == EINVAL) {
         PRINT_ERROR("Invalid block size `%s'\n", argv[optind]);
         exit(1);
@@ -114,7 +107,7 @@ struct options parse_arguments(int argc, char **argv)
           o.arguments[1] = NULL;
           break;
 
-        case OVERRIDE_SPISPEC:
+        case UPLOAD:
           if (argc != optind + 2) {
             if (argc < optind + 2)
               PRINT_ERROR("Not enough command line arguments\n");
@@ -146,21 +139,26 @@ struct options parse_arguments(int argc, char **argv)
           o.arguments[1] = NULL;
           break;
 
+        case REVERT_FACTORY:
+          if (argc != optind + 1) {
+            print_usage(stderr);
+            exit(1);
+          }
+          o.arguments[0] = NULL;
+          o.arguments[1] = NULL;
+          break;
+
         default:
           PRINT_ERROR("Unknown operation \"%s\"\n", argv[optind]);
           print_usage(stderr);
           exit(1);
       }
 
-      if (!quiet) {
+      if (verbose) {
         printf("options:\n");
         printf("- operation: ");
         switch (o.operation) {
           case WRITE_UPGRADE:
-            printf("%s %s\n", operation_str(o.operation), o.arguments[0]);
-            break;
-
-          case OVERRIDE_SPISPEC:
             printf("%s %s\n", operation_str(o.operation), o.arguments[0]);
             break;
 
@@ -169,6 +167,14 @@ struct options parse_arguments(int argc, char **argv)
             break;
 
           case REBOOT:
+            printf("%s\n", operation_str(o.operation));
+            break;
+
+          case REVERT_FACTORY:
+            printf("%s\n", operation_str(o.operation));
+            break;
+
+          case UPLOAD:
             printf("%s\n", operation_str(o.operation));
             break;
 

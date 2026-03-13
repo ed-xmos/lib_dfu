@@ -11,7 +11,6 @@
 #include <xassert.h>
 #include <xccompat.h>
 
-#include "descriptor_defs.h"
 #include "dfu_reboot.h"
 #include "xud_device.h"
 #include "dfu_types.h"
@@ -131,16 +130,17 @@ int DFUProcessResetState(client interface i_dfu i)
          */
         inDFU = 1;
         // TODO - flag is sticky at the moment to ride through multiple resets from the host (Windows).
+        // Consider clearing flag on detection of enumeration.
     }
 
-    struct dfu_request_params request = { XMOS_BUS_RESET, 0, 0, 0 };
+    struct dfu_request_params request = { XMOS_DFU_BUS_RESET, 0, 0, 0 };
     request.value = inDFU;
     /* Interface used here such that the handler can be on another tile */
     unsigned data_buffer[1];
-    struct dfu_request_result result = i.HandleDfuRequest(request, data_buffer, 0);
+    struct dfu_cmd_response result = i.HandleDfuRequest(request, data_buffer, 0);
     
     // Return code of 0 means normal operation (APP_IDLE), non-zero means we are in DFU mode (DFU_IDLE or DFU_ERROR).
-    if (result.return_code)
+    if (result.status)
     {
         // In DFU mode...
         if (!DFUModeIsActive())
@@ -179,9 +179,9 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
     request.index = sp.wIndex;
     request.length = sp.wLength;
     /* Interface used here such that the handler can be on another tile */
-    struct dfu_request_result result = i.HandleDfuRequest(request, data_buffer, data_buffer_len);
+    struct dfu_cmd_response result = i.HandleDfuRequest(request, data_buffer, data_buffer_len);
 
-    if (result.reset_type == DFU_RESET_TYPE_RESET_TO_DFU) {
+    if (result.deferred_request == DFU_DEFERRED_ACTION_REBOOT_TO_DFU) {
         SetDFUFlag(_BOOT_DFU_MODE_FLAG);
     } else {
         // Yes, we do need to clear this at every opportunity.
@@ -191,7 +191,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
 
     int returnVal = 0;
     /* Check if the request was handled */
-    if(result.return_code == 0)
+    if(result.status == DFU_API_SUCCESS)
     {
         if (sp.bmRequestType.Direction == USB_BM_REQTYPE_DIRECTION_D2H && sp.wLength != 0)
         {
@@ -203,7 +203,7 @@ static int DFUDeviceRequests(XUD_ep ep0_out, XUD_ep &?ep0_in, USB_SetupPacket_t 
         }
 
   	    // If device reset requested, handle after command acknowledgement
-  	    if (result.reset_type != DFU_RESET_TYPE_NONE)
+  	    if ((result.deferred_request == DFU_DEFERRED_ACTION_REBOOT_TO_DFU) || (result.deferred_request == DFU_DEFERRED_ACTION_REBOOT))
   	    {
             DFUDelay(DELAY_BEFORE_REBOOT_TO_DFU_MS * XS1_TIMER_KHZ);
             device_reboot();

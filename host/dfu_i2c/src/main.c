@@ -9,6 +9,7 @@
 #include "operations.h"
 #include "hal.h"
 #include "dfu_utils.h"
+#include "app_types.h"
 
 int main(int argc, char **argv)
 {
@@ -17,49 +18,59 @@ int main(int argc, char **argv)
 
   switch (options.operation) {
     case WRITE_UPGRADE: {
-      struct inputs inputs = read_write_upgrade_inputs(options.arguments[0],
-                                                       options.device_id);
+      struct inputs inputs = read_write_upgrade_inputs(options.arguments[0], options.device_id);
 
       // block number is 16 bits with top bit reserved for boot/data marker
       // so maximum block count is 32,768
       const size_t fifteen_bits_max = 32768;
       const size_t max_dnload_size = fifteen_bits_max * options.block_size;
 
-      if (inputs.boot.length > max_dnload_size) {
-        PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n",
-                        inputs.boot.length, max_dnload_size);
-        return 1;
+      if (inputs.boot.length == 0) {
+        PRINT_ERROR("Boot image size reported %lu\n", inputs.boot.length);
+        cleanup_inputs(&inputs);
+        return APP_WARNING;
+
+      } else if (inputs.boot.length > max_dnload_size) {
+        PRINT_ERROR("Boot image size %lu exceeds maximum %lu\n", inputs.boot.length, max_dnload_size);
+        cleanup_inputs(&inputs);
+        return APP_WARNING;
       }
 
-      if (hal_connect(options.device_id) != 0) // will do a check that suffix IDs
-        return 1;                              // match the running target
+      if (hal_connect(options.device_id) == APP_OK) {
+        ret = write_upgrade(inputs, options.block_size);
+        if (ret == 0) {
+          // TODO - should we always reboot after write?
+          hal_reboot();
+        }
 
-      ret = write_upgrade(inputs, options.block_size);
-
-      if (ret == 0)
-        hal_reboot();
-
-      hal_disconnect();
+        hal_disconnect();
+      }
       cleanup_inputs(&inputs);
       break;
     }
 
-    case OVERRIDE_SPISPEC: {
-      struct inputs inputs = read_override_spispec_input(options.arguments[0]);
+    case UPLOAD: {
+      if (!quiet) {
+        printf("Uploading\n");
+      }
 
-      if (hal_connect(options.device_id) != 0)
-        return 1;
+      if (hal_connect(options.device_id) != APP_OK) {
+        return APP_WARNING;
+      }
 
-      ret = override_spispec(inputs);
+      ret = read_upload(options.arguments[0], options.block_size);
+      if (ret != 0) {
+        printf("upload failed, %d\n", ret);
+      }
 
       hal_disconnect();
-      cleanup_inputs(&inputs);
       break;
     }
 
     case DETACH_AND_BUS_RESET: {
-      if (hal_connect(options.device_id) != 0)
-        return 1;
+      if (hal_connect(options.device_id) != APP_OK) {
+        return APP_WARNING;
+      }
 
       ret = detach_and_bus_reset();
 
@@ -68,11 +79,40 @@ int main(int argc, char **argv)
     }
 
     case REBOOT: {
-      if (hal_connect(options.device_id) != 0)
-        return 1;
+      if (hal_connect(options.device_id) != APP_OK) {
+        printf("Connect failed\n");
+        return APP_WARNING;
+      }
 
-      ret = hal_reboot();
+      (void)hal_reboot();
+      printf("Device rebooted\n");
 
+      hal_disconnect();
+      break;
+    }
+
+    case REVERT_FACTORY: {
+      if (!quiet) {
+        printf("Revert factory\n");
+      }
+      if (hal_connect(options.device_id) != APP_OK) {
+        printf("Connect failed\n");
+        return APP_WARNING;
+      }
+
+      ret = detach_and_bus_reset();
+      if (ret != 0) {
+        hal_disconnect();
+        return ret;
+      }
+      ret = hal_revert_factory();
+      if (ret != 0) {
+        printf("Revert factory failed\n");
+      }
+      (void)hal_reboot();
+      
+      printf("Device rebooted\n");
+      
       hal_disconnect();
       break;
     }
@@ -82,8 +122,9 @@ int main(int argc, char **argv)
       break;
   }
 
-  if (ret != 0)
-    return 1;
+  if (ret != 0) {
+    return APP_WARNING;
+  }
 
-  return 0;
+  return APP_OK;
 }

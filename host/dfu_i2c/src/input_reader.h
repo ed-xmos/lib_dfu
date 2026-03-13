@@ -10,13 +10,10 @@ struct inputs {
   struct {
     unsigned char *bytes;
     size_t length;
-  } boot, spispec;
+  } boot;
 };
 
-struct inputs read_write_upgrade_inputs(const char *boot_file_name,
-                                        struct device_id device_id);
-
-struct inputs read_override_spispec_input(const char *spispec_file_name);
+struct inputs read_write_upgrade_inputs(const char *boot_file_name, struct device_id device_id);
 
 void cleanup_inputs(struct inputs *inputs);
 
