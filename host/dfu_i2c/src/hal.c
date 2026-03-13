@@ -12,11 +12,10 @@
 #include "dfu_utils.h"
 #include "labels.h"
 
-#define KWD_BOOT_COMPLETE 1
-#define KWD_BOOT_ERROR 2
-#define AP_CONTROL_FLAG 1
+extern bool quiet;
+extern bool verbose;
 
-extern int quiet;
+#define RESET_TIMEOUT_MSEC 500
 
 static uint8_t buffer[256];
 
@@ -31,7 +30,7 @@ int hal_connect(struct device_id device_id)
     PRINT_ERROR("Control initialisation over I2C failed\n");
     return APP_ERROR;
   }
-  if (!quiet) {
+  if (verbose) {
     printf("I2C connected (slave address 0x%X)\n", device_id.i2c_address);
   }
 
@@ -49,7 +48,7 @@ int hal_connect(struct device_id device_id)
     PRINT_ERROR("Mismatch of the control version between host and device. Expected 0x%X, received 0x%X\n", CONTROL_VERSION, version);
     return APP_WARNING;
   }
-  if (!quiet) {
+  if (verbose) {
     printf("control version query successful\n");
   }
 
@@ -62,12 +61,16 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes, CLI
 int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
 #endif
 {
-  if (!quiet) {
+  if (verbose) {
     printf("HAL: read command: %s (%d), %zu bytes\n", command_str(command), command, num_bytes);
   }
-  if (num_bytes == 0 || payload == NULL) {
+  if (payload == NULL && num_bytes > 0) {
     PRINT_ERROR("Payload pointer is NULL for non-zero payload length\n");
     return APP_BAD_PARAM;
+  }
+  if (num_bytes > (sizeof(buffer) - sizeof(struct dfu_upload_header))) {
+    PRINT_ERROR("Requested read size %zu is too large. Maximum supported is %zu bytes\n", num_bytes, (sizeof(buffer) - sizeof(struct dfu_upload_header)));
+    return APP_ERROR;
   }
 
 #if CONTROL_USE_I2C && __xcore__
@@ -79,6 +82,7 @@ int hal_read_command(int command, unsigned char payload[], size_t num_bytes)
     PRINT_ERROR("Control read command did not return success\n");
     return APP_BAD_COMMS;
   }
+  /* Options for read are variable length packet, including zero-length, always with header, */
   struct dfu_upload_header header;
   memcpy(&header, buffer, sizeof(header));
   memcpy(payload, buffer + sizeof(header), num_bytes);
@@ -94,7 +98,7 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 {
   static uint16_t block_num = 0;
 
-  if (!quiet) {
+  if (verbose) {
     printf("HAL: write command: %s (%d), %zu bytes\n", command_str(command), command, num_bytes);
   }
   if (num_bytes != 0 && payload == NULL) {
@@ -108,6 +112,7 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
     return APP_ERROR;
 
   } else if (num_bytes != 0)  {
+    /* Options for write include; Zero length with no header, or, 'non-zero' length with header, */
     struct dfu_dnload_header header = { 0, 0 };
     header.block_num = ++block_num;
 
@@ -134,35 +139,35 @@ int hal_write_command(int command, const unsigned char payload[], size_t num_byt
 #if CONTROL_USE_I2C && __xcore__
 int hal_reboot(CLIENT_INTERFACE(i2c_master_if, i_i2c))
 {
-  if (!quiet) {
+  if (verbose) {
     printf("HAL: reboot\n");
   }
 
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0, i_i2c) != 0) {
     /* Allow device turn-around time after reboot */
-    sleep_milliseconds(500);
+    sleep_milliseconds(RESET_TIMEOUT_MSEC);
     return APP_BAD_COMMS;
   }
   /* Allow device turn-around time after reboot */
-  sleep_milliseconds(500);
+  sleep_milliseconds(RESET_TIMEOUT_MSEC);
 
   return APP_OK;
 }
 #else
 int hal_reboot(void)
 {
-  if (!quiet) {
+  if (verbose) {
     printf("HAL: reboot\n");
   }
 
   if (hal_write_command(XMOS_DFU_BUS_RESET, NULL, 0) != 0) {
     /* Allow device turn-around time after reboot */
-    sleep_milliseconds(500);
+    sleep_milliseconds(RESET_TIMEOUT_MSEC);
     return APP_BAD_COMMS;
   }
 
   /* Allow device turn-around time after reboot */
-  sleep_milliseconds(500);
+  sleep_milliseconds(RESET_TIMEOUT_MSEC);
 
   return APP_OK;
 }
@@ -174,17 +179,17 @@ int hal_revert_factory(CLIENT_INTERFACE(i2c_master_if, i_i2c))
 int hal_revert_factory(void)
 #endif
 {
-  if (!quiet) {
+  if (verbose) {
     printf("HAL: revert factory\n");
   }
 
   if (hal_write_command(XMOS_DFU_REVERTFACTORY, NULL, 0) != 0) {
     /* Allow time for deferred task to action the revert request */
-    sleep_milliseconds(500);
+    sleep_milliseconds(RESET_TIMEOUT_MSEC);
     return APP_BAD_COMMS;
   }
   /* Allow time for deferred task to action the revert request */
-  sleep_milliseconds(500);
+  sleep_milliseconds(RESET_TIMEOUT_MSEC);
   return APP_OK;
 }
 

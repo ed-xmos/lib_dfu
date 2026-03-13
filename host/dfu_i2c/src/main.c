@@ -50,7 +50,9 @@ int main(int argc, char **argv)
     }
 
     case UPLOAD: {
-      printf("Uploading\n");
+      if (!quiet) {
+        printf("Uploading\n");
+      }
 
       if (hal_connect(options.device_id) != APP_OK) {
         return APP_WARNING;
@@ -60,7 +62,6 @@ int main(int argc, char **argv)
       if (ret != 0) {
         printf("upload failed, %d\n", ret);
       }
-      // TODO check result...
 
       hal_disconnect();
       break;
@@ -91,7 +92,9 @@ int main(int argc, char **argv)
     }
 
     case REVERT_FACTORY: {
-      printf("Revert factory\n");
+      if (!quiet) {
+        printf("Revert factory\n");
+      }
       if (hal_connect(options.device_id) != APP_OK) {
         printf("Connect failed\n");
         return APP_WARNING;

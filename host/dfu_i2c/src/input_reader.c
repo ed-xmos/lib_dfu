@@ -12,6 +12,7 @@
 #include "dfu_utils.h"
 
 extern bool quiet;
+extern bool verbose;
 
 static size_t file_size(FILE *handle, const char *name)
 {
@@ -64,6 +65,7 @@ static size_t load_file(const char *file_name, unsigned char **bytes)
   size_t length = file_size(handle, file_name);
   if (length == 0) {
     PRINT_ERROR("Problem finding file length for file %s\n", file_name);
+    fclose(handle);
     return 0;
   }
 
@@ -82,7 +84,7 @@ static size_t load_file(const char *file_name, unsigned char **bytes)
 
   fclose(handle);
 
-  if (!quiet) {
+  if (verbose) {
     printf("opened %s, %lu bytes\n", file_name, length);
   }
 

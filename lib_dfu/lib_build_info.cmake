@@ -4,7 +4,6 @@ set(LIB_VERSION 1.1.0)
 
 # Disable data partition dependency for DFU library, for now
 option(NO_DATA_PARTITION "Disable data partition dependency for DFU library" ON)
-option(DFU_FLASH_UNIT_TEST "Build DFU library for testing scenarios" OFF)
 
 set(LIB_DEPENDENT_MODULES   "lib_xassert(4.3.2)" "lib_logging(3.4.0)")
 
@@ -20,7 +19,6 @@ set(LIB_XC_SRCS             src/dfu.xc
                             src/dfu_reboot.xc
                             src/dfu_sub_sm.xc)
 
-# -mcmodel=large? 
 set(LIB_COMPILER_FLAGS      -Os
                             -g
                             -report

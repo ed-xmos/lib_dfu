@@ -9,7 +9,8 @@
 #include "argument_parser.h"
 #include "dfu_utils.h"
 
-bool quiet = true;
+bool quiet = false;
+bool verbose = false;
 
 void print_usage(FILE *stream)
 {
@@ -153,7 +154,7 @@ struct options parse_arguments(int argc, char **argv)
           exit(1);
       }
 
-      if (!quiet) {
+      if (verbose) {
         printf("options:\n");
         printf("- operation: ");
         switch (o.operation) {

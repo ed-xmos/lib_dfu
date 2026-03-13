@@ -12,6 +12,23 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY  ${CMAKE_CURRENT_LIST_DIR}/bin)
 
 add_executable(xmosdfu ${CMAKE_CURRENT_LIST_DIR}/src/xmosdfu.cpp)
 
+if (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+set(FLAGS /O2 /W4)
+else()
+set(FLAGS 
+            -g
+            -O2
+            -Wall
+            -Wextra
+            -Wconversion
+            -Wdiv-by-zero
+            -Wfloat-equal
+            -Wsign-compare
+            -Wshadow)
+endif()
+
+target_compile_options(xmosdfu PUBLIC ${FLAGS})
+
 # Discern OS for libusb library location
 if ((${CMAKE_SYSTEM_NAME} MATCHES "Darwin") AND (${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64"))
     target_link_directories(xmosdfu PRIVATE "${CMAKE_CURRENT_LIST_DIR}/libusb/OSX64")

@@ -96,7 +96,6 @@ def test_rpi():
     detach_and_check(host_file_path, factory_device)
 
     # Test - run upgrade, detech and check (value == upgrade_device)
-    test_update_file
     proc = subprocess.run(f"{host_file_path} write_upgrade {target_dfu_file}".split(), text=True, capture_output=True)
     if proc.returncode != 0:
         print(proc.stdout)
@@ -116,7 +115,7 @@ def test_rpi():
     uploaded = pathlib.Path(upload_bin_file)
     assert uploaded.exists()
     compare_length = uploaded.stat().st_size
-    assert compare_length > 20000 and compare_length < 60000, "Unexpected lnegth of Uploaded file"
+    assert compare_length > 20000 and compare_length < 60000, "Unexpected length of uploaded file"
     proc = subprocess.run(f"cmp -b -n {compare_length} {upload_bin_file} {test_update_file}".split(), text=True, capture_output=True)
     if proc.returncode != 0:
         print(proc.stdout)

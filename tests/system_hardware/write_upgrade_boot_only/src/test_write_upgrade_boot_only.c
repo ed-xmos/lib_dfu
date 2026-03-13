@@ -8,7 +8,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <print.h>
-#include <string.h>
 #include <quadflash.h>
 
 #include <unity.h>
@@ -116,7 +115,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     if (deferred_request != 0) {
       response = dfu_request(deferred_request);
       printf("deferred request %d, response status %d\n", deferred_request, response.status);
-      // TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+      TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
     }
   } while (ret.state != STATE_DFU_IDLE);
 

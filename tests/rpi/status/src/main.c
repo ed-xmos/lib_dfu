@@ -9,13 +9,12 @@
 #include "operations.h"
 #include "hal.h"
 #include "dfu_utils.h"
+#include "app_types.h"
 
 int main(int argc, char **argv)
 {
   struct options options = parse_arguments(argc, argv);
   int ret = 0;
-
-  printf("op: %d\n", options.operation)
 
   switch (options.operation) {
     case WRITE_UPGRADE: {

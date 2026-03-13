@@ -16,6 +16,7 @@
 #define BLOCK_SIZE_DEFAULT 64
 
 extern bool quiet;
+extern bool verbose;
 
 struct options {
   enum {

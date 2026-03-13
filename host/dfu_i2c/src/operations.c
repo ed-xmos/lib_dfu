@@ -36,6 +36,7 @@
 #include "operations.h"
 
 extern bool quiet;
+extern bool verbose;
 
 static int check_state(enum dfu_state expected)
 {
@@ -44,8 +45,7 @@ static int check_state(enum dfu_state expected)
   if (hal_read_command(DFU_GETSTATE, payload, sizeof(payload)) != sizeof(payload)) {
     return 1;
   }
-  // convert from hard little endian order after deserialisation
-  enum dfu_state state = (enum dfu_state)le32toh(payload[DFU_GETSTATE_INDEX]);
+  enum dfu_state state = (enum dfu_state)payload[DFU_GETSTATE_INDEX];
 
   if (state == STATE_DFU_ERROR) {
     PRINT_ERROR("Device in dfu ERROR state\n");
@@ -79,9 +79,9 @@ static int check_status(struct dfu_getstatus *getstatus)
   }
 
   // convert from hard little endian order after deserialization
-  getstatus->state = le32toh(payload[DFU_GETSTATUS_STATE_INDEX]);
-  getstatus->status = le32toh(payload[DFU_GETSTATUS_STATUS_INDEX]);
-  getstatus->poll_timeout_msec = le32toh(payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX]) & ((1 << (DFU_GETSTATUS_POLL_TIMEOUT_BYTES * 8)) - 1);
+  getstatus->state = payload[DFU_GETSTATUS_STATE_INDEX];
+  getstatus->status = payload[DFU_GETSTATUS_STATUS_INDEX];
+  getstatus->poll_timeout_msec = payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX] | (payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX + 1] << 8) | (payload[DFU_GETSTATUS_POLL_TIMEOUT_INDEX + 2] << 16);
 
   if (getstatus->status != DFU_OK) {
     PRINT_ERROR("Status was %s when %s expected\n", status_str(getstatus->status), status_str(DFU_OK));
@@ -94,7 +94,7 @@ static int check_status(struct dfu_getstatus *getstatus)
   }
 
   static unsigned last_timeout = UINT32_MAX;
-  if (!quiet) {
+  if (verbose) {
     if (getstatus->poll_timeout_msec != last_timeout) {
       last_timeout = getstatus->poll_timeout_msec;
       printf("new poll timeout %u msec\n", getstatus->poll_timeout_msec);
@@ -110,7 +110,7 @@ static void fetch_descriptor(void)
   if (hal_read_command(XMOS_DFU_GET_DESCRIPTOR, descriptor_payload, DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) != DFU_GETDESCRIPTOR_PAYLOAD_SIZE_BYTES) {
     printf("Fetch descriptor failed\n");
 
-  } else {
+  } else if (!quiet) {
     printf("device descriptor: bcdDevice 0x%04X, bmAttributes 0x%02X, mode 0x%02X (%s)\n",
            le32toh((descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX + 1] << 8) | descriptor_payload[DFU_GETDESCRIPTOR_BCD_DEVICE_INDEX]),
            descriptor_payload[DFU_GETDESCRIPTOR_FUNC_ATTRS_INDEX],
@@ -121,7 +121,7 @@ static void fetch_descriptor(void)
 
 int detach_and_bus_reset(void)
 {
-  if (!quiet) {
+  if (verbose) {
     printf("detach and bus reset\n");
   }
 
@@ -151,7 +151,9 @@ int detach_and_bus_reset(void)
     return 7;
   }
 
-  printf("detach and bus reset successful\n");
+  if (!quiet) {
+    printf("detach and bus reset successful\n");
+  }
 
   fetch_descriptor();
 
@@ -159,24 +161,26 @@ int detach_and_bus_reset(void)
 }
 
 static void get_profile_data(void) {
-  uint8_t payload[sizeof(struct dfu_profile_data)];
-  printf("profile data size: %zu\n", sizeof(struct dfu_profile_data));
-  if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != sizeof(struct dfu_profile_data)) {
-    printf("get profile failed\n");
-  } else {
-    struct dfu_profile_data *profile = (struct dfu_profile_data *)payload;
-    printf("profile data: %u, %u/%u, %u\n", profile->command_time, profile->command_index, profile->index_total, profile->cmd);
+  if (!quiet) {
+    uint8_t payload[sizeof(struct dfu_profile_data)];
+    printf("profile data size: %zu\n", sizeof(struct dfu_profile_data));
+    if (hal_read_command(XMOS_DFU_GETPROFILE, payload, sizeof(struct dfu_profile_data)) != sizeof(struct dfu_profile_data)) {
+      printf("get profile failed\n");
+    } else {
+      struct dfu_profile_data *profile = (struct dfu_profile_data *)payload;
+      printf("profile data: %u, %u/%u, %u\n", profile->command_time, profile->command_index, profile->index_total, profile->cmd);
+    }
   }
 }
 
-static int download_file(const unsigned char *bytes, size_t length, unsigned block_size, unsigned short marker)
+static int download_file(const unsigned char *bytes, size_t length, unsigned block_size)
 {
   size_t byte_count = 0;
   unsigned block_count = 0;
   struct dfu_getstatus getstatus;
 
-  if (!quiet) {
-    printf("start download of %d bytes, block size %d, marker 0x%X\n", (int)length, block_size, marker); // size_t different in xCORE unit test
+  if (verbose) {
+    printf("start download of %d bytes, block size %d\n", (int)length, block_size);
   }
 
   while (byte_count < length) {
@@ -185,7 +189,9 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
       block_bytes = length - byte_count;
     }
 
-    printf("download block %u, %d bytes, %02X\n", block_count, (int)block_bytes, bytes[byte_count + block_size - 1]);
+    if (!quiet) {
+      printf("download block %u, %d bytes, %02X\n", block_count, (int)block_bytes, bytes[byte_count + block_size - 1]);
+    }
 
     if (hal_write_command(DFU_DNLOAD, &bytes[byte_count], block_bytes) != (int)block_bytes) {
       return 1;
@@ -237,7 +243,7 @@ static int download_file(const unsigned char *bytes, size_t length, unsigned blo
 
 int write_upgrade(struct inputs inputs, unsigned block_size)
 {
-  if (!quiet) {
+  if (verbose) {
     printf("write upgrade %d boot bytes\n", (int)inputs.boot.length);
   }
 
@@ -245,10 +251,12 @@ int write_upgrade(struct inputs inputs, unsigned block_size)
     return 1;
   }
 
-  printf("upgrading: image size %d bytes, block size %d, num blocks %d, tail %d bytes\n",
-    (int)inputs.boot.length, block_size, (((unsigned)inputs.boot.length + block_size - 1U) / block_size), ((unsigned)inputs.boot.length % block_size));
+  if (!quiet) {
+    printf("upgrading: image size %d bytes, block size %d, num blocks %d, tail %d bytes\n",
+      (int)inputs.boot.length, block_size, (((unsigned)inputs.boot.length + block_size - 1U) / block_size), ((unsigned)inputs.boot.length % block_size));
+    }
 
-  if (download_file(inputs.boot.bytes, inputs.boot.length, block_size, 0) != 0) {
+  if (download_file(inputs.boot.bytes, inputs.boot.length, block_size) != 0) {
     return 2;
   }
 
@@ -275,17 +283,32 @@ static int upload_file(FILE *handle, unsigned block_size)
     int read_status = hal_read_command(DFU_UPLOAD, &sector_buffer[byte_count], block_size);
     if (read_status == (int)block_size) {
       returned_length = block_size;
-      printf("upload block %u, %u bytes, %02X\n", block_count, block_size, sector_buffer[byte_count + block_size - 1]);
+      if (!quiet) {
+        printf("upload block %u, %u bytes, %02X\n", block_count, block_size, sector_buffer[byte_count + block_size - 1]);
+      }
+
+      byte_count += block_size;
+      block_count += 1;
+
+      if (byte_count >= sizeof(sector_buffer)) {
+        if (fwrite(sector_buffer, 1, sizeof(sector_buffer), handle) != sizeof(sector_buffer)) {
+          PRINT_ERROR("Problem writing file (errno %d)\n", errno);
+          return APP_BAD_COMMS;
+        }
+        byte_count = 0;
+      }
 
     } else if (read_status >= 0) {
       // Normal, short read, exit
       unsigned extra = (unsigned)read_status;
       returned_length = extra;
 
-      printf("short-read: upload block %u, %u bytes, %02X\n", block_count, extra, sector_buffer[byte_count + block_size - 1]);
+      if (!quiet) {
+        printf("short-read: upload block %u, %u bytes, %02X\n", block_count, extra, sector_buffer[byte_count + block_size - 1]);
 
-      printf("upload total: %u bytes\n", (block_count * block_size) + extra);
-      // TODO - merge this with write below
+        printf("upload total: %u bytes\n", (block_count * block_size) + extra);
+      }
+      // TODO - merge this with write above
       byte_count += extra;
 
       if (fwrite(sector_buffer, 1, byte_count, handle) != byte_count) {
@@ -298,16 +321,6 @@ static int upload_file(FILE *handle, unsigned block_size)
       return APP_ERROR;
     }
 
-    byte_count += block_size;
-    block_count += 1;
-
-    if (byte_count >= sizeof(sector_buffer)) {
-      if (fwrite(sector_buffer, 1, sizeof(sector_buffer), handle) != sizeof(sector_buffer)) {
-        PRINT_ERROR("Problem writing file (errno %d)\n", errno);
-        return APP_BAD_COMMS;
-      }
-      byte_count = 0;
-    }
   }
   
   get_profile_data();
@@ -320,7 +333,7 @@ int read_upload(const char *file_name, unsigned block_size)
   if ((file_name == NULL) || (block_size == 0)) {
     return APP_BAD_PARAM;
   }
-  if (!quiet) {
+  if (verbose) {
     printf("read upload, using block %d bytes\n", block_size);
   }
 
