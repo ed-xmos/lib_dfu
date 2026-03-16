@@ -1,5 +1,6 @@
 # python_version 3.12
-#
+# pip_version 26.*
+
 # The parse_version_from_requirements() function in the installPipfile.groovy
 # file of the Jenkins Shared Library uses the python_version comment to set
 # the version of python used.
@@ -20,6 +21,7 @@
 flake8==7.3.0
 pytest==9.0.2
 pytest-xdist==3.8.0
+fabric==3.2.2
 
 # Development dependencies
 #
@@ -34,6 +36,4 @@ pytest-xdist==3.8.0
 # of its own setup.py file, then this list must include an entry for that
 # setup.py fi
 
--e git+ssh://git@github.com/xmos/test_support.git@v2.0.0#egg=test_support
--e git+ssh://git@github.com/xmos/hardware_test_tools.git@604a1f90a01b5f17ac27205ef1243f41dbb762e7#egg=hardware_test_tools
 -e git+ssh://git@github0.xmos.com/xmos-int/xtagctl.git@v3.0.0#egg=xtagctl
