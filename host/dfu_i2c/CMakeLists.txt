@@ -1,13 +1,31 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.16) # Note older version to support Buster
 
 project("dfu_i2c")
 
 # Force release mode so that all the DLLs are statically linked
 set (CMAKE_BUILD_TYPE "Release" CACHE STRING "Only Release mode is allowed" FORCE)
 
-add_compile_definitions(_GNU_SOURCE HOST_APP)
+include(FetchContent)
 
-include(../../../lib_device_control/host/host_build_i2c.cmake)
+set(LIB_DEVICE_CONTROL_SOURCE "" CACHE PATH "Use an existing lib_device_control checkout instead of fetching release v5.0.0")
+if(LIB_DEVICE_CONTROL_SOURCE)
+    set(_LIB_DEVICE_CONTROL_ROOT ${LIB_DEVICE_CONTROL_SOURCE})
+else()
+    message(STATUS "Fetching lib_device_control v5.0.0 release")
+    FetchContent_Declare(lib_device_control
+            GIT_REPOSITORY https://github.com/xmos/lib_device_control.git
+            GIT_TAG v5.0.0
+    )
+    FetchContent_GetProperties(lib_device_control)
+    if(NOT lib_device_control_POPULATED)
+        FetchContent_Populate(lib_device_control)
+    endif()
+    set(_LIB_DEVICE_CONTROL_ROOT ${lib_device_control_SOURCE_DIR})
+endif()
+
+include(${_LIB_DEVICE_CONTROL_ROOT}/host/host_build_i2c.cmake)
+
+add_compile_definitions(_GNU_SOURCE HOST_APP)
 
 set (INCLUDE_DIRS
         "../api"
@@ -52,7 +70,6 @@ set(FLAGS
             -Wshadow)
 endif()
 
-
 add_library(${DFUCTRL_LIB} STATIC ${SOURCE_FILES})
 target_include_directories(${DFUCTRL_LIB} PUBLIC ${INCLUDE_DIRS})
 target_compile_options(${DFUCTRL_LIB} PUBLIC ${FLAGS})
@@ -65,4 +82,3 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 else()
     target_link_libraries(${DFUCTRL_APP} ${DFUCTRL_LIB} m)
 endif()
-

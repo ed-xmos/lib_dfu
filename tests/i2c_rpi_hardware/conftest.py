@@ -65,7 +65,7 @@ def remote_pi(settings):
     settings["pi_server_password"] = None
     connect_kwargs = None
 
-    repo_root = Path(__file__).resolve().parent.parent.parent.parent  # new_afenext/
+    repo_root = Path(__file__).resolve().parent.parent.parent.parent  # get us to the root of the sandbox
     lib_dfu_dir = repo_root / "lib_dfu"
     lib_device_control_dir = repo_root / "lib_device_control"
 

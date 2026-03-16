@@ -183,13 +183,13 @@ pipeline {
                         dir(REPO_NAME) {
                             checkoutScmShallow()
                             dir("host") {
-                                    sh "cmake -B build"
-                                    sh "cmake --build build"
+                                sh "cmake -B build"
+                                sh "cmake --build build"
 
-                                }
-                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                            }
+                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
+                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
+                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
                         }
                     }
                     post {
@@ -232,11 +232,6 @@ pipeline {
                     steps {
                         println "Stage running on ${env.NODE_NAME}"
 
-                        // Bring in device control code to test the I2C host app on RPi
-                        // sh 'git clone --depth 1 git@github.com:xmos/lib_device_control.git'
-                        // TODO - return to the above...
-                        sh 'git clone --depth 1 -b feature/dfu-testing git@github.com:humphrey-xmos/lib_device_control.git'
-
                         dir(REPO_NAME) {
                             checkoutScmShallow()
                             dir("host") {
@@ -267,13 +262,12 @@ pipeline {
                             checkoutScmShallow()
                             withVS() {
                                 dir("host") {
-                                    sh "cmake -B build"
-                                    sh "cmake --build build"
-
+                                    bat "cmake -B build -G Ninja"
+                                    bat "cmake --build build"
                                 }
-                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator.exe", fingerprint: true
+                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/suffix_verifier.lib", fingerprint: true
+                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu.exe", fingerprint: true
                             } // withVS()
                         }
                     }
@@ -289,6 +283,8 @@ pipeline {
                         label 'xvf3610_int'
                     }
 
+                    // Note this executor connects to a RPi which runs 32b Buster. So we
+                    // cannot use the pre-built 64b host apps. The test itself builds the host app from source.
                     stages {
                         stage('Checkout') {
                             steps {

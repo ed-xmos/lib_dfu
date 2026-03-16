@@ -8,9 +8,9 @@ import time
 
 DEVICE_I2C_ADDRESS = 0x2c
 
-# Helper function to run DFU commands with retries, to improve test robustness against transient I2C errors
-# TODO - work out why xvf3610_int is unreliable
-def run_dfu_with_retry(remote_pi, args, hide=True, retries=5):
+# Helper function to run DFU commands with retries, to improve test robustness against transient I2C errors. This is a workaround.
+# TODO - work out why xvf3610_int is unreliable on this particular executor (Buster). It works fine on newer Pi OS versions even on 3b.
+def run_dfu_with_retry(remote_pi, args, hide=True, retries=10):
     for attempt in range(retries):
         result = remote_pi.run_dfu(args, hide=hide)
         if result.return_code == 0:
