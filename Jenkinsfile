@@ -125,11 +125,12 @@ pipeline {
                                     dir("host") {
                                         sh "cmake -B build"
                                         sh "cmake --build build"
-
+                                        sh "mkdir -p linux-x86_64"
+                                        sh "cp suffix_generator/bin/dfu_suffix_generator linux-x86_64"
+                                        sh "cp libsuffix_verifier/lib/libsuffix_verifier.a linux-x86_64"
+                                        sh "cp xmosdfu/bin/xmosdfu linux-x86_64"
                                     }
-                                    archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                                    archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                                    archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                                    archiveArtifacts artifacts: "host/linux-x86_64/*", fingerprint: true
                                 }
                             }
                         }
@@ -185,11 +186,14 @@ pipeline {
                             dir("host") {
                                 sh "cmake -B build"
                                 sh "cmake --build build"
+                                sh "mkdir -p macos-x86_64"
+                                sh "cp suffix_generator/bin/dfu_suffix_generator macos-x86_64"
+                                sh "cp libsuffix_verifier/lib/libsuffix_verifier.a macos-x86_64"
+                                sh "cp xmosdfu/bin/xmosdfu macos-x86_64"
 
                             }
-                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                            archiveArtifacts artifacts: "host/macos-x86_64/*", fingerprint: true
+
                         }
                     }
                     post {
@@ -211,11 +215,13 @@ pipeline {
                             dir("host") {
                                 sh "cmake -B build"
                                 sh "cmake --build build"
+                                sh "mkdir -p macos-arm64"
+                                sh "cp suffix_generator/bin/dfu_suffix_generator macos-arm64"
+                                sh "cp libsuffix_verifier/lib/libsuffix_verifier.a macos-arm64"
+                                sh "cp xmosdfu/bin/xmosdfu macos-arm64"
 
                             }
-                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                            archiveArtifacts artifacts: "host/macos-arm64/*", fingerprint: true
                         }
                     }
                     post {
@@ -237,11 +243,13 @@ pipeline {
                             dir("host") {
                                 sh "cmake -B build"
                                 sh "cmake --build build"
+                                sh "mkdir -p RPi-64"
+                                sh "cp suffix_generator/bin/dfu_suffix_generator RPi-64"
+                                sh "cp libsuffix_verifier/lib/libsuffix_verifier.a RPi-64"
+                                sh "cp xmosdfu/bin/xmosdfu RPi-64"
 
                             }
-                            archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator", fingerprint: true
-                            archiveArtifacts artifacts: "host/libsuffix_verifier/lib/libsuffix_verifier.a", fingerprint: true
-                            archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu", fingerprint: true
+                            archiveArtifacts artifacts: "host/RPi-64/*", fingerprint: true
                         }
                     }
                     post {
@@ -264,10 +272,12 @@ pipeline {
                                 dir("host") {
                                     bat "cmake -B build -G Ninja"
                                     bat "cmake --build build"
+                                    sh "mkdir -p windows-x64"
+                                    bat "copy /Y suffix_generator\\bin\\dfu_suffix_generator.exe windows-x64"
+                                    bat "copy /Y libsuffix_verifier\\lib\\suffix_verifier.lib windows-x64"
+                                    bat "copy /Y xmosdfu\\bin\\xmosdfu.exe windows-x64"
                                 }
-                                archiveArtifacts artifacts: "host/suffix_generator/bin/dfu_suffix_generator.exe", fingerprint: true
-                                archiveArtifacts artifacts: "host/libsuffix_verifier/lib/suffix_verifier.lib", fingerprint: true
-                                archiveArtifacts artifacts: "host/xmosdfu/bin/xmosdfu.exe", fingerprint: true
+                                archiveArtifacts artifacts: "host/windows-x64/*", fingerprint: true
                             } // withVS()
                         }
                     }
