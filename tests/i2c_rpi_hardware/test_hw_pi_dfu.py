@@ -10,7 +10,7 @@ DEVICE_I2C_ADDRESS = 0x2c
 
 # Helper function to run DFU commands with retries, to improve test robustness against transient I2C errors. This is a workaround.
 # TODO - work out why xvf3610_int is unreliable on this particular executor (Buster). It works fine on newer Pi OS versions even on 3b.
-def run_dfu_with_retry(remote_pi, args, hide=True, retries=10):
+def run_dfu_with_retry(remote_pi, args, hide=True, retries=3):
     for attempt in range(retries):
         result = remote_pi.run_dfu(args, hide=hide)
         if result.return_code == 0:
@@ -50,6 +50,8 @@ def test_dfu_rpi(remote_pi, settings):
     # Flash factory image
     print("Flashing factory image...")
     adapter_id = settings.get("adapter_id")
+    cmd = f"xflash --force --adapter-id {adapter_id} --target-file ../../examples/i2c/device/src/xk-voice-l71.xn --erase-all"
+    subprocess.run(cmd, shell=True, check=True)
     cmd = f"xflash --force --adapter-id {adapter_id} --factory {factory_bin}"
     subprocess.run(cmd, shell=True, check=True)
 
