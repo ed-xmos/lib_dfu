@@ -324,6 +324,13 @@ pipeline {
                                                 }
                                             }
                                         }
+                                        
+                                        // Build the legacy project is the test for xcommon support
+                                        dir("legacy_build_test") {
+                                            withTools(params.TOOLS_VERSION) {
+                                                sh "xmake -j"
+                                            }
+                                        }
                                     }
                                 }
                             }
