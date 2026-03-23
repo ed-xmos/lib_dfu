@@ -1,13 +1,13 @@
 VERSION = 1.1.0
 
-DEPENDENT_MODULES = lib_flash_data_partition(>=2.2.0) \
-                    lib_xassert(>=4.3.2) \
+DEPENDENT_MODULES = lib_xassert(>=4.3.2) \
                     lib_logging(>=3.4.0)
 
-MODULE_XCC_FLAGS = $(XCC_FLAGS)
+MODULE_XCC_FLAGS = $(XCC_FLAGS) -Os -g -Wall -Wextra -Wshadow \
+                    -Wconversion -Wdiv-by-zero -Wfloat-equal -Wsign-compare
 
-EXPORT_INCLUDE_DIRS = api
+SOURCE_DIRS = src src/modules src/usb flash/quad
 
-SOURCE_DIRS = src flash
+INCLUDE_DIRS = api $(SOURCE_DIRS)
 
-INCLUDE_DIRS = $(EXPORT_INCLUDE_DIRS) $(SOURCE_DIRS)
+OPTIONAL_HEADERS += dfu_conf.h

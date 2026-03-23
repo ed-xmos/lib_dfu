@@ -4,6 +4,7 @@
 .venv*/
 build/
 _build/
+.build/
 
 obj/
 bin/
