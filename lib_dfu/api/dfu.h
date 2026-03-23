@@ -23,7 +23,7 @@ enum dfu_api_status {
 struct dfu_cmd_response {
   enum dfu_api_status status;
   int32_t return_data_len;
-  enum dfu_request deferred_request;
+  enum dfu_cmd_request deferred_request;
 };
 
 /* From USB DFU spec v1.1 
@@ -55,7 +55,7 @@ struct dfu_cmd_response {
   * \retval DFU_API_ERROR if there was an error handling the command
   * \retval DFU_API_BAD_PARAM if the command or parameters were invalid
   */
-struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
+struct dfu_cmd_response dfu_request_with_arguments(enum dfu_cmd_request request,
                                                     NULLABLE_ARRAY_OF(uint8_t, block),
                                                     int32_t block_size_bytes,
                                                     NULLABLE_REFERENCE_PARAM(int32_t, block_num));
@@ -71,7 +71,7 @@ struct dfu_cmd_response dfu_request_with_arguments(enum dfu_request request,
  * \retval DFU_API_BAD_PARAM for status, if the command or parameters were invalid
  *
  */
-struct dfu_cmd_response dfu_request(enum dfu_request request);
+struct dfu_cmd_response dfu_request(enum dfu_cmd_request request);
 
 /**
  * \defgroup lib_dfu_api API

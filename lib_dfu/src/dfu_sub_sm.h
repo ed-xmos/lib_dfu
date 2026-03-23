@@ -10,7 +10,7 @@
 #include "fifo.h"
 
 struct dfu_sub_request {
-  enum dfu_request request;
+  enum dfu_cmd_request request;
   int32_t time_allowed_msec;
 };
 

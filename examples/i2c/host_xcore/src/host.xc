@@ -60,7 +60,7 @@ int host_upload(client interface i2c_master_if i_i2c, uint8_t *payload, int32_t 
   return 0;
 }
 
-int host_request(client interface i2c_master_if i_i2c, enum dfu_request request)
+int host_request(client interface i2c_master_if i_i2c, enum dfu_cmd_request request)
 {
   uint8_t payload[4] = { 0 };
   int ctrl = control_write_command(RESOURCE_ID_DFU, CONTROL_CMD_SET_WRITE(request), i_i2c, payload, 4);
