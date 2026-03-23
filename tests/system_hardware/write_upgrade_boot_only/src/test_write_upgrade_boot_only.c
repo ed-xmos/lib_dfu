@@ -33,7 +33,7 @@ static void get_state_and_check(enum dfu_state expected_state)
   TEST_ASSERT_EQUAL(expected_state, payload[0]);
 }
 
-static struct dfu_getstatus get_status(enum dfu_request *deferred_request)
+static struct dfu_getstatus get_status(enum dfu_cmd_request *deferred_request)
 {
   struct dfu_cmd_response response = dfu_request_with_arguments(DFU_GETSTATUS, payload, DFU_GET_STATUS_PAYLOAD_SIZE_BYTES, NULL);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
@@ -84,7 +84,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
     struct dfu_cmd_response response = dfu_request_with_arguments(DFU_DNLOAD, block, read, &block_count);
     TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
 
-    enum dfu_request deferred_request = 0;
+    enum dfu_cmd_request deferred_request = 0;
     do {
       ret = get_status(&deferred_request);
       TEST_ASSERT_EQUAL(DFU_OK, ret.status);
@@ -108,7 +108,7 @@ FILE * write(FILE * bin_file, int block_size, int *upgrade_size)
   get_state_and_check(STATE_DFU_MANIFEST_SYNC);
 
   do {
-    enum dfu_request deferred_request = 0;
+    enum dfu_cmd_request deferred_request = 0;
     ret = get_status(&deferred_request);
     TEST_ASSERT_EQUAL(DFU_OK, ret.status);
 

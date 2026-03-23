@@ -46,7 +46,7 @@
 /**
  * DFU request types
  */
-enum dfu_request {
+enum dfu_cmd_request {
   // USB spec DFU commands
   DFU_DETACH = 0,
   DFU_DNLOAD = 1,
