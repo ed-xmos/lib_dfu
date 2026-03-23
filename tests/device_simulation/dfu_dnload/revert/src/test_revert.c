@@ -155,6 +155,11 @@ void revert() {
 
   struct dfu_cmd_response response = dfu_request(XMOS_DFU_REVERTFACTORY);
   TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+
+  if (response.deferred_request == DFU_DEFERRED_ACTION_REVERT_FACTORY) {
+    response = dfu_request(response.deferred_request);
+    TEST_ASSERT_EQUAL(DFU_API_SUCCESS, response.status);
+  }
 }
 
 void test_revert(void) {

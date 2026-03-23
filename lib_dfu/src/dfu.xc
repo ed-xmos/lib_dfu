@@ -286,9 +286,12 @@ static struct dfu_cmd_response state_dfu_idle(enum dfu_request request) {
       response.status = DFU_API_SUCCESS;
     }
 
-  } else if (request == XMOS_DFU_REVERTFACTORY) {
-    // TOD make deferred action for this.
+  } else if (request == DFU_DEFERRED_ACTION_REVERT_FACTORY) {
     response = action_revert_factory();
+
+  } else if (request == XMOS_DFU_REVERTFACTORY) {
+    response.deferred_request = DFU_DEFERRED_ACTION_REVERT_FACTORY;
+    response.status = DFU_API_SUCCESS;
     
   } else if (request == DFU_ABORT) {
     response.status = DFU_API_SUCCESS;
